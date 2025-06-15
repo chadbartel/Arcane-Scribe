@@ -141,12 +141,20 @@ class ArcaneScribeStack(Stack):
         # endregion
 
         # region IAM Policies
-        # Policy to allow Bedrock model invocation
-        self.bedrock_invoke_policy = self.create_iam_policy_statement(
+        # Policy to allow Bedrock embedding model invocation
+        self.bedrock_invoke_embedding_policy = self.create_iam_policy_statement(
             construct_id="BedrockInvokePolicy",
             actions=["bedrock:InvokeModel"],
             resources=[
                 f"arn:aws:bedrock:{self.region}::foundation-model/{self.bedrock_embedding_model_id}",
+            ],
+        ).statement
+
+        # Policy to allow Bedrock text generation model invocation
+        self.bedrock_invoke_text_generation_policy = self.create_iam_policy_statement(
+            construct_id="BedrockInvokePolicy",
+            actions=["bedrock:InvokeModel"],
+            resources=[
                 f"arn:aws:bedrock:{self.region}::foundation-model/{self.bedrock_text_generation_model_id}",
             ],
         ).statement
@@ -181,7 +189,9 @@ class ArcaneScribeStack(Stack):
         )
 
         # Grant permission to invoke Bedrock models
-        backend_lambda_role.add_to_policy(self.bedrock_invoke_policy)
+        backend_lambda_role.add_to_policy(
+            self.bedrock_invoke_text_generation_policy
+        )
 
         # Backend API Lambda function
         self.as_backend_lambda = self.create_lambda_function(
@@ -228,7 +238,7 @@ class ArcaneScribeStack(Stack):
             },
             memory_size=1024,  # More memory for processing PDFs
             timeout=Duration.minutes(5),  # May take longer for large PDFs
-            initial_policy=[self.bedrock_invoke_policy],
+            initial_policy=[self.bedrock_invoke_embedding_policy],
             description="Ingests PDF documents, extracts text, and stores embeddings in the vector store",
         )
 
