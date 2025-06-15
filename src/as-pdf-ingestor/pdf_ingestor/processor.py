@@ -3,6 +3,7 @@ import os
 import shutil
 from pathlib import Path
 from typing import Tuple
+import urllib.parse
 
 # Third Party
 import boto3
@@ -106,6 +107,9 @@ def process_s3_object(
     """
     # Extract SRD ID form object key
     srd_id, filename = extract_srd_info(object_key=object_key)
+
+    # Decode object key to handle any URL encoding
+    object_key = urllib.parse.unquote_plus(object_key)
 
     # Validate the bucket name and object key
     base_file_name = os.path.basename(filename)
