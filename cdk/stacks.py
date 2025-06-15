@@ -222,6 +222,9 @@ class ArcaneScribeStack(Stack):
                 ),  # For query embedding
                 "QUERY_CACHE_TABLE_NAME": self.query_cache_table.table_name,
                 "HOME_IP_SSM_PARAMETER_NAME": imported_home_ip_ssm_param_name,
+                "DOCUMENTS_METADATA_TABLE_NAME": (
+                    self.documents_metadata_table.table_name
+                ),
             },
             memory_size=1024,
             timeout=Duration.seconds(30),
