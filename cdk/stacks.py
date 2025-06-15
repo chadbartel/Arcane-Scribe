@@ -205,6 +205,9 @@ class ArcaneScribeStack(Stack):
             description="Arcane Scribe API backend Lambda function",
         )
 
+        # Grant S3 permissions for the backend Lambda
+        self.documents_bucket.grant_read_write(self.as_backend_lambda)
+
         # Lambda for PDF ingestion and processing
         self.pdf_ingestor_lambda = self.create_lambda_function(
             construct_id="PdfIngestorLambda",
