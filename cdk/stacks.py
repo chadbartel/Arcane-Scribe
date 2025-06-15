@@ -138,6 +138,16 @@ class ArcaneScribeStack(Stack):
             name="arcane-scribe-rag-query-cache",
             partition_key_name="query_hash",
         )
+
+        # This table will store metadata about the documents ingested
+        self.documents_metadata_table = self.create_dynamodb_table(
+            construct_id="DocumentMetadataTable",
+            name="arcane-scribe-documents-metadata",
+            partition_key_name="owner_srd_composite",
+            partition_key_type=dynamodb.AttributeType.STRING,
+            sort_key_name="document_id",
+            sort_key_type=dynamodb.AttributeType.STRING,
+        )
         # endregion
 
         # region IAM Policies
