@@ -43,6 +43,7 @@ class PresignedUrlResponse(BaseModel):
         key: The object key in the S3 bucket.
         expires_in: The expiration time in seconds.
         method: The HTTP method for the upload operation.
+        content_type: Content type for the file.
     """
 
     model_config = ConfigDict(populate_by_name=True)
@@ -65,6 +66,11 @@ class PresignedUrlResponse(BaseModel):
     )
     method: AllowedMethod = Field(
         ..., description="The HTTP method for the upload operation."
+    )
+    content_type: Optional[str] = Field(
+        "application/pdf",
+        description="Content type for the file.",
+        examples=["application/pdf"],
     )
 
 
