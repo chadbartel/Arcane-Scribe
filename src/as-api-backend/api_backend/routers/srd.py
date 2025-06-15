@@ -90,6 +90,7 @@ def get_presigned_upload_url(
         presigned_url = generate_presigned_url(
             file_name=file_name,
             srd_id=srd_id,
+            owner_id=owner_id,
             expiration=expiration_seconds,
             content_type=content_type,
         )
