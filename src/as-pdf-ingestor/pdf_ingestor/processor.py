@@ -1,9 +1,9 @@
 # Standard Library
 import os
 import shutil
+import urllib.parse
 from pathlib import Path
 from typing import Tuple
-import urllib.parse
 
 # Third Party
 import boto3
