@@ -463,6 +463,8 @@ class ArcaneScribeStack(Stack):
         name: str,
         partition_key_name: str,
         partition_key_type: Optional[dynamodb.AttributeType] = None,
+        sort_key_name: Optional[str] = None,
+        sort_key_type: Optional[dynamodb.AttributeType] = None,
         time_to_live_attribute: Optional[str] = None,
     ) -> dynamodb.Table:
         """Helper method to create a DynamoDB table with a specific name and partition key.
@@ -477,6 +479,10 @@ class ArcaneScribeStack(Stack):
             The name of the partition key for the table.
         partition_key_type : Optional[dynamodb.AttributeType], optional
             The type of the partition key, by default dynamodb.AttributeType.STRING
+        sort_key_name : Optional[str], optional
+            The name of the sort key for the table, by default None
+        sort_key_type : Optional[dynamodb.AttributeType], optional
+            The type of the sort key, by default None
         time_to_live_attribute : Optional[str], optional
             The attribute name for time to live (TTL) settings, by default None
 
@@ -492,6 +498,14 @@ class ArcaneScribeStack(Stack):
             partition_key=dynamodb.Attribute(
                 name=partition_key_name,
                 type=partition_key_type or dynamodb.AttributeType.STRING,
+            ),
+            sort_key=(
+                dynamodb.Attribute(
+                    name=sort_key_name,
+                    type=sort_key_type or dynamodb.AttributeType.STRING,
+                )
+                if sort_key_name and sort_key_type
+                else None
             ),
             stack_suffix=self.stack_suffix,
             time_to_live_attribute=time_to_live_attribute or "ttl",
