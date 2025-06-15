@@ -180,6 +180,9 @@ class ArcaneScribeStack(Stack):
             ).statement
         )
 
+        # Grant permission to invoke Bedrock models
+        backend_lambda_role.add_to_policy(self.bedrock_invoke_policy)
+
         # Backend API Lambda function
         self.as_backend_lambda = self.create_lambda_function(
             construct_id="ArcaneScribeApiLambda",
