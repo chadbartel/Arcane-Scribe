@@ -192,6 +192,7 @@ class ArcaneScribeStack(Stack):
         backend_lambda_role.add_to_policy(
             self.bedrock_invoke_text_generation_policy
         )
+        backend_lambda_role.add_to_policy(self.bedrock_invoke_embedding_policy)
 
         # Backend API Lambda function
         self.as_backend_lambda = self.create_lambda_function(
