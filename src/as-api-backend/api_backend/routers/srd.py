@@ -1,8 +1,8 @@
 # Standard Library
-from typing import Union
+from typing import Union, Annotated
 
 # Third Party
-from fastapi import APIRouter, status, Body
+from fastapi import APIRouter, status, Body, Header
 from fastapi.responses import JSONResponse
 from aws_lambda_powertools import Logger
 
@@ -10,6 +10,7 @@ from aws_lambda_powertools import Logger
 from api_backend.utils import (
     generate_presigned_url,
     AllowedMethod,
+    extract_username_from_basic_auth,
 )
 from api_backend.models import (
     PresignedUrlRequest,
@@ -31,11 +32,14 @@ router = APIRouter(prefix="/srd", tags=["SRD"])
     status_code=status.HTTP_200_OK,
 )
 def get_presigned_upload_url(
+    x_arcane_auth_token: Annotated[str, Header(...)],
     request: PresignedUrlRequest = Body(...),
 ) -> JSONResponse:
     """Generate a presigned URL for uploading a file to S3.
 
     **Parameters:**
+    - **x_arcane_auth_token**: str
+        The authentication token for the request, typically provided in the
     - **request**: PresignedUrlRequest
         The request body containing the file name and SRD ID, including:
         - `file_name`: The name of the file to upload.
@@ -46,6 +50,20 @@ def get_presigned_upload_url(
     - **JSONResponse**: A JSON response containing the presigned URL and other
     details, or an error message if the request fails.
     """
+    # Extract username from Basic Auth header
+    owner_id = extract_username_from_basic_auth(x_arcane_auth_token)
+
+    # Validate the owner_id
+    if not owner_id:
+        logger.error(
+            "Invalid or missing authentication token",
+            extra={"raw_body": request.model_dump_json()},
+        )
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"error": "Invalid or missing authentication token"},
+        )
+
     # Parse the request body
     try:
         file_name = str(request.file_name).strip()
