@@ -26,6 +26,7 @@ langchain-aws = "^0.2.25"
 pypdf = "^5.6.0"
 mangum = "^0.19.0"
 fastapi = "^0.115.12"
+cryptography = "^45.0.4"
 
 [tool.poetry.group.dev.dependencies]
 black = "^25.1.0"
