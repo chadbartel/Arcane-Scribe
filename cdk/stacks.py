@@ -143,7 +143,7 @@ class ArcaneScribeStack(Stack):
         # region IAM Policies
         # Policy to allow Bedrock embedding model invocation
         self.bedrock_invoke_embedding_policy = self.create_iam_policy_statement(
-            construct_id="BedrockInvokePolicy",
+            construct_id="BedrockInvokeEmbeddingPolicy",
             actions=["bedrock:InvokeModel"],
             resources=[
                 f"arn:aws:bedrock:{self.region}::foundation-model/{self.bedrock_embedding_model_id}",
@@ -152,7 +152,7 @@ class ArcaneScribeStack(Stack):
 
         # Policy to allow Bedrock text generation model invocation
         self.bedrock_invoke_text_generation_policy = self.create_iam_policy_statement(
-            construct_id="BedrockInvokePolicy",
+            construct_id="BedrockInvokeTextGenPolicy",
             actions=["bedrock:InvokeModel"],
             resources=[
                 f"arn:aws:bedrock:{self.region}::foundation-model/{self.bedrock_text_generation_model_id}",
