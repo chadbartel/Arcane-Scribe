@@ -237,6 +237,7 @@ class ArcaneScribeStack(Stack):
                     self.documents_metadata_table.table_name
                 ),
             },
+            layers=[core_layer],
             memory_size=1024,
             timeout=Duration.seconds(30),
             role=backend_lambda_role,
@@ -267,6 +268,7 @@ class ArcaneScribeStack(Stack):
                     self.documents_metadata_table.table_name
                 ),
             },
+            layers=[core_layer],
             memory_size=1024,  # More memory for processing PDFs
             timeout=Duration.minutes(5),  # May take longer for large PDFs
             initial_policy=[self.bedrock_invoke_embedding_policy],
@@ -315,6 +317,7 @@ class ArcaneScribeStack(Stack):
                     cognito_nested_stack.user_pool_client_id
                 ),
             },
+            layers=[core_layer],
             role=authorizer_lambda_role,
             description="Custom authorizer for Arcane Scribe REST API",
         )
