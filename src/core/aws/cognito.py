@@ -30,6 +30,7 @@ class CognitoIdpClient:
         username: str,
         password: str,
         auth_flow: Optional[str] = "ADMIN_NO_SRP_AUTH",
+        client_metadata: Optional[Dict[str, str]] = None,
     ) -> Dict[str, Union[str, List[Dict[str, str]]]]:
         """Initiates the authentication process for a user in a Cognito user
         pool.
@@ -46,6 +47,8 @@ class CognitoIdpClient:
             The password of the user to authenticate.
         auth_flow : Optional[str], default "ADMIN_NO_SRP_AUTH"
             The authentication flow to use. Defaults to "ADMIN_NO_SRP_AUTH".
+        client_metadata : Optional[Dict[str, str]], default None
+            Additional metadata to pass to the client. Defaults to None.
 
         Returns
         -------
@@ -65,6 +68,7 @@ class CognitoIdpClient:
                 ClientId=client_id,
                 AuthFlow=auth_flow,
                 AuthParameters={"USERNAME": username, "PASSWORD": password},
+                ClientMetadata=client_metadata,
             )
             return response
         except ClientError as e:
