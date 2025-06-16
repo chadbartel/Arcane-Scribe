@@ -2,7 +2,7 @@
 from core.utils.enums import (
     AllowedMethod,
     ResponseSource,
-    DocumentProcessingStatus
+    DocumentProcessingStatus,
 )
 from core.utils.helpers import extract_username_from_basic_auth
 
