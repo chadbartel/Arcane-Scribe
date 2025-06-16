@@ -130,6 +130,7 @@ def get_presigned_upload_url(
         "key": file_name,
         "expires_in": expiration_seconds,
         "method": AllowedMethod.put.value,
+        "srd_id": srd_id,
         "document_id": item["document_id"],
         "content_type": content_type,
     }
