@@ -12,11 +12,12 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 
 # Local Modules
-from core.aws import BedrockRuntimeClient, S3Client
+from core.aws import S3Client
 from core.utils.config import (
     VECTOR_STORE_BUCKET_NAME,
     BEDROCK_EMBEDDING_MODEL_ID,
 )
+from pdf_ingestor.aws import BedrockRuntimeClient
 
 # Initialize logger
 logger = Logger(service="pdf-ingestor-processor-bedrock")

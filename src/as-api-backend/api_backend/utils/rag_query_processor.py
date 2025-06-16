@@ -15,13 +15,14 @@ from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.prompts import PromptTemplate
 
 # Local Modules
-from core.aws import S3Client, DynamoDb, BedrockRuntimeClient
+from core.aws import S3Client, DynamoDb
 from core.utils.config import (
     BEDROCK_EMBEDDING_MODEL_ID,
     BEDROCK_TEXT_GENERATION_MODEL_ID,
     VECTOR_STORE_BUCKET_NAME,
     QUERY_CACHE_TABLE_NAME,
 )
+from api_backend.aws import BedrockRuntimeClient
 
 # Initialize logger
 logger = Logger(service="rag-query-processor")
