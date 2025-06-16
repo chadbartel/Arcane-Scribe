@@ -252,6 +252,9 @@ class ArcaneScribeStack(Stack):
                 ),
                 "DOCUMENTS_BUCKET_NAME": self.documents_bucket.bucket_name,
                 "BEDROCK_EMBEDDING_MODEL_ID": self.bedrock_embedding_model_id,
+                "DOCUMENTS_METADATA_TABLE_NAME": (
+                    self.documents_metadata_table.table_name
+                ),
             },
             memory_size=1024,  # More memory for processing PDFs
             timeout=Duration.minutes(5),  # May take longer for large PDFs
@@ -262,6 +265,11 @@ class ArcaneScribeStack(Stack):
         # Grant S3 permissions for the PDF ingestor Lambda
         self.documents_bucket.grant_read(self.pdf_ingestor_lambda)
         self.vector_store_bucket.grant_read_write(self.pdf_ingestor_lambda)
+
+        # Grant DynamoDB permissions for PDF ingestor Lambda
+        self.documents_metadata_table.grant_read_write_data(
+            self.pdf_ingestor_lambda
+        )
 
         # Add S3 event notification to trigger the PDF ingestor Lambda
         self.documents_bucket.add_event_notification(
