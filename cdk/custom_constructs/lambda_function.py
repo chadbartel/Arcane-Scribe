@@ -160,29 +160,48 @@ class CustomLambdaFunction(Construct):
 
         # Check for requirements.txt and create a layer if it exists
         requirements_path = os.path.join(code_path, "requirements.txt")
+        # if os.path.exists(requirements_path):
+        #     layer_version_name = f"{name}-requirements-layer"
+        #     requirements_layer = lambda_.LayerVersion(
+        #         self,
+        #         layer_version_name,
+        #         layer_version_name=layer_version_name,
+        #         code=lambda_.Code.from_asset(
+        #             code_path,
+        #             bundling=BundlingOptions(
+        #                 image=runtime.bundling_image,
+        #                 command=[
+        #                     "bash",
+        #                     "-c",
+        #                     # This command installs dependencies into the /asset-output/python
+        #                     # directory, which is the required structure for a Python Lambda Layer.
+        #                     "pip install -r requirements.txt -t /asset-output/python",
+        #                 ],
+        #             ),
+        #         ),
+        #         compatible_runtimes=[runtime],
+        #         description=f"Dependencies layer for {name} function",
+        #     )
+        #     all_layers.insert(0, requirements_layer)
         if os.path.exists(requirements_path):
-            layer_version_name = f"{name}-requirements-layer"
-            requirements_layer = lambda_.LayerVersion(
-                self,
-                layer_version_name,
-                layer_version_name=layer_version_name,
-                code=lambda_.Code.from_asset(
-                    code_path,
-                    bundling=BundlingOptions(
-                        image=runtime.bundling_image,
-                        command=[
-                            "bash",
-                            "-c",
-                            # This command installs dependencies into the /asset-output/python
-                            # directory, which is the required structure for a Python Lambda Layer.
-                            "pip install -r requirements.txt -t /asset-output/python",
-                        ],
-                    ),
+            code_asset = lambda_.Code.from_asset(
+                code_path,
+                bundling=BundlingOptions(
+                    image=runtime.bundling_image,
+                    command=[
+                        "bash",
+                        "-c",
+                        # This command installs dependencies into the root of the
+                        # /asset-output directory. The CDK then copies your
+                        # source code into this same directory, creating a complete
+                        # package with both code and dependencies.
+                        "pip install -r requirements.txt -t /asset-output/",
+                    ],
                 ),
-                compatible_runtimes=[runtime],
-                description=f"Dependencies layer for {name} function",
             )
-            all_layers.insert(0, requirements_layer)
+        else:
+            # If no requirements.txt, just use the code as-is
+            code_asset = lambda_.Code.from_asset(code_path)
 
         # Default environment variables for Powertools for AWS Lambda
         powertools_env_vars = {
@@ -206,7 +225,7 @@ class CustomLambdaFunction(Construct):
             layers=all_layers,
             runtime=runtime,
             handler="handler.lambda_handler",
-            code=lambda_.Code.from_asset(code_path),
+            code=code_asset,
             memory_size=memory_size,
             timeout=timeout,
             environment=powertools_env_vars,
