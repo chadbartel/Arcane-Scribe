@@ -59,7 +59,9 @@ class CustomLambdaFromDockerImage(Construct):
 
         # Set variables for Lambda function
         name = os.path.basename(src_folder_path)
-        code_path = os.path.join(os.getcwd(), "src", src_folder_path)
+        code_path = os.path.join(
+            os.getcwd(), "src", f"{src_folder_path}.Dockerfile"
+        )
 
         # Append stack suffix to name if provided
         if stack_suffix:
@@ -86,10 +88,7 @@ class CustomLambdaFromDockerImage(Construct):
             function_name=name,
             runtime=lambda_.Runtime.FROM_IMAGE,
             handler=lambda_.Handler.FROM_IMAGE,
-            code=lambda_.Code.from_asset_image(
-                directory=code_path,
-                # This assumes a Dockerfile is present in the src folder
-            ),
+            code=lambda_.Code.from_asset_image(directory=code_path),
             memory_size=memory_size,
             timeout=timeout,
             environment=powertools_env_vars,
