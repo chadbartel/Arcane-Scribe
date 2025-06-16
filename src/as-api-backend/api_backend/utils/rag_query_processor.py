@@ -295,10 +295,7 @@ def get_answer_from_rag(
             )
 
             # Check if the item exists and is still valid (TTL)
-            if (
-                response
-                and int(response.get("ttl", 0)) > time.time()
-            ):
+            if response and int(response.get("ttl", 0)) > time.time():
                 # Return the cached answer if it exists
                 lambda_logger.info(f"Cache hit for query_hash: {query_hash}")
                 return {
