@@ -102,7 +102,7 @@ def process_s3_object(
     )
 
     # Decode object key to handle any URL encoding
-    decoded_key = urllib.parse.unquote_plus(object_key)
+    object_key = urllib.parse.unquote_plus(object_key)
 
     # Validate the bucket name and object key
     base_file_name = os.path.basename(filename)
@@ -217,7 +217,7 @@ def process_s3_object(
         "original_filename": filename,
         "chunk_count": len(texts),
         "source_bucket": bucket_name,
-        "source_key": decoded_key,
+        "source_key": object_key,
         "vector_index_location": f"{s3_index_prefix}/",
     }
 
