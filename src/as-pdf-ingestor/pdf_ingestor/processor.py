@@ -113,7 +113,7 @@ def process_s3_object(
         For any other unexpected errors during processing.
     """
     # Extract SRD ID form object key
-    srd_id, filename = extract_srd_info(object_key=object_key)
+    owner_id, srd_id, filename = extract_srd_info(object_key=object_key)
 
     # Decode object key to handle any URL encoding
     object_key = urllib.parse.unquote_plus(object_key)
@@ -124,7 +124,7 @@ def process_s3_object(
         c if c.isalnum() or c in [".", "-"] else "_" for c in base_file_name
     )
     temp_pdf_path = f"/tmp/{safe_base_file_name}"
-    temp_faiss_index_name = f"{srd_id}_faiss_index"
+    temp_faiss_index_name = f"{owner_id}_{srd_id}_faiss_index"
     temp_faiss_index_path = f"/tmp/{temp_faiss_index_name}"
 
     try:
@@ -177,7 +177,7 @@ def process_s3_object(
         )
 
         # Upload the FAISS index files to S3
-        s3_index_prefix = f"{srd_id}/faiss_index"
+        s3_index_prefix = f"{owner_id}/{srd_id}/faiss_index"
         for file_name_in_index_dir in os.listdir(temp_faiss_index_path):
             local_file_to_upload = os.path.join(
                 temp_faiss_index_path, file_name_in_index_dir
@@ -224,6 +224,7 @@ def process_s3_object(
 
     # Save metadata about the processed document
     metadata = {
+        "owner_id": owner_id,
         "srd_id": srd_id,
         "original_filename": filename,
         "chunk_count": len(texts),
