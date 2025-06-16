@@ -2,11 +2,12 @@
 from typing import Union, Annotated
 
 # Third Party
-from fastapi import APIRouter, status, Body, Header
+from fastapi import APIRouter, status, Body, Header, Path
 from fastapi.responses import JSONResponse
 from aws_lambda_powertools import Logger
 
 # Local Modules
+from api_backend.aws import S3Client
 from api_backend.utils import (
     generate_presigned_url,
     AllowedMethod,
@@ -140,3 +141,78 @@ def get_presigned_upload_url(
         status_code=status_code,
         content=content,
     )
+
+
+@router.delete("/{srd_id}/documents/{document_id}")
+def delete_document_record(
+    x_arcane_auth_token: Annotated[str, Header(...)],
+    srd_id: str = Path(..., description="The ID of the SRD document"),
+    document_id: str = Path(
+        ..., description="The ID of the document to delete"
+    ),
+) -> JSONResponse:
+    # Initialize the status code and content
+    status_code = status.HTTP_200_OK
+    content = {"message": "Document deleted successfully"}
+
+    # Extract username from Basic Auth header
+    owner_id = extract_username_from_basic_auth(x_arcane_auth_token)
+
+    # Validate the owner_id
+    if not owner_id:
+        logger.error("Invalid or missing authentication token")
+        status_code = status.HTTP_401_UNAUTHORIZED
+        content = {"error": "Invalid or missing authentication token"}
+        return JSONResponse(status_code=status_code, content=content)
+
+    # Initialize the database service
+    db_service = DatabaseService(table_name=DOCUMENTS_METADATA_TABLE_NAME)
+
+    # Check if the document exists in the database
+    logger.info(
+        f"Checking if document exists in database: owner_id={owner_id}, "
+        f"srd_id={srd_id}, document_id={document_id}"
+    )
+    document_record = db_service.get_document_record(
+        owner_id=owner_id,
+        srd_id=srd_id,
+        document_id=document_id,
+    )
+    if not document_record:
+        status_code = status.HTTP_404_NOT_FOUND
+        content = {"error": "Document not found in database"}
+        return JSONResponse(status_code=status_code, content=content)
+    logger.info(
+        f"Document found in database: {document_record['document_id']}"
+    )
+
+    # Delete the document from S3
+    try:
+        s3_key = document_record["s3_key"]
+        logger.info(f"Deleting document from S3: {s3_key}")
+        s3_client = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
+        s3_client.delete_object(object_key=s3_key)
+        logger.info(f"Deleted document from S3: {s3_key}")
+    except Exception as e:
+        logger.exception(f"Error deleting document from S3: {e}")
+        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        content = {"error": "Could not delete document from S3"}
+        return JSONResponse(status_code=status_code, content=content)
+
+    # Delete the document record from the database
+    try:
+        logger.info(
+            f"Deleting document record from database: owner_id={owner_id}, srd_id={srd_id}, document_id={document_id}"
+        )
+        db_service.delete_document_record(
+            owner_id=owner_id,
+            srd_id=srd_id,
+            document_id=document_id,
+        )
+    except Exception as e:
+        logger.exception(f"Error deleting document record from database: {e}")
+        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        content = {"error": "Could not delete document record from database"}
+        return JSONResponse(status_code=status_code, content=content)
+
+    return JSONResponse(status_code=status_code, content=content)
