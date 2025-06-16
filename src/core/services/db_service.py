@@ -31,6 +31,7 @@ class DatabaseService:
         file_name: str,
         s3_key: str,
         content_type: str,
+        document_id: Optional[str] = None,
     ) -> Dict[str, Any]:
         """Create a new document record in the DynamoDB table.
 
@@ -47,6 +48,9 @@ class DatabaseService:
             The S3 key where the document is stored.
         content_type : str
             The content type of the document (e.g., 'application/pdf', 'image/png').
+        document_id : Optional[str], optional
+            A unique identifier for the document. If not provided, a new UUID
+            will be generated.
 
         Returns
         -------
@@ -59,10 +63,10 @@ class DatabaseService:
             - `s3_key`: The S3 key where the document is stored.
             - `content_type`: The content type of the document.
             - `upload_timestamp`: The timestamp when the document was uploaded.
-            - `processing_status`: The initial processing status of the document (e.g., 'UPLOAD_INITIATED').
+            - `processing_status`: The initial processing status of the document (e.g., 'pending').
         """
         # Generate a unique document ID and composite key for the owner and SRD
-        document_id = str(uuid.uuid4())
+        document_id = document_id or str(uuid.uuid4())
         owner_srd_composite = f"{owner_id}#{srd_id}"
 
         # Create the item to be stored in DynamoDB
@@ -73,7 +77,7 @@ class DatabaseService:
             "s3_key": s3_key,
             "content_type": content_type,
             "upload_timestamp": datetime.now(timezone.utc).isoformat(),
-            "processing_status": "UPLOAD_INITIATED",
+            "processing_status": "pending",
         }
 
         # Store the item in DynamoDB
