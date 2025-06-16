@@ -32,3 +32,19 @@ class ResponseSource(str, Enum):
 
     retrieval_only = "retrieval_only"
     bedrock_llm = "bedrock_llm"
+
+
+class DocumentProcessingStatus(str, Enum):
+    """Enumeration of document processing statuses.
+
+    Attributes:
+        pending: Document is pending processing.
+        processing: Document is currently being processed.
+        completed: Document processing is completed.
+        failed: Document processing has failed.
+    """
+
+    pending = "pending"
+    processing = "processing"
+    completed = "completed"
+    failed = "failed"
