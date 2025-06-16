@@ -2,7 +2,7 @@
 import os
 import shutil
 import urllib.parse
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, Optional
 
 # Third Party
 import boto3
@@ -81,7 +81,7 @@ def extract_srd_info(object_key: str) -> Tuple[str, str, str]:
 
 def process_s3_object(
     bucket_name: str, object_key: str, lambda_logger: Logger
-) -> Dict[str, Any]:
+) -> Optional[Dict[str, Any]]:
     """Process a PDF file from S3, generate embeddings using Bedrock,
     and create a FAISS index. The FAISS index is then uploaded back to S3.
 
@@ -96,10 +96,11 @@ def process_s3_object(
 
     Returns
     -------
-    Dict[str, Any]
+    Optional[Dict[str, Any]]
         A dictionary containing metadata about the processed document,
-        including the SRD ID, original filename, chunk count, source bucket,
-        source key, and the location of the vector index in S3.
+        including the owner ID, SRD ID, original filename, chunk count,
+        source bucket, source key, and vector index location in S3. If no
+        documents are loaded or no text chunks are generated, returns None.
 
     Raises
     -------
