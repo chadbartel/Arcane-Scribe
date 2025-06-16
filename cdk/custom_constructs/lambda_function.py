@@ -21,7 +21,6 @@ class CustomLambdaFromDockerImage(Construct):
         memory_size: Optional[int] = 512,
         timeout: Optional[Duration] = Duration.seconds(30),
         environment: Optional[Dict[str, str]] = None,
-        layers: Optional[List[lambda_.ILayerVersion]] = None,
         initial_policy: Optional[List[iam.PolicyStatement]] = None,
         role: Optional[iam.IRole] = None,
         description: Optional[str] = None,
@@ -45,8 +44,6 @@ class CustomLambdaFromDockerImage(Construct):
             Timeout for the Lambda function, by default Duration.seconds(30)
         environment : Optional[Dict[str, str]], optional
             Environment variables for the Lambda function, by default None
-        layers : Optional[List[lambda_.ILayerVersion]], optional
-            List of Lambda layers to attach to the function, by default None
         initial_policy : Optional[List[iam.PolicyStatement]], optional
             Initial IAM policy statements to attach to the Lambda function,
             by default None
@@ -93,7 +90,6 @@ class CustomLambdaFromDockerImage(Construct):
             memory_size=memory_size,
             timeout=timeout,
             environment=powertools_env_vars,
-            layers=layers,
             initial_policy=initial_policy,
             role=role,
             description=description
