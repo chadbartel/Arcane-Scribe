@@ -73,10 +73,10 @@ def query_endpoint(
 
         # Extract optional parameters for generative LLM configuration
         # Use generative LLM flag
-        invoke_generative_llm = request.invoke_generative_llm
+        invoke_generative_llm = request.invoke_generative_llm or False
 
         # Use conversational style flag
-        use_conversational_style = request.use_conversation_style
+        use_conversational_style = request.use_conversation_style or False
 
         # Generation config payload
         generation_config_payload = request.generation_config or {}
