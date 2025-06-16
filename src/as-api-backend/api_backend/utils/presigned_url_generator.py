@@ -18,6 +18,7 @@ def generate_presigned_url(
     owner_id: str,
     expiration: Optional[int] = 3600,
     content_type: Optional[str] = "application/pdf",
+    metadata: Optional[dict] = None,
 ) -> str:
     """
     Generate a presigned URL for uploading a file to S3.
@@ -36,6 +37,9 @@ def generate_presigned_url(
     content_type : Optional[str], optional
         The content type of the file to be uploaded, defaults to
         "application/pdf".
+    metadata : Optional[dict], optional
+        Additional metadata to be included with the file upload, defaults to
+        None.
 
     Returns
     -------
@@ -59,6 +63,7 @@ def generate_presigned_url(
             object_key=object_key,
             expiration=expiration,
             content_type=content_type,
+            metadata=metadata,
         )
 
         if not presigned_url:
