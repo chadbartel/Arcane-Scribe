@@ -619,6 +619,7 @@ class ArcaneScribeStack(Stack):
         construct_id: str,
         src_folder_path: str,
         environment: Optional[dict] = None,
+        layers: Optional[List[lambda_.ILayerVersion]] = None,
         memory_size: Optional[int] = 128,
         timeout: Optional[Duration] = Duration.seconds(10),
         initial_policy: Optional[List[iam.PolicyStatement]] = None,
@@ -635,6 +636,8 @@ class ArcaneScribeStack(Stack):
             The path to the source folder for the Lambda function code.
         environment : Optional[dict], optional
             Environment variables for the Lambda function, by default None
+        layers : Optional[List[lambda_.ILayerVersion]], optional
+            List of Lambda layers to attach to the function, by default None
         memory_size : Optional[int], optional
             Memory size for the Lambda function, by default 128
         timeout : Optional[Duration], optional
@@ -657,6 +660,7 @@ class ArcaneScribeStack(Stack):
             src_folder_path=src_folder_path,
             stack_suffix=self.stack_suffix,
             environment=environment,
+            layers=layers,
             memory_size=memory_size,
             timeout=timeout,
             initial_policy=initial_policy or [],
