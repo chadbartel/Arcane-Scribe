@@ -1,4 +1,5 @@
 # Standard Library
+from uuid import uuid4
 from typing import Union, Annotated
 
 # Third Party
@@ -59,6 +60,9 @@ def get_presigned_upload_url(
     # Extract username from Basic Auth header
     owner_id = extract_username_from_basic_auth(x_arcane_auth_token)
 
+    # Generate a unique document ID
+    document_id = str(uuid4())
+
     # Validate the owner_id
     if not owner_id:
         logger.error(
@@ -100,6 +104,7 @@ def get_presigned_upload_url(
             owner_id=owner_id,
             expiration=expiration_seconds,
             content_type=content_type,
+            metadata={"document_id": document_id},
         )
         logger.info(
             f"Successfully generated presigned URL for key: {file_name}"
@@ -116,12 +121,13 @@ def get_presigned_upload_url(
     # Create a metadata record in the database
     s3_key = f"{owner_id}/{srd_id}/{file_name}"
     db_service = DatabaseService(table_name=DOCUMENTS_METADATA_TABLE_NAME)
-    item = db_service.create_document_record(
+    db_service.create_document_record(
         owner_id=owner_id,
         srd_id=srd_id,
         file_name=file_name,
         s3_key=s3_key,
         content_type=content_type,
+        document_id=document_id,
     )
 
     # Construct the response content
@@ -132,7 +138,7 @@ def get_presigned_upload_url(
         "expires_in": expiration_seconds,
         "method": AllowedMethod.put.value,
         "srd_id": srd_id,
-        "document_id": item["document_id"],
+        "document_id": document_id,
         "content_type": content_type,
     }
 
