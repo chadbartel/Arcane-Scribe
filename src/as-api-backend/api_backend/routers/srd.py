@@ -102,14 +102,6 @@ def get_presigned_upload_url(
             f"Successfully generated presigned URL for key: {file_name}"
         )
         status_code = status.HTTP_200_OK
-        content = {
-            "presigned_url": presigned_url,
-            "bucket_name": DOCUMENTS_BUCKET_NAME,
-            "key": file_name,
-            "expires_in": expiration_seconds,
-            "method": AllowedMethod.put.value,
-            "content_type": content_type,
-        }
     except Exception as e:
         logger.exception(
             f"Unexpected error generating presigned URL for key {file_name}: {e}"
@@ -122,13 +114,24 @@ def get_presigned_upload_url(
     db_service = DatabaseService(
         table_name=DOCUMENTS_METADATA_TABLE_NAME
     )
-    db_service.create_document_record(
+    item = db_service.create_document_record(
         owner_id=owner_id,
         srd_id=srd_id,
         file_name=file_name,
         s3_key=s3_key,
         content_type=content_type,
     )
+
+    # Construct the response content
+    content = {
+        "presigned_url": presigned_url,
+        "bucket_name": DOCUMENTS_BUCKET_NAME,
+        "key": file_name,
+        "expires_in": expiration_seconds,
+        "method": AllowedMethod.put.value,
+        "document_id": item["document_id"],
+        "content_type": content_type,
+    }
 
     # Return the response
     return JSONResponse(
