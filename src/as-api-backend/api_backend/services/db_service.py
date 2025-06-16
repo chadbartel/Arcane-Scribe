@@ -145,3 +145,35 @@ class DatabaseService:
                 "document_id": document_id,
             }
         )
+
+    def list_document_records(
+        self, owner_id: str, srd_id: str
+    ) -> Dict[str, Any]:
+        """List all document records for a specific owner and SRD.
+
+        Parameters
+        ----------
+        owner_id : str
+            The Cognito username of the owner of the documents.
+        srd_id : str
+            The ID of the SRD (System Requirements Document) associated with
+            the documents.
+
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary containing a list of document records for the specified
+            owner and SRD. Each record includes:
+            - `owner_srd_composite`: A composite key combining owner_id and srd_id.
+            - `document_id`: The unique identifier for the document.
+            - `original_file_name`: The original file name of the uploaded document.
+            - `s3_key`: The S3 key where the document is stored.
+            - `content_type`: The content type of the document.
+            - `upload_timestamp`: The timestamp when the document was uploaded.
+            - `processing_status`: The current processing status of the document.
+        """
+        owner_srd_composite = f"{owner_id}#{srd_id}"
+        return self.dynamodb.query(
+            key_condition_expression="owner_srd_composite = :owner_srd",
+            filter_expression={":owner_srd": owner_srd_composite}
+        )
