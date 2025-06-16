@@ -7,10 +7,8 @@ from fastapi import APIRouter, Body, status, Header
 from fastapi.responses import JSONResponse
 
 # Local Modules
-from api_backend.utils import (
-    get_answer_from_rag,
-    extract_username_from_basic_auth,
-)
+from core.utils import extract_username_from_basic_auth
+from api_backend.utils import get_answer_from_rag
 from api_backend.models import (
     RagQueryRequest,
     RagQueryResponse,

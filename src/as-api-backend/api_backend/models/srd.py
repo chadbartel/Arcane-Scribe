@@ -5,7 +5,7 @@ from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict, HttpUrl, UUID4
 
 # Local Modules
-from api_backend.utils import AllowedMethod
+from core.utils import AllowedMethod
 
 
 class PresignedUrlRequest(BaseModel):

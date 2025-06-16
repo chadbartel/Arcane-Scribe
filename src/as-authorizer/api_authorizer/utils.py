@@ -1,48 +1,11 @@
 # Standard Library
-import os
 from typing import Dict, Any, Optional
 
 # Third Party
-import boto3
 from aws_lambda_powertools import Logger
 
 # Initialize logger
 logger = Logger(service="cck-api-authorizer-utils")
-
-# Retrieve configuration from environment variables
-USER_POOL_ID = os.environ.get("USER_POOL_ID")
-USER_POOL_CLIENT_ID = os.environ.get("USER_POOL_CLIENT_ID")
-
-# Initialize Cognito client as None
-cognito_client: Optional[boto3.client] = None
-
-
-def get_cognito_client() -> boto3.client:
-    """Get or create a Boto3 Cognito IDP client.
-
-    Returns
-    -------
-    boto3.client
-        A Boto3 Cognito IDP client.
-
-    Raises
-    ------
-    Exception
-        If the client cannot be initialized.
-    """
-    # Make the cognito_client global to ensure it can be reused
-    global cognito_client
-
-    # If the client is not initialized, create a new one
-    if cognito_client is None:
-        try:
-            cognito_client = boto3.client("cognito-idp")
-        except Exception as e:
-            logger.exception(
-                f"Failed to initialize Boto3 Cognito IDP client: {e}"
-            )
-            raise e
-    return cognito_client
 
 
 def generate_policy(

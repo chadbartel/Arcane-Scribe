@@ -13,8 +13,8 @@ from aws_lambda_powertools.utilities.typing import LambdaContext
 
 # Local Modules
 from api_backend import router
-from api_backend.utils.config import API_PREFIX
 from api_backend.dependencies import verify_source_ip
+from core.utils.config import API_PREFIX
 
 # Initialize a logger
 logger = Logger()
