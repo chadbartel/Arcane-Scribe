@@ -56,8 +56,7 @@ class CustomLambdaFromDockerImage(Construct):
         super().__init__(scope, id, **kwargs)
 
         # Append stack suffix to name if provided
-        if stack_suffix:
-            name = f"{name}{stack_suffix}"
+        suffixed_name = f"{name}{stack_suffix}"
 
         # Default environment variables for Powertools for AWS Lambda
         powertools_env_vars = {
@@ -76,8 +75,8 @@ class CustomLambdaFromDockerImage(Construct):
         # Build Lambda package using Docker
         self.function = lambda_.DockerImageFunction(
             self,
-            f"{name}-function",
-            function_name=name,
+            f"{suffixed_name}-function",
+            function_name=suffixed_name,
             code=lambda_.DockerImageCode.from_image_asset(
                 directory=".",
                 file=f"docker/{name}.Dockerfile",
@@ -88,7 +87,7 @@ class CustomLambdaFromDockerImage(Construct):
             initial_policy=initial_policy,
             role=role,
             description=(
-                description or f"Lambda function for {name}{stack_suffix}"
+                description or f"Lambda function for {suffixed_name}"
             ),
         )
 
