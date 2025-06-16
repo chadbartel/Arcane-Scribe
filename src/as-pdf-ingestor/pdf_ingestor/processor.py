@@ -14,6 +14,7 @@ from langchain_community.vectorstores import FAISS
 # Local Modules
 from core.aws import S3Client
 from core.utils.config import (
+    DOCUMENTS_BUCKET_NAME,
     VECTOR_STORE_BUCKET_NAME,
     BEDROCK_EMBEDDING_MODEL_ID,
 )
@@ -91,7 +92,7 @@ def process_s3_object(
     owner_id, srd_id, filename = extract_srd_info(object_key=object_key)
 
     # Initialize the S3 client
-    s3_client = S3Client(bucket_name=VECTOR_STORE_BUCKET_NAME)
+    s3_client = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
 
     # Initialize the Bedrock runtime client
     bedrock_runtime_client = BedrockRuntimeClient()
@@ -175,7 +176,9 @@ def process_s3_object(
                 f"Uploading {local_file_to_upload} to s3://{VECTOR_STORE_BUCKET_NAME}/{s3_target_key}"
             )
             s3_client.upload_file(
-                file_path=local_file_to_upload, object_key=s3_target_key
+                file_path=local_file_to_upload,
+                object_key=s3_target_key,
+                bucket_name=VECTOR_STORE_BUCKET_NAME,
             )
         lambda_logger.info(
             f"FAISS index for {object_key} uploaded to S3: {VECTOR_STORE_BUCKET_NAME}/{s3_index_prefix}"
