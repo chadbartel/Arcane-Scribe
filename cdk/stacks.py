@@ -172,9 +172,11 @@ class ArcaneScribeStack(Stack):
 
         # region Lambda Functions
         # Create core Lambda layer for shared business logic and data models
+        core_layer_name = f"arcane-scribe-core-layer{self.stack_suffix}"
         core_layer = lambda_.LayerVersion(
             self,
-            "CoreLayer",
+            core_layer_name,
+            layer_version_name=core_layer_name,
             code=lambda_.Code.from_asset("src/core"),
             compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
             description=(
