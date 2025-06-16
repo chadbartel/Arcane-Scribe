@@ -43,6 +43,8 @@ class PresignedUrlResponse(BaseModel):
         key: The object key in the S3 bucket.
         expires_in: The expiration time in seconds.
         method: The HTTP method for the upload operation.
+        srd_id: The ID of the SRD document.
+        document_id: A unique identifier for the document.
         content_type: Content type for the file.
     """
 
@@ -66,6 +68,11 @@ class PresignedUrlResponse(BaseModel):
     )
     method: AllowedMethod = Field(
         ..., description="The HTTP method for the upload operation."
+    )
+    srd_id: str = Field(
+        ...,
+        description="The ID of the SRD document.",
+        examples=["dnd_5e"],
     )
     document_id: UUID4 = Field(
         ...,
