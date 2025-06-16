@@ -84,6 +84,7 @@ def get_presigned_upload_url(
         )
         status_code = status.HTTP_400_BAD_REQUEST
         content = {"error": f"Error processing request data: {e}"}
+        return JSONResponse(status_code=status_code, content=content)
 
     # Generate the presigned URL
     expiration_seconds = 900  # 15 minutes
@@ -108,6 +109,7 @@ def get_presigned_upload_url(
         )
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         content = {"error": f"Could not generate upload URL: {e}"}
+        return JSONResponse(status_code=status_code, content=content)
 
     # Create a metadata record in the database
     s3_key = f"{owner_id}/{srd_id}/{file_name}"
