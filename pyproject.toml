@@ -10,6 +10,7 @@ packages = [
     { include = "api_backend", from = "src/as-api-backend" },
     { include = "api_authorizer", from = "src/as-authorizer" },
     { include = "pdf_ingestor", from = "src/as-pdf-ingestor" },
+    { include = "core", from = "src" },
 ]
 
 [tool.poetry.dependencies]
@@ -125,7 +126,7 @@ import_heading_stdlib = "Standard Library"
 import_heading_firstparty = "My Modules"
 import_heading_thirdparty = "Third Party"
 import_heading_localfolder = "Local Modules"
-known_localfolder = "cdk,api_authorizer,pdf_ingestor,api_backend,tests"
+known_localfolder = "cdk,api_authorizer,pdf_ingestor,api_backend,tests,core"
 virtual_env = ".venv"
 skip = [".layer", ".nox", ".venv", "cdk.out"]
 src_paths = ["src", "cdk", "tests"]
