@@ -7,6 +7,7 @@ from aws_cdk import (
     Duration,
     aws_iam as iam,
     aws_lambda as lambda_,
+    BundlingOptions,
 )
 from constructs import Construct
 
@@ -154,6 +155,35 @@ class CustomLambdaFunction(Construct):
         if stack_suffix:
             name = f"{name}{stack_suffix}"
 
+        # Prepare a mutable list of layers for the function
+        all_layers = list(layers) if layers else []
+
+        # Check for requirements.txt and create a layer if it exists
+        requirements_path = os.path.join(code_path, "requirements.txt")
+        if os.path.exists(requirements_path):
+            layer_version_name = f"{name}-requirements-layer"
+            requirements_layer = lambda_.LayerVersion(
+                self,
+                layer_version_name,
+                layer_version_name=layer_version_name,
+                code=lambda_.Code.from_asset(
+                    code_path,
+                    bundling=BundlingOptions(
+                        image=runtime.bundling_image,
+                        command=[
+                            "bash",
+                            "-c",
+                            # This command installs dependencies into the /asset-output/python
+                            # directory, which is the required structure for a Python Lambda Layer.
+                            "pip install -r requirements.txt -t /asset-output/python",
+                        ],
+                    ),
+                ),
+                compatible_runtimes=[runtime],
+                description=f"Dependencies layer for {name} function",
+            )
+            all_layers.insert(0, requirements_layer)
+
         # Default environment variables for Powertools for AWS Lambda
         powertools_env_vars = {
             "POWERTOOLS_SERVICE_NAME": name,
@@ -173,7 +203,7 @@ class CustomLambdaFunction(Construct):
             self,
             f"{name}-function",
             function_name=name,
-            layers=layers,
+            layers=all_layers,
             runtime=runtime,
             handler="handler.lambda_handler",
             code=lambda_.Code.from_asset(code_path),
