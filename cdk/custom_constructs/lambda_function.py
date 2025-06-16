@@ -17,7 +17,7 @@ class CustomLambdaFromDockerImage(Construct):
         self,
         scope: Construct,
         id: str,
-        src_folder_path: str,
+        name: str,
         stack_suffix: Optional[str] = "",
         memory_size: Optional[int] = 512,
         timeout: Optional[Duration] = Duration.seconds(30),
@@ -35,8 +35,8 @@ class CustomLambdaFromDockerImage(Construct):
             The scope in which this construct is defined.
         id : str
             The ID of the construct.
-        src_folder_path : str
-            Path to the source folder containing the Lambda function code.
+        name : str
+            Name of the Lambda function.
         stack_suffix : Optional[str], optional
             Suffix to append to the Lambda function name, by default ""
         memory_size : Optional[int], optional
@@ -54,10 +54,6 @@ class CustomLambdaFromDockerImage(Construct):
             Description for the Lambda function, by default None
         """
         super().__init__(scope, id, **kwargs)
-
-        # Set variables for Lambda function
-        name = os.path.basename(src_folder_path)
-        code_path = os.path.join(os.getcwd(), "src", src_folder_path)
 
         # Append stack suffix to name if provided
         if stack_suffix:
@@ -78,23 +74,22 @@ class CustomLambdaFromDockerImage(Construct):
             powertools_env_vars.update(environment)
 
         # Build Lambda package using Docker
-        self.function = lambda_.Function(
+        self.function = lambda_.DockerImageFunction(
             self,
             f"{name}-function",
             function_name=name,
-            runtime=lambda_.Runtime.FROM_IMAGE,
-            handler=lambda_.Handler.FROM_IMAGE,
-            code=lambda_.Code.from_asset_image(
-                directory=code_path,
-                # This assumes a Dockerfile is present in the src folder
+            code=lambda_.DockerImageCode.from_image_asset(
+                directory=".",
+                file=f"docker/{name}.Dockerfile",
             ),
             memory_size=memory_size,
             timeout=timeout,
             environment=powertools_env_vars,
             initial_policy=initial_policy,
             role=role,
-            description=description
-            or f"Lambda function for {name}{stack_suffix}",
+            description=(
+                description or f"Lambda function for {name}{stack_suffix}"
+            ),
         )
 
 

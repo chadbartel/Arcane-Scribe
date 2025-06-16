@@ -171,19 +171,6 @@ class ArcaneScribeStack(Stack):
         # endregion
 
         # region Lambda Functions
-        # Create core Lambda layer for shared business logic and data models
-        core_layer_name = f"arcane-scribe-core-layer{self.stack_suffix}"
-        core_layer = lambda_.LayerVersion(
-            self,
-            core_layer_name,
-            layer_version_name=core_layer_name,
-            code=lambda_.Code.from_asset("src/core"),
-            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
-            description=(
-                "A layer containing shared business logic and data models."
-            )
-        )
-
         # Create backend Lambda role
         backend_lambda_role = self.create_iam_role(
             construct_id="BackendLambdaRole",
@@ -220,7 +207,7 @@ class ArcaneScribeStack(Stack):
         # Backend API Lambda function
         self.as_backend_lambda = self.create_lambda_function(
             construct_id="ArcaneScribeApiLambda",
-            src_folder_path="as-api-backend",
+            name="as-api-backend",
             environment={
                 "API_PREFIX": self.api_prefix,
                 "DOCUMENTS_BUCKET_NAME": self.documents_bucket.bucket_name,
@@ -239,7 +226,6 @@ class ArcaneScribeStack(Stack):
                     self.documents_metadata_table.table_name
                 ),
             },
-            layers=[core_layer],
             memory_size=1024,
             timeout=Duration.seconds(30),
             role=backend_lambda_role,
@@ -259,7 +245,7 @@ class ArcaneScribeStack(Stack):
         # Lambda for PDF ingestion and processing
         self.pdf_ingestor_lambda = self.create_lambda_function(
             construct_id="PdfIngestorLambda",
-            src_folder_path="as-pdf-ingestor",
+            name="as-pdf-ingestor",
             environment={
                 "VECTOR_STORE_BUCKET_NAME": (
                     self.vector_store_bucket.bucket_name
@@ -270,7 +256,6 @@ class ArcaneScribeStack(Stack):
                     self.documents_metadata_table.table_name
                 ),
             },
-            layers=[core_layer],
             memory_size=1024,  # More memory for processing PDFs
             timeout=Duration.minutes(5),  # May take longer for large PDFs
             initial_policy=[self.bedrock_invoke_embedding_policy],
@@ -312,14 +297,13 @@ class ArcaneScribeStack(Stack):
         # Create the authorizer Lambda function
         self.authorizer_lambda = self.create_lambda_function(
             construct_id="ArcaneScribeAuthorizerLambda",
-            src_folder_path="as-authorizer",
+            name="as-authorizer",
             environment={
                 "USER_POOL_ID": cognito_nested_stack.user_pool.user_pool_id,
                 "USER_POOL_CLIENT_ID": (
                     cognito_nested_stack.user_pool_client_id
                 ),
             },
-            layers=[core_layer],
             role=authorizer_lambda_role,
             description="Custom authorizer for Arcane Scribe REST API",
         )
@@ -633,9 +617,8 @@ class ArcaneScribeStack(Stack):
     def create_lambda_function(
         self,
         construct_id: str,
-        src_folder_path: str,
+        name: str,
         environment: Optional[dict] = None,
-        layers: Optional[List[lambda_.ILayerVersion]] = None,
         memory_size: Optional[int] = 128,
         timeout: Optional[Duration] = Duration.seconds(10),
         initial_policy: Optional[List[iam.PolicyStatement]] = None,
@@ -648,12 +631,10 @@ class ArcaneScribeStack(Stack):
         ----------
         construct_id : str
             The ID of the construct.
-        src_folder_path : str
-            The path to the source folder for the Lambda function code.
+        name : str
+            The name of the Lambda function.
         environment : Optional[dict], optional
             Environment variables for the Lambda function, by default None
-        layers : Optional[List[lambda_.ILayerVersion]], optional
-            List of Lambda layers to attach to the function, by default None
         memory_size : Optional[int], optional
             Memory size for the Lambda function, by default 128
         timeout : Optional[Duration], optional
@@ -673,10 +654,9 @@ class ArcaneScribeStack(Stack):
         custom_lambda = CustomLambdaFromDockerImage(
             scope=self,
             id=construct_id,
-            src_folder_path=src_folder_path,
+            name=name,
             stack_suffix=self.stack_suffix,
             environment=environment,
-            layers=layers,
             memory_size=memory_size,
             timeout=timeout,
             initial_policy=initial_policy or [],
