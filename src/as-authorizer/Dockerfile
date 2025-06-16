@@ -16,6 +16,7 @@ COPY handler.py .
 
 # Copy the additional files needed for the Lambda function
 COPY ./api_authorizer ./api_authorizer/
+COPY ../core/ ./core
 
 # Set the CMD to your handler function within handler.py
 CMD [ "handler.lambda_handler" ]
