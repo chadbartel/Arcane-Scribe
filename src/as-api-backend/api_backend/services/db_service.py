@@ -4,7 +4,7 @@ from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 
 # Third Party
-from boto3.dynamodb.conditions import Attr, Key
+from boto3.dynamodb.conditions import Key
 
 # Local Modules
 from api_backend.aws import DynamoDb
