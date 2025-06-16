@@ -7,7 +7,7 @@ from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
 
 # Local Modules
-from core.utils import ResponseSource
+from api_backend.utils import ResponseSource
 
 
 class GenerationConfig(BaseModel):

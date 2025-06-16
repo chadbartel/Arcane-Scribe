@@ -7,18 +7,21 @@ from fastapi.responses import JSONResponse
 from aws_lambda_powertools import Logger
 
 # Local Modules
-from core.aws import S3Client
-from core.utils import AllowedMethod, extract_username_from_basic_auth
-from core.services import DatabaseService
-from core.utils.config import (
-    DOCUMENTS_BUCKET_NAME,
-    DOCUMENTS_METADATA_TABLE_NAME,
+from api_backend.aws import S3Client
+from api_backend.utils import (
+    generate_presigned_url,
+    AllowedMethod,
+    extract_username_from_basic_auth,
 )
-from api_backend.utils import generate_presigned_url
 from api_backend.models import (
     PresignedUrlRequest,
     PresignedUrlResponse,
     PresignedUrlErrorResponse,
+)
+from api_backend.services import DatabaseService
+from api_backend.utils.config import (
+    DOCUMENTS_BUCKET_NAME,
+    DOCUMENTS_METADATA_TABLE_NAME,
 )
 
 # Initialize logger

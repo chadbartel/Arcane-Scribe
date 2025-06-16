@@ -5,21 +5,48 @@ import urllib.parse
 from typing import Tuple, Dict, Any, Optional
 
 # Third Party
+import boto3
 from botocore.exceptions import ClientError
 from aws_lambda_powertools import Logger
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_aws import BedrockEmbeddings
 from langchain_community.vectorstores import FAISS
 
-# Local Modules
-from core.aws import BedrockRuntimeClient, S3Client
-from core.utils.config import (
-    VECTOR_STORE_BUCKET_NAME,
-    BEDROCK_EMBEDDING_MODEL_ID,
+# Initialize logger
+logger = Logger(service="pdf_ingestor_processor_bedrock")
+
+# Initialize Bedrock runtime client
+try:
+    s3_client = boto3.client("s3")
+    bedrock_runtime_client = boto3.client(service_name="bedrock-runtime")
+except Exception as e:
+    logger.exception(
+        f"Failed to initialize Boto3 clients in processor module: {e}"
+    )
+    s3_client = None
+    bedrock_runtime_client = None
+
+# Get the Bedrock embedding model ID from environment variables or use a default
+BEDROCK_EMBEDDING_MODEL_ID = os.environ.get(
+    "BEDROCK_EMBEDDING_MODEL_ID", "amazon.titan-embed-text-v2:0"
 )
 
-# Initialize logger
-logger = Logger(service="pdf-ingestor-processor-bedrock")
+# Initialize the BedrockEmbeddings model
+try:
+    logger.info(
+        f"Initializing BedrockEmbeddings model: {BEDROCK_EMBEDDING_MODEL_ID}"
+    )
+    embedding_model = BedrockEmbeddings(
+        client=bedrock_runtime_client, model_id=BEDROCK_EMBEDDING_MODEL_ID
+    )
+    logger.info("BedrockEmbeddings model initialized.")
+except Exception as e:
+    logger.exception(f"Failed to initialize BedrockEmbeddings model: {e}")
+    embedding_model = None
+
+# Get the S3 bucket name for storing the FAISS index
+VECTOR_STORE_BUCKET_NAME = os.environ.get("VECTOR_STORE_BUCKET_NAME")
 
 
 def extract_srd_info(object_key: str) -> Tuple[str, str, str]:
@@ -89,17 +116,6 @@ def process_s3_object(
     # Extract SRD ID form object key
     owner_id, srd_id, filename = extract_srd_info(object_key=object_key)
 
-    # Initialize the S3 client
-    s3_client = S3Client(bucket_name=VECTOR_STORE_BUCKET_NAME)
-
-    # Initialize the Bedrock runtime client
-    bedrock_runtime_client = BedrockRuntimeClient()
-
-    # Get the embedding model
-    embedding_model = bedrock_runtime_client.get_embedding_model(
-        model_id=BEDROCK_EMBEDDING_MODEL_ID
-    )
-
     # Decode object key to handle any URL encoding
     object_key = urllib.parse.unquote_plus(object_key)
 
@@ -117,9 +133,7 @@ def process_s3_object(
         lambda_logger.info(
             f"Downloading s3://{bucket_name}/{object_key} to {temp_pdf_path}"
         )
-        s3_client.download_file(
-            object_key=object_key, download_path=temp_pdf_path
-        )
+        s3_client.download_file(bucket_name, object_key, temp_pdf_path)
         lambda_logger.info(f"Successfully downloaded PDF to {temp_pdf_path}")
 
         # Load the PDF document using PyPDFLoader
@@ -174,7 +188,7 @@ def process_s3_object(
                 f"Uploading {local_file_to_upload} to s3://{VECTOR_STORE_BUCKET_NAME}/{s3_target_key}"
             )
             s3_client.upload_file(
-                file_path=local_file_to_upload, object_key=s3_target_key
+                local_file_to_upload, VECTOR_STORE_BUCKET_NAME, s3_target_key
             )
         lambda_logger.info(
             f"FAISS index for {object_key} uploaded to S3: {VECTOR_STORE_BUCKET_NAME}/{s3_index_prefix}"
