@@ -9,12 +9,9 @@ from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 
 # Local Modules
-from api_authorizer import (
-    get_cognito_client,
-    generate_policy,
-    USER_POOL_ID,
-    USER_POOL_CLIENT_ID,
-)
+from core.aws import CognitoIdpClient
+from core.utils.config import USER_POOL_ID, USER_POOL_CLIENT_ID
+from api_authorizer import generate_policy
 
 # Initialize logger
 logger = Logger()
@@ -55,21 +52,7 @@ def lambda_handler(
     method_arn = event.get("methodArn")
 
     # Initialize Cognito client
-    cognito_client = get_cognito_client()
-
-    # Ensure the Cognito client is initialized
-    if not cognito_client:
-        logger.error("Cognito client not initialized. Denying access.")
-        raise Exception(
-            "Unauthorized: Authorizer internal configuration error"
-        )
-
-    # Check if USER_POOL_ID and USER_POOL_CLIENT_ID are configured
-    if not USER_POOL_ID or not USER_POOL_CLIENT_ID:
-        logger.error(
-            "User Pool ID or Client ID not configured. Denying access."
-        )
-        raise Exception("Unauthorized: Authorizer configuration error")
+    cognito_client = CognitoIdpClient()
 
     # Check if the authorization token is provided
     if not authorization_token:
@@ -107,10 +90,10 @@ def lambda_handler(
             f"Attempting Cognito AdminInitiateAuth for user: {username}"
         )
         cognito_response = cognito_client.admin_initiate_auth(
-            UserPoolId=USER_POOL_ID,
-            ClientId=USER_POOL_CLIENT_ID,
-            AuthFlow="ADMIN_NO_SRP_AUTH",
-            AuthParameters={"USERNAME": username, "PASSWORD": password},
+            user_pool_id=USER_POOL_ID,
+            client_id=USER_POOL_CLIENT_ID,
+            username=username,
+            password=password,
         )
 
         # If AdminInitiateAuth succeeds, it means username/password are valid.
