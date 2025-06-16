@@ -62,14 +62,28 @@ class CognitoIdpClient:
             If there is an error during the authentication process, such as
             invalid credentials or user not found.
         """
+
+        # Construct parameters for the auth flow
+        parameters = {
+            "UserPoolId": user_pool_id,
+            "ClientId": client_id,
+            "AuthFlow": auth_flow,
+            "AuthParameters": {
+                "USERNAME": username,
+                "PASSWORD": password,
+            },
+        }
+
+        # Add client metadata if provided
+        if client_metadata:
+            parameters["ClientMetadata"] = client_metadata
+
+        # Attempt to initiate authentication
         try:
-            response = self.client.admin_initiate_auth(
-                UserPoolId=user_pool_id,
-                ClientId=client_id,
-                AuthFlow=auth_flow,
-                AuthParameters={"USERNAME": username, "PASSWORD": password},
-                ClientMetadata=client_metadata,
+            logger.info(
+                f"Initiating auth for user {username} in user pool {user_pool_id}"
             )
+            response = self.client.admin_initiate_auth(**parameters)
             return response
         except ClientError as e:
             logger.error(f"Error initiating auth: {e}")
