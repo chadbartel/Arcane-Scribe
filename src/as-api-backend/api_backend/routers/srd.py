@@ -214,3 +214,112 @@ def delete_document_record(
         return JSONResponse(status_code=status_code, content=content)
 
     return JSONResponse(status_code=status_code, content=content)
+
+
+@router.get("/{srd_id}/documents", response_model=list)
+def list_document_records(
+    x_arcane_auth_token: Annotated[str, Header(...)],
+    srd_id: str = Path(..., description="The ID of the SRD document"),
+) -> JSONResponse:
+    """List all document records for a given SRD document.
+
+    **Parameters:**
+    - **x_arcane_auth_token**: str
+        The authentication token for the request.
+    - **srd_id**: str
+        The ID of the SRD document.
+
+    **Returns:**
+    - **JSONResponse**: A JSON response containing a list of document records
+      or an error message if no records are found.
+    """
+    # Extract username from Basic Auth header
+    owner_id = extract_username_from_basic_auth(x_arcane_auth_token)
+
+    # Validate the owner_id
+    if not owner_id:
+        logger.error("Invalid or missing authentication token")
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"error": "Invalid or missing authentication token"},
+        )
+
+    # Initialize the database service
+    db_service = DatabaseService(table_name=DOCUMENTS_METADATA_TABLE_NAME)
+
+    # Retrieve the list of document records from the database
+    logger.info(
+        f"Retrieving document records from database: owner_id={owner_id}, srd_id={srd_id}"
+    )
+    document_records = db_service.list_document_records(
+        owner_id=owner_id,
+        srd_id=srd_id,
+    )
+
+    if not document_records:
+        logger.warning("No document records found in database")
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"error": "No documents found"},
+        )
+
+    logger.info(f"Document records retrieved successfully: {document_records}")
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=document_records)
+
+
+@router.get("/{srd_id}/documents/{document_id}")
+def get_document_record(
+    x_arcane_auth_token: Annotated[str, Header(...)],
+    srd_id: str = Path(..., description="The ID of the SRD document"),
+    document_id: str = Path(..., description="The ID of the document"),
+) -> JSONResponse:
+    """Retrieve a document record from the database.
+
+    **Parameters:**
+    - **x_arcane_auth_token**: str
+        The authentication token for the request.
+    - **srd_id**: str
+        The ID of the SRD document.
+    - **document_id**: str
+        The ID of the document to retrieve.
+
+    **Returns:**
+    - **JSONResponse**: A JSON response containing the document record or an
+      error message if the record does not exist.
+    """
+    # Extract username from Basic Auth header
+    owner_id = extract_username_from_basic_auth(x_arcane_auth_token)
+
+    # Validate the owner_id
+    if not owner_id:
+        logger.error("Invalid or missing authentication token")
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"error": "Invalid or missing authentication token"},
+        )
+
+    # Initialize the database service
+    db_service = DatabaseService(table_name=DOCUMENTS_METADATA_TABLE_NAME)
+
+    # Retrieve the document record from the database
+    logger.info(
+        f"Retrieving document record from database: owner_id={owner_id}, "
+        f"srd_id={srd_id}, document_id={document_id}"
+    )
+    document_record = db_service.get_document_record(
+        owner_id=owner_id,
+        srd_id=srd_id,
+        document_id=document_id,
+    )
+
+    if not document_record:
+        logger.warning("Document record not found in database")
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"error": "Document not found"},
+        )
+
+    logger.info(f"Document record retrieved successfully: {document_record}")
+
+    return JSONResponse(status_code=status.HTTP_200_OK, content=document_record)
