@@ -1,13 +1,16 @@
 # Standard Library
-from typing import Union
+from typing import Union, Annotated
 
 # Third Party
 from aws_lambda_powertools import Logger
-from fastapi import APIRouter, Body, status
+from fastapi import APIRouter, Body, status, Header
 from fastapi.responses import JSONResponse
 
 # Local Modules
-from api_backend.utils import get_answer_from_rag
+from api_backend.utils import (
+    get_answer_from_rag,
+    extract_username_from_basic_auth,
+)
 from api_backend.models import (
     RagQueryRequest,
     RagQueryResponse,
@@ -26,10 +29,16 @@ router = APIRouter(prefix="/query", tags=["Query"])
     response_model=Union[RagQueryResponse, RagQueryErrorResponse],
     status_code=status.HTTP_200_OK,
 )
-def query_endpoint(request: RagQueryRequest = Body(...)) -> JSONResponse:
+def query_endpoint(
+    x_arcane_auth_token: Annotated[str, Header(...)],
+    request: RagQueryRequest = Body(...)
+) -> JSONResponse:
     """Query endpoint for Retrieval-Augmented Generation (RAG) queries.
 
     **Parameters:**
+    - **x_arcane_auth_token**: str
+        The authentication token for the request, typically provided in the
+        `x-arcane-auth-token` header.
     - **request**: RagQueryRequest
         The request body containing the query text, SRD ID, and optional
         parameters for generative LLM configuration, including:
@@ -43,6 +52,20 @@ def query_endpoint(request: RagQueryRequest = Body(...)) -> JSONResponse:
     - **JSONResponse**: A JSON response containing the query results or an
     error message if the request fails.
     """
+    # Extract username from Basic Auth header
+    owner_id = extract_username_from_basic_auth(x_arcane_auth_token)
+
+    # Validate the owner_id
+    if not owner_id:
+        logger.error(
+            "Invalid or missing authentication token",
+            extra={"raw_body": request.model_dump_json()},
+        )
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"error": "Invalid or missing authentication token"},
+        )
+
     try:
         # Extract query text and SRD ID from the request body
         query_text = request.query_text.strip()
@@ -66,14 +89,20 @@ def query_endpoint(request: RagQueryRequest = Body(...)) -> JSONResponse:
         )
         status_code = status.HTTP_400_BAD_REQUEST
         content = {"error": f"Malformed request: {e}"}
+        return JSONResponse(status_code=status_code, content=content)
+
+    # Create composite key
+    composite_key = f"{owner_id}#{srd_id}"
 
     # Get the answer from the RAG processor
     try:
         logger.info(
-            f"Processing query for SRD '{srd_id}': '{query_text}', Generative: {invoke_generative_llm}"
+            f"Processing query for composite key '{composite_key}': '{query_text}', "
+            f"Generative: {invoke_generative_llm}"
         )
         content = get_answer_from_rag(
             query_text=query_text,
+            owner_id=owner_id,
             srd_id=srd_id,
             invoke_generative_llm=invoke_generative_llm,
             use_conversational_style=use_conversational_style,
@@ -85,7 +114,8 @@ def query_endpoint(request: RagQueryRequest = Body(...)) -> JSONResponse:
         status_code = 200
         if "error" in content:
             logger.warning(
-                f"Query for '{query_text}' on '{srd_id}' resulted in error: {content['error']}"
+                f"Query for '{query_text}' on '{composite_key}' resulted in "
+                f"error: {content['error']}"
             )
             if "Could not load SRD data" in content["error"]:
                 status_code = 404
@@ -97,13 +127,10 @@ def query_endpoint(request: RagQueryRequest = Body(...)) -> JSONResponse:
     # Handle specific errors from the RAG processor
     except Exception as e:
         logger.exception(
-            f"Unhandled error in query_endpoint for SRD '{srd_id}': {e}"
+            f"Unhandled error in query_endpoint for composite key '{composite_key}': {e}"
         )
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         content = {"error": f"Internal server error: {e}"}
 
     # Return the response
-    return JSONResponse(
-        status_code=status_code,
-        content=content,
-    )
+    return JSONResponse(status_code=status_code, content=content)
