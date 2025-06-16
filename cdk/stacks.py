@@ -171,6 +171,17 @@ class ArcaneScribeStack(Stack):
         # endregion
 
         # region Lambda Functions
+        # Create core Lambda layer for shared business logic and data models
+        core_layer = lambda_.LayerVersion(
+            self,
+            "CoreLayer",
+            code=lambda_.Code.from_asset("src/core"),
+            compatible_runtimes=[lambda_.Runtime.PYTHON_3_12],
+            description=(
+                "A layer containing shared business logic and data models."
+            )
+        )
+
         # Create backend Lambda role
         backend_lambda_role = self.create_iam_role(
             construct_id="BackendLambdaRole",
