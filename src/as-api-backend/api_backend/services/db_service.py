@@ -59,7 +59,7 @@ class DatabaseService:
             - `s3_key`: The S3 key where the document is stored.
             - `content_type`: The content type of the document.
             - `upload_timestamp`: The timestamp when the document was uploaded.
-            - `processing_status`: The initial processing status of the document (e.g., 'UPLOAD_INITIATED').
+            - `processing_status`: The initial processing status of the document (e.g., 'pending').
         """
         # Generate a unique document ID and composite key for the owner and SRD
         document_id = str(uuid.uuid4())
@@ -73,7 +73,7 @@ class DatabaseService:
             "s3_key": s3_key,
             "content_type": content_type,
             "upload_timestamp": datetime.now(timezone.utc).isoformat(),
-            "processing_status": "UPLOAD_INITIATED",
+            "processing_status": "pending",
         }
 
         # Store the item in DynamoDB
