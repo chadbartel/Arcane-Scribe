@@ -50,12 +50,13 @@ except Exception as e:
 VECTOR_STORE_BUCKET_NAME = os.environ.get("VECTOR_STORE_BUCKET_NAME")
 
 
-def extract_srd_info(object_key: str) -> Tuple[str, str]:
+def extract_srd_info(object_key: str) -> Tuple[str, str, str]:
     """Extract the SRD ID and filename from the S3 object key.
 
     The S3 object key is expected to be in the format:
-    `<srd_id>/<filename>`, where `<srd_id>` is the SRD ID and
-    `<filename>` is the name of the file.
+    `<owner_id>/<srd_id>/<filename>`, where `<owner_id>` is the owner of the
+    SRD, `<srd_id>` is the ID of the SRD, and `<filename>` is the name of
+    the file.
 
     Parameters
     ----------
@@ -64,19 +65,19 @@ def extract_srd_info(object_key: str) -> Tuple[str, str]:
 
     Returns
     -------
-    Tuple[str, str]
-        A tuple containing the SRD ID and the filename.
-        If the object key does not contain a slash, the filename is returned
-        as the second element, and the SRD ID is set to an empty string.
+    Tuple[str, str, str]
+        A tuple containing the owner ID, SRD ID, and the filename.
     """
-    # Split the object key into parts to extract SRD ID and filename
-    parts = object_key.split("/", 1)
+    # Split the object key into parts to extract owner ID, SRD ID, and filename
+    parts = object_key.split("/", 2)
 
-    # No SRD ID in path, use the filename as both SRD ID and filename
-    if len(parts) < 2:
-        return Path(object_key).stem, object_key
+    if len(parts) < 3:
+        raise ValueError(
+            f"Invalid S3 object key format: {object_key}. "
+            "Expected format is '<owner_id>/<srd_id>/<filename>'."
+        )
 
-    return parts[0], parts[1]
+    return parts[0], parts[1], parts[2]
 
 
 def process_s3_object(
