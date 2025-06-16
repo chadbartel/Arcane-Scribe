@@ -183,3 +183,45 @@ class DatabaseService:
                 owner_srd_composite
             )
         )
+
+    def update_document_record(
+        self,
+        owner_id: str,
+        srd_id: str,
+        document_id: str,
+        update_map: Dict[str, Any],
+    ) -> Dict[str, Any]:
+        """Update a document record in the DynamoDB table.
+
+        Parameters
+        ----------
+        owner_id : str
+            The Cognito username of the owner of the document.
+        srd_id : str
+            The ID of the SRD (System Requirements Document) associated with
+            the document.
+        document_id : str
+            The unique identifier for the document.
+        update_map : Dict[str, Any]
+            A dictionary containing the fields to update and their new values.
+            The keys should match the attribute names in the DynamoDB table.
+
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary containing the updated document record.
+        """
+        # Construct the composite key for the owner and SRD
+        owner_srd_composite = f"{owner_id}#{srd_id}"
+
+        return self.dynamodb.update_item(
+            key={
+                "owner_srd_composite": owner_srd_composite,
+                "document_id": document_id,
+            },
+            update_expression="SET "
+            + ", ".join(f"{k} = :{k}" for k in update_map.keys()),
+            expression_attribute_values={
+                f":{k}": v for k, v in update_map.items()
+            },
+        )
