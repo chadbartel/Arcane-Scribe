@@ -294,11 +294,6 @@ def get_answer_from_rag(
                 key={"query_hash": query_hash},
             )
 
-            # TODO: REMOVE THIS LINE AFTER TESTING
-            lambda_logger.info(
-                f"Cache response for query_hash {query_hash}: {response}"
-            )
-
             # Check if the item exists and is still valid (TTL)
             if (
                 response
