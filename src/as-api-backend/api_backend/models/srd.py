@@ -2,7 +2,7 @@
 from typing import Optional
 
 # Third Party
-from pydantic import BaseModel, Field, ConfigDict, HttpUrl
+from pydantic import BaseModel, Field, ConfigDict, HttpUrl, UUID4
 
 # Local Modules
 from api_backend.utils import AllowedMethod
@@ -66,6 +66,11 @@ class PresignedUrlResponse(BaseModel):
     )
     method: AllowedMethod = Field(
         ..., description="The HTTP method for the upload operation."
+    )
+    document_id: UUID4 = Field(
+        ...,
+        description="A unique identifier for the document.",
+        examples=["123e4567-e89b-12d3-a456-426614174000"],
     )
     content_type: Optional[str] = Field(
         "application/pdf",
