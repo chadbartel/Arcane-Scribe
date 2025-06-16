@@ -17,7 +17,11 @@ from api_backend.models import (
     PresignedUrlResponse,
     PresignedUrlErrorResponse,
 )
-from api_backend.utils.config import DOCUMENTS_BUCKET_NAME
+from api_backend.services import DatabaseService
+from api_backend.utils.config import (
+    DOCUMENTS_BUCKET_NAME,
+    DOCUMENTS_METADATA_TABLE_NAME,
+)
 
 # Initialize logger
 logger = Logger(service="srd")
@@ -112,6 +116,19 @@ def get_presigned_upload_url(
         )
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
         content = {"error": f"Could not generate upload URL: {e}"}
+
+    # Create a metadata record in the database
+    s3_key = f"{owner_id}/{srd_id}/{file_name}"
+    db_service = DatabaseService(
+        table_name=DOCUMENTS_METADATA_TABLE_NAME
+    )
+    db_service.create_document_record(
+        owner_id=owner_id,
+        srd_id=srd_id,
+        file_name=file_name,
+        s3_key=s3_key,
+        content_type=content_type,
+    )
 
     # Return the response
     return JSONResponse(
