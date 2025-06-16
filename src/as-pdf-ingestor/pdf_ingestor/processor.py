@@ -2,8 +2,7 @@
 import os
 import shutil
 import urllib.parse
-from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Dict, Any
 
 # Third Party
 import boto3
@@ -82,7 +81,7 @@ def extract_srd_info(object_key: str) -> Tuple[str, str, str]:
 
 def process_s3_object(
     bucket_name: str, object_key: str, lambda_logger: Logger
-) -> None:
+) -> Dict[str, Any]:
     """Process a PDF file from S3, generate embeddings using Bedrock,
     and create a FAISS index. The FAISS index is then uploaded back to S3.
 
@@ -94,6 +93,13 @@ def process_s3_object(
         The key of the PDF file in the S3 bucket.
     lambda_logger : Logger
         The logger instance for logging messages.
+
+    Returns
+    -------
+    Dict[str, Any]
+        A dictionary containing metadata about the processed document,
+        including the SRD ID, original filename, chunk count, source bucket,
+        source key, and the location of the vector index in S3.
 
     Raises
     -------
