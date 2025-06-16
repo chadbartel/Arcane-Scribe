@@ -25,7 +25,7 @@ from cdk.custom_constructs import (
     CustomDynamoDBTable,
     CustomIAMPolicyStatement,
     CustomIamRole,
-    CustomLambdaFromDockerImage,
+    CustomLambdaFunction,
     CustomS3Bucket,
     CustomRestApi,
     CustomTokenAuthorizer,
@@ -668,7 +668,7 @@ class ArcaneScribeStack(Stack):
         lambda_.Function
             The created Lambda function instance.
         """
-        custom_lambda = CustomLambdaFromDockerImage(
+        custom_lambda = CustomLambdaFunction(
             scope=self,
             id=construct_id,
             src_folder_path=src_folder_path,
