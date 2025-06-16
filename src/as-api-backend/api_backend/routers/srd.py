@@ -45,6 +45,7 @@ def get_presigned_upload_url(
     **Parameters:**
     - **x_arcane_auth_token**: str
         The authentication token for the request, typically provided in the
+        `x-arcane-auth-token` header.
     - **request**: PresignedUrlRequest
         The request body containing the file name and SRD ID, including:
         - `file_name`: The name of the file to upload.
@@ -150,6 +151,21 @@ def delete_document_record(
         ..., description="The ID of the document to delete"
     ),
 ) -> JSONResponse:
+    """Delete a document record from the database and S3.
+
+    **Parameters:**
+    - **x_arcane_auth_token**: str
+        The authentication token for the request, typically provided in the
+        `x-arcane-auth-token` header.
+    - **srd_id**: str
+        The ID of the SRD document.
+    - **document_id**: str
+        The ID of the document to delete.
+
+    **Returns:**
+    - **JSONResponse**: A JSON response indicating the success or failure of
+    the deletion operation.
+    """
     # Initialize the status code and content
     status_code = status.HTTP_200_OK
     content = {"message": "Document deleted successfully"}
@@ -226,7 +242,8 @@ def list_document_records(
 
     **Parameters:**
     - **x_arcane_auth_token**: str
-        The authentication token for the request.
+        The authentication token for the request, typically provided in the
+        `x-arcane-auth-token` header.
     - **srd_id**: str
         The ID of the SRD document.
 
@@ -281,7 +298,8 @@ def get_document_record(
 
     **Parameters:**
     - **x_arcane_auth_token**: str
-        The authentication token for the request.
+        The authentication token for the request, typically provided in the
+        `x-arcane-auth-token` header.
     - **srd_id**: str
         The ID of the SRD document.
     - **document_id**: str
