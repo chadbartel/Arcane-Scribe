@@ -265,7 +265,9 @@ def list_document_records(
 
     logger.info(f"Document records retrieved successfully: {document_records}")
 
-    return JSONResponse(status_code=status.HTTP_200_OK, content=document_records)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content=document_records
+    )
 
 
 @router.get("/{srd_id}/documents/{document_id}")
@@ -322,4 +324,6 @@ def get_document_record(
 
     logger.info(f"Document record retrieved successfully: {document_record}")
 
-    return JSONResponse(status_code=status.HTTP_200_OK, content=document_record)
+    return JSONResponse(
+        status_code=status.HTTP_200_OK, content=document_record
+    )

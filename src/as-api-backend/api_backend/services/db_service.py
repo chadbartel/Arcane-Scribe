@@ -175,5 +175,5 @@ class DatabaseService:
         owner_srd_composite = f"{owner_id}#{srd_id}"
         return self.dynamodb.query(
             key_condition_expression="owner_srd_composite = :owner_srd",
-            filter_expression={":owner_srd": owner_srd_composite}
+            filter_expression={":owner_srd": owner_srd_composite},
         )
