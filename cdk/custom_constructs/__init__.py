@@ -13,6 +13,7 @@ The constructs included in this module are:
 - CustomIAMPolicyStatement: Custom IAM policy statement for fine-grained access control.
 - CustomIamRole: Custom IAM role with specific permissions.
 - CustomLambdaFromDockerImage: Custom Lambda function created from a Docker image.
+- CustomLambdaFunction: Custom Lambda function with additional configurations.
 - CustomRestApi: Custom REST API Gateway with additional configurations.
 - CustomS3Bucket: Custom S3 bucket with additional configurations.
 - CustomTokenAuthorizer: Custom token authorizer for API Gateway.
@@ -26,7 +27,7 @@ from .http_api import CustomHttpApiGateway
 from .http_lambda_authorizer import CustomHttpLambdaAuthorizer
 from .iam_policy_statement import CustomIAMPolicyStatement
 from .iam_role import CustomIamRole
-from .lambda_function import CustomLambdaFromDockerImage
+from .lambda_function import CustomLambdaFromDockerImage, CustomLambdaFunction
 from .rest_api import CustomRestApi
 from .s3_bucket import CustomS3Bucket
 from .token_authorizer import CustomTokenAuthorizer
@@ -41,6 +42,7 @@ __all__ = [
     "CustomIAMPolicyStatement",
     "CustomIamRole",
     "CustomLambdaFromDockerImage",
+    "CustomLambdaFunction",
     "CustomRestApi",
     "CustomS3Bucket",
     "CustomTokenAuthorizer",
