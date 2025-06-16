@@ -1,6 +1,6 @@
 # Standard Library
 import uuid
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 
 # Local Modules
@@ -80,7 +80,7 @@ class DatabaseService:
 
     def get_document_record(
         self, owner_id: str, srd_id: str, document_id: str
-    ) -> Dict[str, Any]:
+    ) -> Optional[Dict[str, Any]]:
         """Retrieve a document record from the DynamoDB table.
 
         Parameters
@@ -95,9 +95,16 @@ class DatabaseService:
 
         Returns
         -------
-        Dict[str, Any]
-            A dictionary containing the details of the retrieved document record,
-            or None if no record is found.
+        Optional[Dict[str, Any]]
+            A dictionary containing the document record if found, or None if
+            the record does not exist. The dictionary includes:
+            - `owner_srd_composite`: A composite key combining owner_id and srd_id.
+            - `document_id`: The unique identifier for the document.
+            - `original_file_name`: The original file name of the uploaded document.
+            - `s3_key`: The S3 key where the document is stored.
+            - `content_type`: The content type of the document.
+            - `upload_timestamp`: The timestamp when the document was uploaded.
+            - `processing_status`: The current processing status of the document.
         """
         # Construct the composite key for the owner and SRD
         owner_srd_composite = f"{owner_id}#{srd_id}"
