@@ -275,7 +275,7 @@ def list_document_records(
     document_records = db_service.list_document_records(
         owner_id=owner_id,
         srd_id=srd_id,
-    )
+    ).get("Items", [])
 
     if not document_records:
         logger.warning("No document records found in database")
