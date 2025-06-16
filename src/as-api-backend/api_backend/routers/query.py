@@ -31,7 +31,7 @@ router = APIRouter(prefix="/query", tags=["Query"])
 )
 def query_endpoint(
     x_arcane_auth_token: Annotated[str, Header(...)],
-    request: RagQueryRequest = Body(...)
+    request: RagQueryRequest = Body(...),
 ) -> JSONResponse:
     """Query endpoint for Retrieval-Augmented Generation (RAG) queries.
 

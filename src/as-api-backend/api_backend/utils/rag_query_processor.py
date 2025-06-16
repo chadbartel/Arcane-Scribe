@@ -293,9 +293,7 @@ def get_answer_from_rag(
         )
 
     # Generate a cache key
-    cache_key_string = (
-        f"{composite_key}-{query_text}-{invoke_generative_llm}"
-    )
+    cache_key_string = f"{composite_key}-{query_text}-{invoke_generative_llm}"
     query_hash = hashlib.md5(cache_key_string.encode()).hexdigest()
 
     # 1. Check cache if invoking LLM and cache is configured
