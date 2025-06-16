@@ -17,7 +17,6 @@ class CustomLambdaFromDockerImage(Construct):
         scope: Construct,
         id: str,
         src_folder_path: str,
-        runtime: lambda_.Runtime = lambda_.Runtime.FROM_IMAGE,
         stack_suffix: Optional[str] = "",
         memory_size: Optional[int] = 512,
         timeout: Optional[Duration] = Duration.seconds(30),
@@ -38,8 +37,6 @@ class CustomLambdaFromDockerImage(Construct):
             The ID of the construct.
         src_folder_path : str
             Path to the source folder containing the Lambda function code.
-        runtime : lambda_.Runtime, optional
-            The runtime for the Lambda function, by default lambda_.Runtime.FROM_IMAGE
         stack_suffix : Optional[str], optional
             Suffix to append to the Lambda function name, by default ""
         memory_size : Optional[int], optional
