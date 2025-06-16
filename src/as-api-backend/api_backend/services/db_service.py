@@ -3,6 +3,9 @@ import uuid
 from typing import Dict, Any, Optional
 from datetime import datetime, timezone
 
+# Third Party
+from boto3.dynamodb.conditions import Attr, Key
+
 # Local Modules
 from api_backend.aws import DynamoDb
 
@@ -172,8 +175,11 @@ class DatabaseService:
             - `upload_timestamp`: The timestamp when the document was uploaded.
             - `processing_status`: The current processing status of the document.
         """
+        # Construct the composite key for the owner and SRD
         owner_srd_composite = f"{owner_id}#{srd_id}"
+
         return self.dynamodb.query(
-            key_condition_expression="owner_srd_composite = :owner_srd",
-            filter_expression={":owner_srd": owner_srd_composite},
+            key_condition_expression=Key("owner_srd_composite").eq(
+                owner_srd_composite
+            )
         )
