@@ -146,7 +146,7 @@ def get_llm_instance(
 
 
 def _load_faiss_index_from_s3(
-    srd_id: str, lambda_logger: Logger
+    owner_id: str, srd_id: str, lambda_logger: Logger
 ) -> Optional[FAISS]:
     """Load FAISS index from S3 for the given SRD ID.
 
@@ -165,13 +165,18 @@ def _load_faiss_index_from_s3(
     # Initialize the Bedrock runtime client
     bedrock_runtime_client = BedrockRuntimeClient()
 
+    # Create composite key for FAISS index cache
+    composite_key = f"{owner_id}#{srd_id}"
+
     # Initialize the S3 client
     s3_client = S3Client(bucket_name=VECTOR_STORE_BUCKET_NAME)
 
     # Check if the FAISS index is already in cache
-    if srd_id in FAISS_INDEX_CACHE:
-        lambda_logger.info(f"FAISS index for '{srd_id}' found in cache.")
-        return FAISS_INDEX_CACHE[srd_id]
+    if owner_id in FAISS_INDEX_CACHE and srd_id in FAISS_INDEX_CACHE:
+        lambda_logger.info(
+            f"FAISS index for '{composite_key}' found in cache."
+        )
+        return FAISS_INDEX_CACHE[composite_key]
 
     # Construct the S3 key for the FAISS index
     s3_index_prefix = f"{srd_id}/faiss_index"
@@ -215,11 +220,11 @@ def _load_faiss_index_from_s3(
         if len(FAISS_INDEX_CACHE) >= MAX_CACHE_SIZE:
             oldest_key = next(iter(FAISS_INDEX_CACHE))
             FAISS_INDEX_CACHE.pop(oldest_key)
-        FAISS_INDEX_CACHE[srd_id] = vector_store
+        FAISS_INDEX_CACHE[composite_key] = vector_store
         return vector_store
     except Exception as e:
         lambda_logger.exception(
-            f"Error loading FAISS index for '{srd_id}': {e}"
+            f"Error loading FAISS index for '{composite_key}': {e}"
         )
         return None
     finally:
@@ -233,6 +238,7 @@ def _load_faiss_index_from_s3(
 
 def get_answer_from_rag(
     query_text: str,
+    owner_id: str,
     srd_id: str,
     invoke_generative_llm: bool,
     use_conversational_style: bool,
@@ -248,6 +254,9 @@ def get_answer_from_rag(
     ----------
     query_text : str
         The query text to process.
+    owner_id : str
+        The owner ID of the user making the query, typically extracted from
+        the authentication token.
     srd_id : str
         The SRD ID to use for the query.
     invoke_generative_llm : bool
@@ -270,6 +279,9 @@ def get_answer_from_rag(
     # Initialize the DynamoDB client
     dynamodb_client = DynamoDb(table_name=QUERY_CACHE_TABLE_NAME)
 
+    # Create composite key for FAISS index cache
+    composite_key = f"{owner_id}#{srd_id}"
+
     # Use the provided logger or create a new one if not provided
     if lambda_logger is None:
         lambda_logger = logger
@@ -281,7 +293,9 @@ def get_answer_from_rag(
         )
 
     # Generate a cache key
-    cache_key_string = f"{srd_id}-{query_text}-{invoke_generative_llm}"
+    cache_key_string = (
+        f"{composite_key}-{query_text}-{invoke_generative_llm}"
+    )
     query_hash = hashlib.md5(cache_key_string.encode()).hexdigest()
 
     # 1. Check cache if invoking LLM and cache is configured
@@ -314,9 +328,9 @@ def get_answer_from_rag(
             )
 
     # 2. Load the FAISS index from S3
-    vector_store = _load_faiss_index_from_s3(srd_id, lambda_logger)
+    vector_store = _load_faiss_index_from_s3(owner_id, srd_id, lambda_logger)
     if not vector_store:
-        return {"error": f"Could not load SRD data for '{srd_id}'."}
+        return {"error": f"Could not load SRD data for '{composite_key}'."}
 
     # 3. Perform the similarity search
     lambda_logger.info(
@@ -433,6 +447,7 @@ Helpful Answer:"""
                     item={
                         "query_hash": query_hash,
                         "answer": answer,
+                        "owner_id": owner_id,
                         "srd_id": srd_id,
                         "query_text": query_text,
                         "source_documents_summary": (
