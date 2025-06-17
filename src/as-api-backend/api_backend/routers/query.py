@@ -77,7 +77,12 @@ def query_endpoint(
         use_conversational_style = request.use_conversation_style or False
 
         # Generation config payload
-        generation_config_payload = request.generation_config or {}
+        if request.generation_config is None:
+            generation_config_payload = {}
+        else:
+            generation_config_payload = (
+                request.generation_config.model_dump_json()
+            )
 
     # Parsing errors
     except Exception as e:
