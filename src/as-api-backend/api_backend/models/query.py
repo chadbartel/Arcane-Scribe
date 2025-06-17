@@ -57,6 +57,7 @@ class RagQueryRequest(BaseModel):
         use_conversation_style: Whether to format response conversationally.
         generation_config: Configuration for text generation parameters.
         srd_id: System Reference Document identifier.
+        number_of_documents: Number of documents to retrieve from the source.
     """
 
     model_config = ConfigDict(populate_by_name=True)
