@@ -1,5 +1,4 @@
 # Standard Library
-import json
 from typing import Union, Annotated
 
 # Third Party
@@ -81,8 +80,8 @@ def query_endpoint(
         if request.generation_config is None:
             generation_config_payload = {}
         else:
-            generation_config_payload = json.loads(
-                request.generation_config.model_dump_json()
+            generation_config_payload = request.generation_config.model_dump(
+                mode="json"
             )
 
     # Parsing errors
