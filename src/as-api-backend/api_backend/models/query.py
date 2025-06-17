@@ -38,7 +38,7 @@ class GenerationConfig(BaseModel):
     max_token_count: Optional[int] = Field(
         default=None,
         gt=0,
-        le=8000,
+        le=128000,
         description="Maximum number of tokens to generate",
         alias="maxTokenCount",
     )
