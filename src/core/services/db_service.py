@@ -8,6 +8,7 @@ from boto3.dynamodb.conditions import Key
 
 # Local Modules
 from core.aws import DynamoDb
+from core.utils import DocumentProcessingStatus
 
 
 class DatabaseService:
@@ -77,7 +78,7 @@ class DatabaseService:
             "s3_key": s3_key,
             "content_type": content_type,
             "upload_timestamp": datetime.now(timezone.utc).isoformat(),
-            "processing_status": "pending",
+            "processing_status": DocumentProcessingStatus.pending.value,
         }
 
         # Store the item in DynamoDB
