@@ -13,10 +13,13 @@ from langchain_community.vectorstores import FAISS
 
 # Local Modules
 from core.aws import S3Client
+from core.utils import DocumentProcessingStatus
+from core.services import DatabaseService
 from core.utils.config import (
     DOCUMENTS_BUCKET_NAME,
     VECTOR_STORE_BUCKET_NAME,
     BEDROCK_EMBEDDING_MODEL_ID,
+    DOCUMENTS_METADATA_TABLE_NAME,
 )
 from pdf_ingestor.aws import BedrockRuntimeClient
 
@@ -55,7 +58,7 @@ def extract_srd_info(object_key: str) -> Tuple[str, str, str]:
 
 
 def process_s3_object(
-    bucket_name: str, object_key: str, lambda_logger: Logger
+    bucket_name: str, object_key: str, document_id: str, lambda_logger: Logger
 ) -> Optional[Dict[str, Any]]:
     """Process a PDF file from S3, generate embeddings using Bedrock,
     and create a FAISS index. The FAISS index is then uploaded back to S3.
@@ -66,6 +69,8 @@ def process_s3_object(
         The name of the S3 bucket containing the PDF file.
     object_key : str
         The key of the PDF file in the S3 bucket.
+    document_id : str
+        The unique identifier for the document, used for logging and tracking.
     lambda_logger : Logger
         The logger instance for logging messages.
 
@@ -90,6 +95,19 @@ def process_s3_object(
     """
     # Extract SRD ID form object key
     owner_id, srd_id, filename = extract_srd_info(object_key=object_key)
+
+    # Initialize database service
+    db_service = DatabaseService(table_name=DOCUMENTS_METADATA_TABLE_NAME)
+
+    # Update the document metadata in the database to 'processing'
+    db_service.update_document_record(
+        owner_id=owner_id,
+        srd_id=srd_id,
+        document_id=document_id,
+        update_map={
+            "processing_status": DocumentProcessingStatus.processing.value,
+        }
+    )
 
     # Initialize the S3 client
     s3_client = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
@@ -137,6 +155,17 @@ def process_s3_object(
             lambda_logger.warning(
                 f"No documents loaded from PDF: {object_key}."
             )
+
+            # Update the document metadata in the database to 'failed'
+            db_service.update_document_record(
+                owner_id=owner_id,
+                srd_id=srd_id,
+                document_id=document_id,
+                update_map={
+                    "processing_status": DocumentProcessingStatus.failed.value,
+                }
+            )
+
             return
 
         # Split the document into manageable text chunks
@@ -147,6 +176,17 @@ def process_s3_object(
         lambda_logger.info(f"Split into {len(texts)} text chunks.")
         if not texts:
             lambda_logger.warning(f"No text chunks generated: {object_key}.")
+
+            # Update the document metadata in the database to 'failed'
+            db_service.update_document_record(
+                owner_id=owner_id,
+                srd_id=srd_id,
+                document_id=document_id,
+                update_map={
+                    "processing_status": DocumentProcessingStatus.failed.value,
+                }
+            )
+
             return
 
         # Generate embeddings for the text chunks using Bedrock
@@ -189,10 +229,28 @@ def process_s3_object(
         lambda_logger.exception(
             f"AWS ClientError during processing of {object_key}: {e}"
         )
+        # Update the document metadata in the database to 'failed'
+        db_service.update_document_record(
+            owner_id=owner_id,
+            srd_id=srd_id,
+            document_id=document_id,
+            update_map={
+                "processing_status": DocumentProcessingStatus.failed.value,
+            }
+        )
         raise
     except Exception as e:
         lambda_logger.exception(
             f"Unexpected error during processing of {object_key}: {e}"
+        )
+        # Update the document metadata in the database to 'failed'
+        db_service.update_document_record(
+            owner_id=owner_id,
+            srd_id=srd_id,
+            document_id=document_id,
+            update_map={
+                "processing_status": DocumentProcessingStatus.failed.value,
+            }
         )
         raise
     finally:
@@ -212,6 +270,16 @@ def process_s3_object(
                 lambda_logger.error(
                     f"Error cleaning temp FAISS dir {temp_faiss_index_path}: {e_clean}"
                 )
+
+    # Update the document metadata in the database to 'completed'
+    db_service.update_document_record(
+        owner_id=owner_id,
+        srd_id=srd_id,
+        document_id=document_id,
+        update_map={
+            "processing_status": DocumentProcessingStatus.completed.value,
+        }
+    )
 
     # Save metadata about the processed document
     metadata = {
