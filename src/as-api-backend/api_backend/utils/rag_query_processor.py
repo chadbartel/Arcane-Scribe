@@ -312,7 +312,7 @@ def get_answer_from_rag(
                 # Return the cached answer if it exists
                 lambda_logger.info(f"Cache hit for query_hash: {query_hash}")
                 return {
-                    "answer": response["Item"]["answer"]["S"],
+                    "answer": response["answer"],
                     "source": "cache",
                 }
         except ClientError as e:
