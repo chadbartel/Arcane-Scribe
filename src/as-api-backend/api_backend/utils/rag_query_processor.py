@@ -244,6 +244,7 @@ def get_answer_from_rag(
     invoke_generative_llm: bool,
     use_conversational_style: bool,
     generation_config_payload: Dict[str, Any],
+    number_of_documents: Optional[int] = 4,
     lambda_logger: Optional[Logger] = None,
 ) -> Dict[str, Any]:
     """Process a query using RAG (Retrieval-Augmented Generation) with Bedrock.
@@ -267,6 +268,8 @@ def get_answer_from_rag(
     generation_config_payload : Dict[str, Any]
         Configuration payload for the LLM generation, including parameters
         like temperature, max tokens, etc.
+    number_of_documents : Optional[int]
+        The number of documents to retrieve from the source. Defaults to 4.
     lambda_logger : Optional[Logger]
         The logger instance to use for logging. If None, a default logger
         will be used.
@@ -338,7 +341,7 @@ def get_answer_from_rag(
     try:
         # The retriever will fetch relevant documents.
         retriever = vector_store.as_retriever(
-            search_kwargs={"k": 4}  # Retrieve top 4 docs
+            search_kwargs={"k": number_of_documents}  # Retrieve top 4 docs
         )
     except Exception as e:
         lambda_logger.exception(f"Error creating retriever: {e}")

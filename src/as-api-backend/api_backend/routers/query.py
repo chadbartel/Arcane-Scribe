@@ -110,6 +110,7 @@ def query_endpoint(
             invoke_generative_llm=invoke_generative_llm,
             use_conversational_style=use_conversational_style,
             generation_config_payload=generation_config_payload,
+            number_of_documents=request.number_of_documents,
             lambda_logger=logger,
         )
 

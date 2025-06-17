@@ -76,6 +76,11 @@ class RagQueryRequest(BaseModel):
     srd_id: str = Field(
         ..., description="System Reference Document identifier"
     )
+    number_of_documents: Optional[int] = Field(
+        default=4,
+        ge=1,
+        description="Number of documents to retrieve from the source",
+    )
 
 
 class RagQueryResponse(BaseModel):
