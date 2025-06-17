@@ -45,6 +45,7 @@ def query_endpoint(
         - `invoke_generative_llm`: Flag to indicate if a generative LLM should be invoked.
         - `use_conversation_style`: Flag to indicate if conversational style should be used.
         - `generation_config`: Optional configuration for generation.
+        - `number_of_documents`: Optional parameter to specify the number of documents to retrieve.
 
     **Returns:**
     - **JSONResponse**: A JSON response containing the query results or an
