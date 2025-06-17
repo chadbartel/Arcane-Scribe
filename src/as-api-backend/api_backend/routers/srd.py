@@ -117,7 +117,7 @@ def get_presigned_upload_url(
         return JSONResponse(status_code=status_code, content=content)
 
     # Create a metadata record in the database
-    s3_key = f"{owner_id}/{srd_id}/{file_name}"
+    s3_key = f"{owner_id}/{srd_id}/{document_id}/{file_name}"
     db_service = DatabaseService(table_name=DOCUMENTS_METADATA_TABLE_NAME)
     db_service.create_document_record(
         owner_id=owner_id,
