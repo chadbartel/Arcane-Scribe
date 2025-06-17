@@ -14,6 +14,7 @@ from core.services import DatabaseService
 from core.utils.config import (
     DOCUMENTS_BUCKET_NAME,
     DOCUMENTS_METADATA_TABLE_NAME,
+    VECTOR_STORE_BUCKET_NAME,
 )
 from api_backend.utils import generate_presigned_url
 from api_backend.models import (
@@ -204,13 +205,31 @@ def delete_document_record(
         f"Document found in database: {document_record['document_id']}"
     )
 
-    # Delete the document from S3
+    # Delete the document from documents bucket in S3
     try:
         s3_key = document_record["s3_key"]
-        logger.info(f"Deleting document from S3: {s3_key}")
+        logger.info(f"Deleting document from documents bucket in S3: {s3_key}")
         s3_client = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
         s3_client.delete_object(object_key=s3_key)
-        logger.info(f"Deleted document from S3: {s3_key}")
+        logger.info(f"Deleted document from documents bucket in S3: {s3_key}")
+    except Exception as e:
+        logger.exception(f"Error deleting document from S3: {e}")
+        status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
+        content = {"error": "Could not delete document from S3"}
+        return JSONResponse(status_code=status_code, content=content)
+
+    # Delete the index from the vector store bucket in S3
+    try:
+        faiss_key = f"{owner_id}/{srd_id}/vector_store/{document_id}.faiss"
+        pickle_key = f"{owner_id}/{srd_id}/vector_store/{document_id}.pkl"
+        logger.info("Deleting index from vector store bucket in S3")
+        s3_client.delete_object(
+            object_key=faiss_key, bucket_name=VECTOR_STORE_BUCKET_NAME
+        )
+        s3_client.delete_object(
+            object_key=pickle_key, bucket_name=VECTOR_STORE_BUCKET_NAME
+        )
+        logger.info("Deleted index from vector store bucket in S3")
     except Exception as e:
         logger.exception(f"Error deleting document from S3: {e}")
         status_code = status.HTTP_500_INTERNAL_SERVER_ERROR
