@@ -513,3 +513,49 @@ class S3Client:
         return self._client.download_file(
             Bucket=bucket_name, Key=object_key, Filename=download_path
         )
+
+    def head_object(
+        self,
+        object_key: str,
+        bucket_name: Optional[str] = None,
+    ) -> Optional[Dict[str, Union[str, int]]]:
+        """Retrieve metadata for an S3 object.
+
+        Parameters
+        ----------
+        object_key : str
+            The key (path) in the S3 bucket of the object to retrieve metadata for.
+        bucket_name : Optional[str]
+            The name of the S3 bucket. If not provided, the bucket_name
+            specified during initialization will be used.
+
+        Returns
+        -------
+        Optional[Dict[str, Union[str, int]]]
+            A dictionary containing the object's metadata if it exists, None otherwise.
+        """
+        # Use the provided bucket name or the one from initialization
+        if bucket_name is None:
+            bucket_name = self.bucket_name
+
+        try:
+            response = self._client.head_object(
+                Bucket=bucket_name, Key=object_key
+            )
+            return response
+        except ClientError as e:
+            logger.error(
+                "Failed to retrieve metadata for s3://%s/%s - Error: %s",
+                bucket_name,
+                object_key,
+                e,
+            )
+            return None
+        except Exception as e:
+            logger.error(
+                "Unexpected error retrieving metadata for s3://%s/%s - Error: %s",
+                bucket_name,
+                object_key,
+                e,
+            )
+            return None
