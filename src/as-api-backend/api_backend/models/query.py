@@ -33,19 +33,17 @@ class GenerationConfig(BaseModel):
         ge=0.0,
         le=1.0,
         description="Top-p value for nucleus sampling",
-        alias="topP",
     )
     max_token_count: Optional[int] = Field(
         default=None,
         gt=0,
         le=200000,
         description="Maximum number of tokens to generate",
-        alias="maxTokenCount",
+        alias="max_tokens",
     )
     stop_sequences: Optional[List[str]] = Field(
         default=None,
         description="List of sequences that will stop generation",
-        alias="stopSequences",
     )
 
 

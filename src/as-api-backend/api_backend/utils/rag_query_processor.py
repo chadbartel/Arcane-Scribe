@@ -79,20 +79,20 @@ def get_llm_instance(
     )
 
     # Handle 'topP'
-    top_p_value = generation_config.get("topP")
-    effective_model_kwargs["topP"] = (
+    top_p_value = generation_config.get("top_p")
+    effective_model_kwargs["top_p"] = (
         float(top_p_value) if top_p_value is not None else 1.0
     )
 
     # Handle 'maxTokenCount'
-    max_tokens_value = generation_config.get("maxTokenCount")
-    effective_model_kwargs["maxTokenCount"] = (
+    max_tokens_value = generation_config.get("max_tokens")
+    effective_model_kwargs["max_tokens"] = (
         int(max_tokens_value) if max_tokens_value is not None else 1024
     )
 
     # Handle 'stopSequences'
-    stop_sequences_value = generation_config.get("stopSequences")
-    effective_model_kwargs["stopSequences"] = (
+    stop_sequences_value = generation_config.get("stop_sequences")
+    effective_model_kwargs["stop_sequences"] = (
         stop_sequences_value if stop_sequences_value is not None else []
     )
 
