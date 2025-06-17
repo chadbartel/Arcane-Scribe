@@ -1,14 +1,14 @@
 # Standard Library
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 
 # Third Party
-import boto3
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from aws_lambda_powertools.utilities.data_classes import S3Event, event_source
 
 # Local Modules
 from pdf_ingestor import processor
+from core.aws import S3Client
 
 # Initialize Powertools
 logger = Logger()
@@ -45,11 +45,13 @@ def lambda_handler(event: S3Event, context: LambdaContext) -> Dict[str, Any]:
         event_time = record.event_time
 
         # Get the S3 client from the boto3 session
-        s3_client = boto3.client("s3")
+        s3_client = S3Client(bucket_name=bucket_name)
 
         # Call head_object to get the object's metadata
         logger.info(f"Fetching metadata for s3://{bucket_name}/{object_key}")
-        response = s3_client.head_object(Bucket=bucket_name, Key=object_key)
+        response: Optional[Dict[str, Any]] = s3_client.head_object(
+            object_key=object_key
+        )
 
         # Metadata is returned in a 'metadata' dictionary, with keys in lowercase.
         metadata = response.get("Metadata", {})
