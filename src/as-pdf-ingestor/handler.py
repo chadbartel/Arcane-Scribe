@@ -2,6 +2,7 @@
 from typing import Dict, Any
 
 # Third Party
+import boto3
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from aws_lambda_powertools.utilities.data_classes import S3Event, event_source
@@ -43,6 +44,17 @@ def lambda_handler(event: S3Event, context: LambdaContext) -> Dict[str, Any]:
         event_name = record.event_name
         event_time = record.event_time
 
+        # Get the S3 client from the boto3 session
+        s3_client = boto3.client("s3")
+
+        # Call head_object to get the object's metadata
+        logger.info(f"Fetching metadata for s3://{bucket_name}/{object_key}")
+        response = s3_client.head_object(Bucket=bucket_name, Key=object_key)
+
+        # Metadata is returned in a 'metadata' dictionary, with keys in lowercase.
+        metadata = response.get("Metadata", {})
+        document_id = metadata.get("document_id")
+
         # Log the event details for debugging and traceability
         logger.info(
             "Processing S3 event record.",
@@ -55,6 +67,7 @@ def lambda_handler(event: S3Event, context: LambdaContext) -> Dict[str, Any]:
                 "object_key": object_key,
                 "object_version_id": object_version_id,
                 "object_size": record.s3.get_object.size,  # Size in bytes
+                "document_id": document_id,
             },
         )
 
@@ -68,7 +81,10 @@ def lambda_handler(event: S3Event, context: LambdaContext) -> Dict[str, Any]:
             # Call the main processing function from the local module
             # Pass the Powertools logger instance so the processor module can use the same contextual logging
             result = processor.process_s3_object(
-                bucket_name, object_key, logger
+                bucket_name=bucket_name,
+                object_key=object_key,
+                document_id=document_id,
+                lambda_logger=logger,
             )
 
             # Append the result to the results list for further processing or logging
