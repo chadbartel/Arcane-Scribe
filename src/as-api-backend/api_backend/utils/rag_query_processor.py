@@ -180,7 +180,7 @@ def _load_faiss_index_from_s3(
         return FAISS_INDEX_CACHE[composite_key]
 
     # Construct the S3 key for the FAISS index
-    s3_index_prefix = f"{srd_id}/faiss_index"
+    s3_index_prefix = f"{owner_id}/{srd_id}/faiss_index"
     safe_srd_id = "".join(
         c if c.isalnum() or c in ["-", "_"] else "_" for c in srd_id
     )
