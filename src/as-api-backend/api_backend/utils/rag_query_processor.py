@@ -69,15 +69,32 @@ def get_llm_instance(
     """
     global DEFAULT_LLM_INSTANCE  # Can be used if no dynamic config provided
 
-    # Validate generation config parameters
-    effective_model_kwargs = {}
-    if isinstance(generation_config, dict) and generation_config:
-        effective_model_kwargs = {
-            "temperature": float(generation_config.get("temperature", 0.1)),
-            "topP": float(generation_config.get("topP", 1.0)),
-            "maxTokenCount": int(generation_config.get("maxTokenCount", 1024)),
-            "stopSequences": generation_config.get("stopSequences", []),
-        }
+    # Initialize effective model kwargs
+    effective_model_kwargs: Dict[str, Any] = {}
+
+    # Handle 'temperature'
+    temp_value = generation_config.get("temperature")
+    effective_model_kwargs["temperature"] = (
+        float(temp_value) if temp_value is not None else 0.1
+    )
+
+    # Handle 'topP'
+    top_p_value = generation_config.get("topP")
+    effective_model_kwargs["topP"] = (
+        float(top_p_value) if top_p_value is not None else 1.0
+    )
+
+    # Handle 'maxTokenCount'
+    max_tokens_value = generation_config.get("maxTokenCount")
+    effective_model_kwargs["maxTokenCount"] = (
+        int(max_tokens_value) if max_tokens_value is not None else 1024
+    )
+
+    # Handle 'stopSequences'
+    stop_sequences_value = generation_config.get("stopSequences")
+    effective_model_kwargs["stopSequences"] = (
+        stop_sequences_value if stop_sequences_value is not None else []
+    )
 
     # Create ChatBedrock instance with effective model kwargs
     try:
