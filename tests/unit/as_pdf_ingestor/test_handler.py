@@ -39,18 +39,6 @@ def mock_logger(handler_module: MagicMock) -> Generator[MagicMock, None, None]:
 
 
 @pytest.fixture
-def mock_s3_client(handler_module: MagicMock) -> Generator[MagicMock, None, None]:
-    """Mock the S3Client class used by the handler."""
-    with patch.object(handler_module, "S3Client") as mock_s3_client_class:
-        mock_s3_client_instance = MagicMock()
-        mock_s3_client_instance.head_object.return_value = {
-            "Metadata": {"document_id": "test-document-123"}
-        }
-        mock_s3_client_class.return_value = mock_s3_client_instance
-        yield mock_s3_client_class
-
-
-@pytest.fixture
 def sample_lambda_context() -> MagicMock:
     """Return a sample Lambda context object."""
     context = MagicMock()
@@ -105,7 +93,6 @@ def test_lambda_handler_success_single_pdf(
     handler_module: MagicMock,
     mock_processor: MagicMock,
     mock_logger: MagicMock,
-    mock_s3_client: MagicMock,
     sample_s3_event: S3Event,
     sample_lambda_context: MagicMock,
 ):
@@ -124,7 +111,6 @@ def test_lambda_handler_success_single_pdf(
     mock_processor.process_s3_object.assert_called_once_with(
         bucket_name="test-documents-bucket",
         object_key="documents/test_document.pdf",
-        document_id="test-document-123",
         lambda_logger=mock_logger,
     )
     mock_logger.info.assert_any_call("PDF ingestion Lambda triggered.")
@@ -137,7 +123,6 @@ def test_lambda_handler_success_single_pdf(
             "object_key": "documents/test_document.pdf",
             "object_version_id": "test-version-id",
             "object_size": 1024,
-            "document_id": "test-document-123",
         },
     )
     mock_logger.info.assert_any_call(
@@ -152,7 +137,6 @@ def test_lambda_handler_multiple_pdf_files(
     handler_module: MagicMock,
     mock_processor: MagicMock,
     mock_logger: MagicMock,
-    mock_s3_client: MagicMock,
     sample_lambda_context: MagicMock,
 ):
     """Test processing multiple PDF files in a single event."""
@@ -221,13 +205,11 @@ def test_lambda_handler_multiple_pdf_files(
     mock_processor.process_s3_object.assert_any_call(
         bucket_name="test-documents-bucket",
         object_key="doc1.pdf",
-        document_id="test-document-123",
         lambda_logger=mock_logger,
     )
     mock_processor.process_s3_object.assert_any_call(
         bucket_name="test-documents-bucket",
         object_key="doc2.pdf",
-        document_id="test-document-123",
         lambda_logger=mock_logger,
     )
 
@@ -236,7 +218,6 @@ def test_lambda_handler_skip_non_pdf_files(
     handler_module: MagicMock,
     mock_processor: MagicMock,
     mock_logger: MagicMock,
-    mock_s3_client: MagicMock,
     sample_lambda_context: MagicMock,
 ):
     """Test that non-PDF files are skipped."""
@@ -295,7 +276,6 @@ def test_lambda_handler_file_extension_handling(
     handler_module: MagicMock,
     mock_processor: MagicMock,
     mock_logger: MagicMock,
-    mock_s3_client: MagicMock,
     sample_lambda_context: MagicMock,
     file_extension: str,
     should_process: bool,
@@ -337,7 +317,6 @@ def test_lambda_handler_file_extension_handling(
         mock_processor.process_s3_object.assert_called_once_with(
             bucket_name="test-documents-bucket",
             object_key=filename,
-            document_id="test-document-123",
             lambda_logger=mock_logger,
         )
         assert len(result["results"]) == 1
@@ -353,7 +332,6 @@ def test_lambda_handler_processor_exception(
     handler_module: MagicMock,
     mock_processor: MagicMock,
     mock_logger: MagicMock,
-    mock_s3_client: MagicMock,
     sample_s3_event: S3Event,
     sample_lambda_context: MagicMock,
 ):
@@ -380,7 +358,6 @@ def test_lambda_handler_mixed_success_and_failure(
     handler_module: MagicMock,
     mock_processor: MagicMock,
     mock_logger: MagicMock,
-    mock_s3_client: MagicMock,
     sample_lambda_context: MagicMock,
 ):
     """Test handling of mixed success and failure scenarios."""
@@ -439,7 +416,7 @@ def test_lambda_handler_mixed_success_and_failure(
     success_result = {"status": "success", "message": "Processed successfully"}
     error_message = "Processing failed"
 
-    def side_effect(bucket_name, object_key, document_id, lambda_logger):
+    def side_effect(bucket_name, object_key, lambda_logger):
         if object_key == "success.pdf":
             return success_result
         else:
@@ -465,7 +442,6 @@ def test_lambda_handler_empty_event(
     handler_module: MagicMock,
     mock_processor: MagicMock,
     mock_logger: MagicMock,
-    mock_s3_client: MagicMock,
     sample_lambda_context: MagicMock,
 ):
     """Test handling of empty S3 event."""
@@ -486,7 +462,6 @@ def test_lambda_handler_url_encoded_object_key(
     handler_module: MagicMock,
     mock_processor: MagicMock,
     mock_logger: MagicMock,
-    mock_s3_client: MagicMock,
     sample_lambda_context: MagicMock,
 ):
     """Test handling of URL-encoded object keys."""
@@ -525,7 +500,6 @@ def test_lambda_handler_url_encoded_object_key(
     mock_processor.process_s3_object.assert_called_once_with(
         bucket_name="test-documents-bucket",
         object_key="documents/file with spaces.pdf",
-        document_id="test-document-123",
         lambda_logger=mock_logger,
     )
 
@@ -533,7 +507,6 @@ def test_lambda_handler_url_encoded_object_key(
 def test_lambda_handler_logging_context_injection(
     handler_module: MagicMock,
     mock_processor: MagicMock,
-    mock_s3_client: MagicMock,
     sample_s3_event: S3Event,
     sample_lambda_context: MagicMock,
 ):
@@ -556,7 +529,6 @@ def test_lambda_handler_logging_context_injection(
 def test_s3_event_data_class_usage(
     handler_module: MagicMock,
     mock_processor: MagicMock,
-    mock_s3_client: MagicMock,
     sample_lambda_context: MagicMock,
 ):
     """Test that the handler properly uses S3Event data class features."""
@@ -589,10 +561,11 @@ def test_s3_event_data_class_usage(
     }
     s3_event = S3Event(event_data)
 
-    handler_module.lambda_handler(s3_event, sample_lambda_context)    # Verify that the handler accesses S3Event properties correctly
+    handler_module.lambda_handler(s3_event, sample_lambda_context)
+
+    # Verify that the handler accesses S3Event properties correctly
     mock_processor.process_s3_object.assert_called_once_with(
         bucket_name="test-bucket",
         object_key="test.pdf",
-        document_id="test-document-123",
         lambda_logger=handler_module.logger,
     )
