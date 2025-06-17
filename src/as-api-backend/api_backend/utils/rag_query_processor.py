@@ -184,18 +184,23 @@ def _load_and_merge_faiss_indices_for_srd(
         model_id=BEDROCK_EMBEDDING_MODEL_ID
     )
 
+    # Prepare a list to hold the FAISS vector stores
     vector_stores: List[FAISS] = []
     temp_base_dir = f"/tmp/{composite_key.replace('#', '_')}"
     shutil.rmtree(temp_base_dir, ignore_errors=True)  # Clean up previous runs
 
     for doc in processed_docs:
-        document_id = doc.get("sort_key")
+        # Get the sort key for the document
+        document_id = doc.get("document_id")
         if not document_id:
+            # Skip documents without an ID
             continue
 
+        # Create a local directory for this document's FAISS index
         local_faiss_dir = os.path.join(temp_base_dir, document_id)
         os.makedirs(local_faiss_dir, exist_ok=True)
 
+        # Construct the S3 index prefix for this SRD and document
         s3_index_prefix = f"{owner_id}/{srd_id}/vector_store"
 
         try:
