@@ -106,7 +106,7 @@ def process_s3_object(
         document_id=document_id,
         update_map={
             "processing_status": DocumentProcessingStatus.processing.value,
-        }
+        },
     )
 
     # Initialize the S3 client
@@ -163,7 +163,7 @@ def process_s3_object(
                 document_id=document_id,
                 update_map={
                     "processing_status": DocumentProcessingStatus.failed.value,
-                }
+                },
             )
 
             return
@@ -184,7 +184,7 @@ def process_s3_object(
                 document_id=document_id,
                 update_map={
                     "processing_status": DocumentProcessingStatus.failed.value,
-                }
+                },
             )
 
             return
@@ -236,7 +236,7 @@ def process_s3_object(
             document_id=document_id,
             update_map={
                 "processing_status": DocumentProcessingStatus.failed.value,
-            }
+            },
         )
         raise
     except Exception as e:
@@ -250,7 +250,7 @@ def process_s3_object(
             document_id=document_id,
             update_map={
                 "processing_status": DocumentProcessingStatus.failed.value,
-            }
+            },
         )
         raise
     finally:
@@ -278,7 +278,7 @@ def process_s3_object(
         document_id=document_id,
         update_map={
             "processing_status": DocumentProcessingStatus.completed.value,
-        }
+        },
     )
 
     # Save metadata about the processed document
