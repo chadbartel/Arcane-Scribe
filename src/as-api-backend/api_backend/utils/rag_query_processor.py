@@ -16,6 +16,7 @@ from langchain.prompts import PromptTemplate
 
 # Local Modules
 from core.aws import S3Client, DynamoDb
+from core.utils import DocumentProcessingStatus
 from core.services import DatabaseService
 from core.utils.config import (
     BEDROCK_EMBEDDING_MODEL_ID,
@@ -164,7 +165,8 @@ def _load_and_merge_faiss_indices_for_srd(
     processed_docs = [
         doc
         for doc in document_records
-        if doc.get("processing_status") == "INGESTION_COMPLETE"
+        if doc.get("processing_status")
+        == DocumentProcessingStatus.completed.value
     ]
 
     if not processed_docs:
