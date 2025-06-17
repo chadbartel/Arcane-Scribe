@@ -99,9 +99,9 @@ def get_presigned_upload_url(
             file_name=file_name,
             srd_id=srd_id,
             owner_id=owner_id,
+            document_id=document_id,
             expiration=expiration_seconds,
             content_type=content_type,
-            metadata={"document_id": document_id},
         )
         logger.info(
             f"Successfully generated presigned URL for key: {file_name}"

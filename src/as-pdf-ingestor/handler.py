@@ -45,21 +45,8 @@ def lambda_handler(event: S3Event, context: LambdaContext) -> Dict[str, Any]:
         event_name = record.event_name
         event_time = record.event_time
 
-        # Get the S3 client from the boto3 session
-        s3_client = S3Client(bucket_name=bucket_name)
-
-        # Decode object key to handle any URL encoding
-        decoded_key = urllib.parse.unquote_plus(object_key)
-
         # Call head_object to get the object's metadata
         logger.info(f"Fetching metadata for s3://{bucket_name}/{object_key}")
-        response: Optional[Dict[str, Any]] = s3_client.head_object(
-            object_key=decoded_key
-        )
-
-        # Metadata is returned in a 'metadata' dictionary, with keys in lowercase.
-        metadata = response.get("Metadata", {})
-        document_id = metadata.get("document_id")
 
         # Log the event details for debugging and traceability
         logger.info(
@@ -73,7 +60,6 @@ def lambda_handler(event: S3Event, context: LambdaContext) -> Dict[str, Any]:
                 "object_key": object_key,
                 "object_version_id": object_version_id,
                 "object_size": record.s3.get_object.size,  # Size in bytes
-                "document_id": document_id,
             },
         )
 
@@ -89,7 +75,6 @@ def lambda_handler(event: S3Event, context: LambdaContext) -> Dict[str, Any]:
             result = processor.process_s3_object(
                 bucket_name=bucket_name,
                 object_key=object_key,
-                document_id=document_id,
                 lambda_logger=logger,
             )
 

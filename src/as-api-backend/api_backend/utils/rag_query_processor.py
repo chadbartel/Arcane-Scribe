@@ -4,7 +4,7 @@ import time
 import json
 import shutil
 import hashlib
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, List
 
 # Third Party
 from botocore.exceptions import ClientError
@@ -16,11 +16,13 @@ from langchain.prompts import PromptTemplate
 
 # Local Modules
 from core.aws import S3Client, DynamoDb
+from core.services import DatabaseService
 from core.utils.config import (
     BEDROCK_EMBEDDING_MODEL_ID,
     BEDROCK_TEXT_GENERATION_MODEL_ID,
     VECTOR_STORE_BUCKET_NAME,
     QUERY_CACHE_TABLE_NAME,
+    DOCUMENTS_METADATA_TABLE_NAME,
 )
 from api_backend.aws import BedrockRuntimeClient
 
@@ -31,10 +33,11 @@ logger = Logger(service="rag-query-processor")
 CACHE_TTL_SECONDS = 3600  # Cache responses for 1 hour, adjust as needed
 
 # Settings for the FAISS index cache
-FAISS_INDEX_CACHE: dict[str, FAISS] = {}
-MAX_CACHE_SIZE = 3
+FAISS_INDEX_CACHE: Dict[str, FAISS] = {}
+MAX_CACHE_SIZE = 5
 
-# Initialize default LLM instance
+# Global LLM and Bedrock clients to reuse across warm invocations
+BEDROCK_RUNTIME_CLIENT = BedrockRuntimeClient()
 DEFAULT_LLM_INSTANCE: Optional[ChatBedrock] = None
 
 
@@ -65,65 +68,19 @@ def get_llm_instance(
     """
     global DEFAULT_LLM_INSTANCE  # Can be used if no dynamic config provided
 
-    # Initialize the Bedrock runtime client
-    bedrock_runtime_client = BedrockRuntimeClient()
-
-    # Initialize the model kwargs as an empty dictionary
+    # Validate generation config parameters
     effective_model_kwargs = {}
-
-    # Validate and merge client-provided generation_config
-    if "temperature" in generation_config:
-        temp = generation_config["temperature"]
-        if isinstance(temp, (float, int)) and 0.0 <= temp <= 1.0:
-            effective_model_kwargs["temperature"] = float(temp)
-        else:
-            logger.warning(
-                f"Invalid temperature value: {temp}. Using default."
-            )
-
-    if "topP" in generation_config:
-        top_p_val = generation_config["topP"]
-        if isinstance(top_p_val, (float, int)) and 0.0 <= top_p_val <= 1.0:
-            effective_model_kwargs["topP"] = float(top_p_val)
-        else:
-            logger.warning(f"Invalid topP value: {top_p_val}. Using default.")
-
-    if (
-        "maxTokenCount" in generation_config
-    ):  # Note: Bedrock API uses "maxTokenCount"
-        max_tokens = generation_config["maxTokenCount"]
-        # Titan Text Express max is 8192, Lite is 4096
-        # Assuming BEDROCK_TEXT_GENERATION_MODEL_ID is Express or Lite
-        # Add more specific validation if needed based on the exact model.
-        if isinstance(max_tokens, int) and 0 <= max_tokens <= 8192:
-            effective_model_kwargs["maxTokenCount"] = max_tokens
-        else:
-            logger.warning(
-                f"Invalid maxTokenCount: {max_tokens}. Using default or Bedrock's max."
-            )
-            # Do not set maxTokenCount if invalid to let Bedrock use its internal default or max.
-            # Or, set to a known safe default like 1024 if you prefer explicit control.
-            if "maxTokenCount" in effective_model_kwargs and not (
-                isinstance(max_tokens, int) and 0 <= max_tokens <= 8192
-            ):
-                del effective_model_kwargs[
-                    "maxTokenCount"
-                ]  # remove if invalid, let model default
-
-    if "stopSequences" in generation_config:
-        stop_seqs = generation_config["stopSequences"]
-        if isinstance(stop_seqs, list) and all(
-            isinstance(s, str) for s in stop_seqs
-        ):
-            effective_model_kwargs["stopSequences"] = stop_seqs
-        else:
-            logger.warning(
-                f"Invalid stopSequences: {stop_seqs}. Ignoring client value."
-            )
+    if isinstance(generation_config, dict) and generation_config:
+        effective_model_kwargs = {
+            "temperature": float(generation_config.get("temperature", 0.1)),
+            "topP": float(generation_config.get("topP", 1.0)),
+            "maxTokenCount": int(generation_config.get("maxTokenCount", 1024)),
+            "stopSequences": generation_config.get("stopSequences", []),
+        }
 
     # Create ChatBedrock instance with effective model kwargs
     try:
-        current_llm = bedrock_runtime_client.get_chat_model(
+        current_llm = BEDROCK_RUNTIME_CLIENT.get_chat_model(
             model_id=BEDROCK_TEXT_GENERATION_MODEL_ID,
             model_kwargs=effective_model_kwargs,
         )
@@ -136,7 +93,7 @@ def get_llm_instance(
         logger.exception(
             f"Failed to initialize dynamic ChatBedrock instance: {e_llm_init}"
         )
-        DEFAULT_LLM_INSTANCE = bedrock_runtime_client.get_chat_model(
+        DEFAULT_LLM_INSTANCE = BEDROCK_RUNTIME_CLIENT.get_chat_model(
             model_id=BEDROCK_TEXT_GENERATION_MODEL_ID,
             model_kwargs={
                 "temperature": 0.1,
@@ -146,95 +103,156 @@ def get_llm_instance(
         return DEFAULT_LLM_INSTANCE  # Return default instance if dynamic config fails
 
 
-def _load_faiss_index_from_s3(
+def _load_and_merge_faiss_indices_for_srd(
     owner_id: str, srd_id: str, lambda_logger: Logger
 ) -> Optional[FAISS]:
-    """Load FAISS index from S3 for the given SRD ID.
+    """Load and merge FAISS indices for a given SRD (System Reference Document)
+    ID. This function retrieves all FAISS indices associated with the specified
+    SRD ID from S3, merges them into a single FAISS index, and caches the
+    result in memory for future queries. It first checks an in-memory cache,
+    then queries DynamoDB for document metadata, downloads the individual FAISS
+    indices from S3, and finally merges them into a single FAISS index.
 
     Parameters
     ----------
+    owner_id : str
+        The owner ID of the user making the query, typically extracted from
+        the authentication token.
     srd_id : str
-        The SRD ID to load the FAISS index for.
+        The SRD ID to load the FAISS indices for.
     lambda_logger : Logger
         The logger instance to use for logging.
 
     Returns
     -------
     Optional[FAISS]
-        The loaded FAISS index, or None if loading failed.
+        The merged FAISS index for the specified SRD ID, or None if loading
+        or merging failed.
     """
-    # Initialize the Bedrock runtime client
-    bedrock_runtime_client = BedrockRuntimeClient()
-
-    # Create composite key for FAISS index cache
+    # Construct a composite key for the FAISS index cache
     composite_key = f"{owner_id}#{srd_id}"
 
-    # Initialize the S3 client
-    s3_client = S3Client(bucket_name=VECTOR_STORE_BUCKET_NAME)
-
-    # Check if the FAISS index is already in cache
-    if owner_id in FAISS_INDEX_CACHE and srd_id in FAISS_INDEX_CACHE:
+    # 1. Check in-memory cache first
+    if composite_key in FAISS_INDEX_CACHE:
         lambda_logger.info(
             f"FAISS index for '{composite_key}' found in cache."
         )
         return FAISS_INDEX_CACHE[composite_key]
 
-    # Construct the S3 key for the FAISS index
-    s3_index_prefix = f"{owner_id}/{srd_id}/faiss_index"
-    safe_srd_id = "".join(
-        c if c.isalnum() or c in ["-", "_"] else "_" for c in srd_id
+    # Initialize clients
+    db_service = DatabaseService(table_name=DOCUMENTS_METADATA_TABLE_NAME)
+    s3_client = S3Client(bucket_name=VECTOR_STORE_BUCKET_NAME)
+
+    # 2. Query DynamoDB for all documents in the SRD
+    lambda_logger.info(
+        f"Querying DynamoDB for documents in SRD: {composite_key}"
     )
-    local_faiss_dir = f"/tmp/{safe_srd_id}_faiss_index_query"
-
     try:
-        # Create local directory for FAISS index
-        if os.path.exists(local_faiss_dir):
-            shutil.rmtree(local_faiss_dir)
-        os.makedirs(local_faiss_dir, exist_ok=True)
-
-        # Download the required files from S3
-        required_files = ["index.faiss", "index.pkl"]
-        for file_name in required_files:
-            s3_key = f"{s3_index_prefix}/{file_name}"
-            local_file_path = os.path.join(local_faiss_dir, file_name)
-            lambda_logger.info(
-                f"Downloading s3://{VECTOR_STORE_BUCKET_NAME}/{s3_key} to {local_file_path}"
+        document_records = db_service.list_document_records(
+            owner_id=owner_id, srd_id=srd_id
+        ).get("Items", [])
+        if not document_records:
+            logger.warning(
+                f"No document metadata found for SRD: {composite_key}"
             )
-            download_file_success = s3_client.download_file(
-                object_key=s3_key, download_path=local_file_path
-            )
-            logger.info(
-                f"Result of S3 download for {s3_key}: "
-                f"{'SUCCESS' if download_file_success else 'FAILURE'}"
-            )
-
-        # Load the FAISS index from the local directory
-        vector_store = FAISS.load_local(
-            folder_path=local_faiss_dir,
-            embeddings=bedrock_runtime_client.get_embedding_model(
-                model_id=BEDROCK_EMBEDDING_MODEL_ID
-            ),  # Uses BedrockEmbeddings
-            allow_dangerous_deserialization=True,
-        )
-
-        # Check if the vector store was loaded successfully
-        if len(FAISS_INDEX_CACHE) >= MAX_CACHE_SIZE:
-            oldest_key = next(iter(FAISS_INDEX_CACHE))
-            FAISS_INDEX_CACHE.pop(oldest_key)
-        FAISS_INDEX_CACHE[composite_key] = vector_store
-        return vector_store
+            return None
     except Exception as e:
-        lambda_logger.exception(
-            f"Error loading FAISS index for '{composite_key}': {e}"
+        logger.exception(f"Failed to query DynamoDB for SRD documents: {e}")
+        return None
+
+    # Filter for successfully processed documents
+    processed_docs = [
+        doc
+        for doc in document_records
+        if doc.get("processing_status") == "INGESTION_COMPLETE"
+    ]
+
+    if not processed_docs:
+        logger.warning(
+            f"No successfully processed documents found for SRD: {composite_key}"
         )
         return None
-    finally:
-        # Clean up the local FAISS directory
-        if os.path.exists(local_faiss_dir):
-            try:
-                shutil.rmtree(local_faiss_dir)
-            except Exception:
-                pass
+
+    lambda_logger.info(
+        f"Found {len(processed_docs)} processed documents for this SRD."
+    )
+
+    # 3. Download and load all FAISS indices
+    embedding_model = BEDROCK_RUNTIME_CLIENT.get_embedding_model(
+        model_id=BEDROCK_EMBEDDING_MODEL_ID
+    )
+
+    vector_stores: List[FAISS] = []
+    temp_base_dir = f"/tmp/{composite_key.replace('#', '_')}"
+    shutil.rmtree(temp_base_dir, ignore_errors=True)  # Clean up previous runs
+
+    for doc in processed_docs:
+        document_id = doc.get("sort_key")
+        if not document_id:
+            continue
+
+        local_faiss_dir = os.path.join(temp_base_dir, document_id)
+        os.makedirs(local_faiss_dir, exist_ok=True)
+
+        s3_index_prefix = f"{owner_id}/{srd_id}/vector_store"
+
+        try:
+            # Download index.faiss and index.pkl (or however they are named)
+            s3_client.download_file(
+                object_key=f"{s3_index_prefix}/{document_id}.faiss",
+                download_path=os.path.join(
+                    local_faiss_dir, f"{document_id}.faiss"
+                ),
+            )
+            s3_client.download_file(
+                object_key=f"{s3_index_prefix}/{document_id}.pkl",
+                download_path=os.path.join(
+                    local_faiss_dir, f"{document_id}.pkl"
+                ),
+            )
+
+            # Load the individual index from its local path
+            loaded_store = FAISS.load_local(
+                folder_path=local_faiss_dir,
+                embeddings=embedding_model,
+                index_name=document_id,
+                allow_dangerous_deserialization=True,
+            )
+            vector_stores.append(loaded_store)
+            lambda_logger.info(
+                f"Successfully loaded index for document: {document_id}"
+            )
+
+        except ClientError as e:
+            lambda_logger.error(
+                f"Could not download index for document {document_id}. Error: {e}"
+            )
+            continue  # Skip this document and try others
+
+    # Cleanup downloaded files
+    shutil.rmtree(temp_base_dir, ignore_errors=True)
+
+    if not vector_stores:
+        lambda_logger.error("Failed to load any vector stores for the SRD.")
+        return None
+
+    # 4. Merge the indices
+    merged_vector_store = vector_stores[0]
+    if len(vector_stores) > 1:
+        lambda_logger.info(
+            f"Merging {len(vector_stores)} vector stores into one..."
+        )
+        for i in range(1, len(vector_stores)):
+            merged_vector_store.merge_from(vector_stores[i])
+        lambda_logger.info("Merge complete.")
+
+    # 5. Update cache
+    if len(FAISS_INDEX_CACHE) >= MAX_CACHE_SIZE:
+        oldest_key = next(iter(FAISS_INDEX_CACHE))
+        FAISS_INDEX_CACHE.pop(oldest_key)
+    FAISS_INDEX_CACHE[composite_key] = merged_vector_store
+
+    return merged_vector_store
 
 
 def get_answer_from_rag(
@@ -329,8 +347,10 @@ def get_answer_from_rag(
                 f"Error processing cache item: {e}. Proceeding without cache."
             )
 
-    # 2. Load the FAISS index from S3
-    vector_store = _load_faiss_index_from_s3(owner_id, srd_id, lambda_logger)
+    # 2. Load the MERGED FAISS index for the entire SRD
+    vector_store = _load_and_merge_faiss_indices_for_srd(
+        owner_id=owner_id, srd_id=srd_id, lambda_logger=lambda_logger
+    )
     if not vector_store:
         return {"error": f"Could not load SRD data for '{composite_key}'."}
 
@@ -341,7 +361,7 @@ def get_answer_from_rag(
     try:
         # The retriever will fetch relevant documents.
         retriever = vector_store.as_retriever(
-            search_kwargs={"k": number_of_documents}  # Retrieve top 4 docs
+            search_kwargs={"k": number_of_documents}
         )
     except Exception as e:
         lambda_logger.exception(f"Error creating retriever: {e}")
@@ -373,7 +393,10 @@ def get_answer_from_rag(
 
         # Format the retrieved documents into a string
         context_str = "\n\n---\n\n".join([doc.page_content for doc in docs])
-        formatted_answer = f"Based on the retrieved SRD content for your query '{query_text}':\n{context_str}"
+        formatted_answer = (
+            "Based on the retrieved SRD content for your query "
+            f"'{query_text}':\n{context_str}"
+        )
         return {"answer": formatted_answer, "source": "retrieval_only"}
 
     # Initialize LLM instance with dynamic config for this request
@@ -416,7 +439,7 @@ Helpful Answer:"""
     #  3. Send that to the 'llm' (ChatBedrock).
     qa_chain = RetrievalQA.from_chain_type(
         llm=current_llm_instance,  # Use dynamically configured LLM
-        chain_type="stuff",  # "stuff" is good for short contexts, ensure it fits model context window
+        chain_type="stuff",  # "stuff" is good for short contexts
         retriever=retriever,
         chain_type_kwargs={"prompt": PROMPT},
         return_source_documents=True,  # Optionally return source documents
@@ -427,7 +450,8 @@ Helpful Answer:"""
         f"Invoking RAG chain with Bedrock LLM for query: '{final_query_text}'"
     )
     try:
-        # The 'query' key for invoke should contain what the {question} placeholder in PROMPT expects
+        # The 'query' key for invoke should contain what the {question}
+        #   placeholder in PROMPT expects.
         result = qa_chain.invoke(
             {"query": final_query_text}
         )  # Langchain 0.2.x uses invoke
@@ -451,6 +475,7 @@ Helpful Answer:"""
                         "answer": answer,
                         "owner_id": owner_id,
                         "srd_id": srd_id,
+                        "document_id": document_id,
                         "query_text": query_text,
                         "source_documents_summary": (
                             "; ".join(source_docs_content)

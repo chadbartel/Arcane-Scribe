@@ -16,6 +16,7 @@ def generate_presigned_url(
     file_name: str,
     srd_id: str,
     owner_id: str,
+    document_id: str,
     expiration: Optional[int] = 3600,
     content_type: Optional[str] = "application/pdf",
     metadata: Optional[dict] = None,
@@ -31,6 +32,9 @@ def generate_presigned_url(
         The client-specified SRD identifier.
     owner_id : str
         The Cognito username of the owner of the document.
+    document_id : str
+        The unique identifier for the document, used to construct the S3 object
+        key.
     expiration : Optional[int], optional
         The expiration time for the presigned URL in seconds, defaults to 3600
         seconds (1 hour).
@@ -52,7 +56,7 @@ def generate_presigned_url(
         If there is an error generating the presigned URL.
     """
     # Construct object key using SRD ID as prefix
-    object_key = f"{owner_id}/{srd_id}/{file_name}"
+    object_key = f"{owner_id}/{srd_id}/{document_id}/{file_name}"
 
     # Initialize S3 client
     s3_client = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)

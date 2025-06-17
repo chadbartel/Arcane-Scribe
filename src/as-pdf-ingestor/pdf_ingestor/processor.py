@@ -27,38 +27,42 @@ from pdf_ingestor.aws import BedrockRuntimeClient
 logger = Logger(service="pdf-ingestor-processor-bedrock")
 
 
-def extract_srd_info(object_key: str) -> Tuple[str, str, str]:
-    """Extract the SRD ID and filename from the S3 object key.
+def extract_path_info(object_key: str) -> Tuple[str, str, str, str]:
+    """Extracts the owner ID, SRD ID, document ID, and filename from an S3
+    object key.
 
     The S3 object key is expected to be in the format:
-    `<owner_id>/<srd_id>/<filename>`, where `<owner_id>` is the owner of the
-    SRD, `<srd_id>` is the ID of the SRD, and `<filename>` is the name of
-    the file.
+    `<owner_id>/<srd_id>/<document_id>/<filename>`, where:
+    - `<owner_id>` is the Cognito username of the document owner.
+    - `<srd_id>` is the client-specified SRD identifier.
+    - `<document_id>` is the unique identifier for the document.
+    - `<filename>` is the name of the file being processed.
 
     Parameters
     ----------
     object_key : str
-        The S3 object key to extract the SRD ID and filename from.
+        The S3 object key from which to extract the information.
 
     Returns
     -------
-    Tuple[str, str, str]
-        A tuple containing the owner ID, SRD ID, and the filename.
+    Tuple[str, str, str, str]
+        A tuple containing the owner ID, SRD ID, document ID, and filename.
     """
-    # Split the object key into parts to extract owner ID, SRD ID, and filename
-    parts = object_key.split("/", 2)
+    # Split the object key into parts
+    parts = object_key.split("/", 3)
 
-    if len(parts) < 3:
+    # Ensure there are enough parts to extract the required information
+    if len(parts) < 4:
         raise ValueError(
             f"Invalid S3 object key format: {object_key}. "
-            "Expected format is '<owner_id>/<srd_id>/<filename>'."
+            "Expected format is '<owner_id>/<srd_id>/<document_id>/<filename>'."
         )
 
-    return parts[0], parts[1], parts[2]
+    return parts[0], parts[1], parts[2], parts[3]
 
 
 def process_s3_object(
-    bucket_name: str, object_key: str, document_id: str, lambda_logger: Logger
+    bucket_name: str, object_key: str, lambda_logger: Logger
 ) -> Optional[Dict[str, Any]]:
     """Process a PDF file from S3, generate embeddings using Bedrock,
     and create a FAISS index. The FAISS index is then uploaded back to S3.
@@ -69,8 +73,6 @@ def process_s3_object(
         The name of the S3 bucket containing the PDF file.
     object_key : str
         The key of the PDF file in the S3 bucket.
-    document_id : str
-        The unique identifier for the document, used for logging and tracking.
     lambda_logger : Logger
         The logger instance for logging messages.
 
@@ -94,7 +96,9 @@ def process_s3_object(
         For any other unexpected errors during processing.
     """
     # Extract SRD ID form object key
-    owner_id, srd_id, filename = extract_srd_info(object_key=object_key)
+    owner_id, srd_id, document_id, filename = extract_path_info(
+        object_key=object_key
+    )
 
     # Initialize database service
     db_service = DatabaseService(table_name=DOCUMENTS_METADATA_TABLE_NAME)
@@ -123,14 +127,11 @@ def process_s3_object(
     # Decode object key to handle any URL encoding
     decoded_key = urllib.parse.unquote_plus(object_key)
 
-    # Validate the bucket name and object key
-    base_file_name = os.path.basename(filename)
-    safe_base_file_name = "".join(
-        c if c.isalnum() or c in [".", "-"] else "_" for c in base_file_name
+    # Define a unique temporary path for the FAISS index using the document_id
+    temp_pdf_path = f"/tmp/{os.path.basename(filename)}"
+    temp_faiss_index_path = (
+        f"/tmp/{document_id}"  # Use document_id for the temp folder name
     )
-    temp_pdf_path = f"/tmp/{safe_base_file_name}"
-    temp_faiss_index_name = f"{owner_id}_{srd_id}_faiss_index"
-    temp_faiss_index_path = f"/tmp/{temp_faiss_index_name}"
 
     try:
         # Download the PDF file from S3
@@ -196,22 +197,30 @@ def process_s3_object(
         vector_store = FAISS.from_documents(texts, embedding_model)
         lambda_logger.info("FAISS index created successfully in memory.")
 
-        # Save the FAISS index to a temporary directory
+        # Clean up any old temporary directories if they exist
         if os.path.exists(temp_faiss_index_path):
             shutil.rmtree(temp_faiss_index_path)
         os.makedirs(temp_faiss_index_path, exist_ok=True)
-        vector_store.save_local(folder_path=temp_faiss_index_path)
+
+        # Save the FAISS index locally using the document_id as the index_name
+        vector_store.save_local(
+            folder_path=temp_faiss_index_path,
+            index_name=document_id,
+        )
         lambda_logger.info(
             f"FAISS index saved locally to directory: {temp_faiss_index_path}"
         )
 
+        # Define a more specific S3 prefix for the vector store
+        s3_index_prefix = f"{owner_id}/{srd_id}/vector_store"
+
         # Upload the FAISS index files to S3
-        s3_index_prefix = f"{owner_id}/{srd_id}/faiss_index"
         for file_name_in_index_dir in os.listdir(temp_faiss_index_path):
             local_file_to_upload = os.path.join(
                 temp_faiss_index_path, file_name_in_index_dir
             )
             s3_target_key = f"{s3_index_prefix}/{file_name_in_index_dir}"
+
             lambda_logger.info(
                 f"Uploading {local_file_to_upload} to s3://{VECTOR_STORE_BUCKET_NAME}/{s3_target_key}"
             )
@@ -285,6 +294,7 @@ def process_s3_object(
     metadata = {
         "owner_id": owner_id,
         "srd_id": srd_id,
+        "document_id": document_id,
         "original_filename": filename,
         "chunk_count": len(texts),
         "source_bucket": bucket_name,
