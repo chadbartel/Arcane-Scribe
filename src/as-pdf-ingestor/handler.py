@@ -1,6 +1,5 @@
 # Standard Library
-import urllib.parse
-from typing import Dict, Any, Optional
+from typing import Dict, Any
 
 # Third Party
 from aws_lambda_powertools import Logger
@@ -9,7 +8,6 @@ from aws_lambda_powertools.utilities.data_classes import S3Event, event_source
 
 # Local Modules
 from pdf_ingestor import processor
-from core.aws import S3Client
 
 # Initialize Powertools
 logger = Logger()

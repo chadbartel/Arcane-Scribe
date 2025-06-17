@@ -475,7 +475,6 @@ Helpful Answer:"""
                         "answer": answer,
                         "owner_id": owner_id,
                         "srd_id": srd_id,
-                        "document_id": document_id,
                         "query_text": query_text,
                         "source_documents_summary": (
                             "; ".join(source_docs_content)
