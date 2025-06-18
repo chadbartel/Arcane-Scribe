@@ -88,3 +88,41 @@ class CognitoIdpClient:
         except ClientError as e:
             logger.error(f"Error initiating auth: {e}")
             raise e
+
+    def admin_list_groups_for_user(
+        self,
+        user_pool_id: str,
+        username: str
+    ) -> Dict[str, List[Dict[str, str]]]:
+        """Lists the groups that a user belongs to in a Cognito user pool.
+
+        Parameters
+        ----------
+        user_pool_id : str
+            The ID of the Cognito user pool.
+        username : str
+            The username of the user.
+
+        Returns
+        -------
+        Dict[str, List[Dict[str, str]]]
+            A dictionary containing the groups the user belongs to.
+
+        Raises
+        ------
+        ClientError
+            If there is an error retrieving the groups for the user.
+        """
+
+        try:
+            logger.info(
+                f"Listing groups for user {username} in user pool {user_pool_id}"
+            )
+            response = self.client.admin_list_groups_for_user(
+                UserPoolId=user_pool_id,
+                Username=username
+            )
+            return response
+        except ClientError as e:
+            logger.error(f"Error listing groups for user: {e}")
+            raise e
