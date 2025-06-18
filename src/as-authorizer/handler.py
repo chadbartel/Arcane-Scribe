@@ -51,6 +51,11 @@ def lambda_handler(
     authorization_token = event.get("authorizationToken")
     method_arn = event.get("methodArn")
 
+    # Initialize auth response to deny access by default
+    auth_response = generate_policy(
+        principal_id="user", effect="Deny", resource=method_arn
+    )
+
     # Initialize Cognito client
     cognito_client = CognitoIdpClient()
 
@@ -101,7 +106,9 @@ def lambda_handler(
             logger.info(
                 f"Cognito authentication successful for user: {username}"
             )
-            return generate_policy(username, "Allow", method_arn)
+            auth_response = generate_policy(
+                principal_id=username, effect="Allow", resource=method_arn
+            )
         # If AuthenticationResult is not present, it indicates a challenge
         else:
             logger.warning(
@@ -109,6 +116,28 @@ def lambda_handler(
                 f"AuthenticationResult. Challenge: {cognito_response.get('ChallengeName')}"
             )
             raise Exception("Unauthorized")
+
+        # 4. Check if the authenticated user is in the 'Admins' group
+        user_groups_response = cognito_client.admin_list_groups_for_user(
+            user_pool_id=USER_POOL_ID,
+            username=username,
+        )
+
+        # Assume user is not in 'Admins' group by default
+        is_admin = False
+
+        # Get a list of the group names
+        group_names = [
+            group["GroupName"] for group in user_groups_response.get("Groups", [])
+        ]
+
+        # Check if the user is in the 'Admins' group
+        if "Admins" in group_names:
+            is_admin = True
+            logger.info(f"User {username} is in the 'Admins' group.")
+
+        # Add context to the policy for users
+        auth_response["context"] = {"isAdmin": str(is_admin).lower()}
 
     # Handle specific exceptions for better error reporting
     except binascii.Error as e:
@@ -144,3 +173,5 @@ def lambda_handler(
             f"Unexpected error during token validation for user (if known) or token: {e}"
         )
         raise Exception("Unauthorized")
+
+    return auth_response
