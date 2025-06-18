@@ -288,15 +288,11 @@ def delete_all_document_records(
     s3_client = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
 
     # Get all documents for the given owner ID and SRD ID
-    logger.info(
-        f"Retrieving all document files for SRD ID {srd_id}"
-    )
+    logger.info(f"Retrieving all document files for SRD ID {srd_id}")
     document_objects = s3_client.list_objects(prefix=f"{owner_id}/{srd_id}/")
 
     # Delete each document file from S3
-    logger.info(
-        f"Deleting all document files for SRD ID {srd_id}"
-    )
+    logger.info(f"Deleting all document files for SRD ID {srd_id}")
     for document_object in document_objects:
         document_key = document_object.get("Key")
         if document_key:
@@ -316,15 +312,11 @@ def delete_all_document_records(
 
     # Get all vector store files for the given owner ID and SRD ID
     vector_store_prefix = f"{owner_id}/{srd_id}/vector_store/"
-    logger.info(
-        f"Retrieving all vector store files for SRD ID {srd_id}"
-    )
+    logger.info(f"Retrieving all vector store files for SRD ID {srd_id}")
     vector_store_objects = s3_client.list_objects(prefix=vector_store_prefix)
 
     # Delete each vector store file from S3
-    logger.info(
-        f"Deleting all vector store files for SRD ID {srd_id}"
-    )
+    logger.info(f"Deleting all vector store files for SRD ID {srd_id}")
     for vector_store_object in vector_store_objects:
         vector_store_key = vector_store_object.get("Key")
         if vector_store_key:
@@ -352,9 +344,7 @@ def delete_all_document_records(
     db_service = DatabaseService(table_name=DOCUMENTS_METADATA_TABLE_NAME)
 
     # Delete all document records for the given SRD ID
-    logger.info(
-        f"Deleting all document metadata for SRD ID {srd_id}"
-    )
+    logger.info(f"Deleting all document metadata for SRD ID {srd_id}")
     response = db_service.delete_all_document_records(
         owner_id=owner_id, srd_id=srd_id
     )
