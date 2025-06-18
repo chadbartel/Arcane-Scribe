@@ -230,3 +230,45 @@ class DatabaseService:
                 f":{k}": v for k, v in update_map.items()
             },
         )
+
+    def delete_all_document_records(
+        self, owner_id: str, srd_id: str
+    ) -> Dict[str, Any]:
+        """Delete all document records for a specific owner and SRD.
+
+        Parameters
+        ----------
+        owner_id : str
+            The Cognito username of the owner of the documents.
+        srd_id : str
+            The ID of the SRD (System Requirements Document) associated with
+            the documents.
+
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary containing a message indicating the result of the
+            deletion operation.
+        """
+        # Construct the composite key for the owner and SRD
+        owner_srd_composite = f"{owner_id}#{srd_id}"
+
+        # Get all items for the owner and SRD
+        items = self.list_document_records(
+            owner_id=owner_id, srd_id=srd_id
+        ).get("Items", [])
+
+        # If no items found, return a message
+        if not items:
+            return {"message": "No document records found to delete."}
+
+        # Delete each item
+        for item in items:
+            self.dynamodb.delete_item(
+                key={
+                    "owner_srd_composite": owner_srd_composite,
+                    "document_id": item["document_id"],
+                }
+            )
+
+        return {"message": "All document records deleted successfully."}
