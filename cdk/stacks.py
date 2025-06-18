@@ -243,6 +243,22 @@ class ArcaneScribeStack(Stack):
             self.as_backend_lambda
         )
 
+        # Grant Cognito permissions for the backend Lambda
+        self.as_backend_lambda.add_to_role_policy(
+            self.create_iam_policy_statement(
+                construct_id="CognitoAdminInitiateAuthPolicy",
+                actions=[
+                    "cognito-idp:AdminCreateUser",
+                    "cognito-idp:AdminDeleteUser",
+                    "cognito-idp:AdminGetUser",
+                    "cognito-idp:AdminUpdateUserAttributes",
+                    "cognito-idp:ListUsers",
+                    "cognito-idp:ListUsersInGroup"
+                ],
+                resources=[cognito_nested_stack.user_pool.user_pool_arn],
+            ).statement
+        )
+
         # Lambda for PDF ingestion and processing
         self.pdf_ingestor_lambda = self.create_lambda_function(
             construct_id="PdfIngestorLambda",
