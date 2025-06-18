@@ -41,7 +41,7 @@ class CognitoStack(NestedStack):
         )
 
         # 3. Use the custom construct to create the admin user
-        CognitoAdminUser(
+        _admin_user = CognitoAdminUser(
             self,
             "CognitoAdminUser",
             user_pool=self.user_pool,
@@ -49,6 +49,28 @@ class CognitoStack(NestedStack):
             admin_email=admin_email,
             admin_password_secret_name=admin_password_secret_name,
         )
+
+        # 4. Create the 'Admins' group in the User Pool
+        self.admins_group = cognito.CfnUserPoolGroup(
+            self,
+            "AdminsGroup",
+            group_name=f"admins{self.stack_suffix}",
+            user_pool_id=self.user_pool.user_pool_id,
+            description="Group for Arcane Scribe administrators",
+            precedence=1,  # Ensure this group has precedence over others
+        )
+
+        # 5. Add the admin user to the 'Admins' group
+        _add_admin_to_group = cognito.CfnUserPoolUserToGroupAttachment(
+            self,
+            "AdminUserGroupAttachment",
+            group_name=self.admins_group.group_name,
+            user_pool_id=self.user_pool.user_pool_id,
+            username=admin_username,
+        )
+
+        # This dependency ensures the user is created before we try to add them to a group
+        _add_admin_to_group.add_dependency(_admin_user.get_resource())
 
         # Outputs from the nested stack
         self.user_pool_id = self.user_pool.user_pool_id
