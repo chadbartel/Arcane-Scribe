@@ -255,6 +255,119 @@ def delete_document_record(
     return JSONResponse(status_code=status_code, content=content)
 
 
+@router.delete("/{srd_id}/documents")
+def delete_all_document_records(
+    x_arcane_auth_token: Annotated[str, Header(...)],
+    srd_id: str = Path(..., description="The ID of the SRD document"),
+) -> JSONResponse:
+    """Delete all document records for a given SRD document.
+
+    **Parameters:**
+    - **x_arcane_auth_token**: str
+        The authentication token for the request, typically provided in the
+        `x-arcane-auth-token` header.
+    - **srd_id**: str
+        The ID of the SRD document.
+
+    **Returns:**
+    - **JSONResponse**: A JSON response indicating the success or failure of
+      the deletion operation.
+    """
+    # Extract username from Basic Auth header
+    owner_id = extract_username_from_basic_auth(x_arcane_auth_token)
+
+    # Validate the owner_id
+    if not owner_id:
+        logger.error("Invalid or missing authentication token")
+        return JSONResponse(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            content={"error": "Invalid or missing authentication token"},
+        )
+
+    # Initialize an S3 client
+    s3_client = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
+
+    # Get all documents for the given owner ID and SRD ID
+    logger.info(
+        f"Retrieving all document files for SRD ID {srd_id}"
+    )
+    document_objects = s3_client.list_objects(prefix=f"{owner_id}/{srd_id}/")
+
+    # Delete each document file from S3
+    logger.info(
+        f"Deleting all document files for SRD ID {srd_id}"
+    )
+    for document_object in document_objects:
+        document_key = document_object.get("Key")
+        if document_key:
+            try:
+                logger.info(f"Deleting document from S3: {document_key}")
+                s3_client.delete_object(object_key=document_key)
+                logger.info(f"Deleted document from S3: {document_key}")
+            except Exception as e:
+                logger.error(
+                    f"Error deleting document from S3: {e}",
+                    extra={"document_key": document_key},
+                )
+                return JSONResponse(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content={"error": "Could not delete document from S3"},
+                )
+
+    # Get all vector store files for the given owner ID and SRD ID
+    vector_store_prefix = f"{owner_id}/{srd_id}/vector_store/"
+    logger.info(
+        f"Retrieving all vector store files for SRD ID {srd_id}"
+    )
+    vector_store_objects = s3_client.list_objects(prefix=vector_store_prefix)
+
+    # Delete each vector store file from S3
+    logger.info(
+        f"Deleting all vector store files for SRD ID {srd_id}"
+    )
+    for vector_store_object in vector_store_objects:
+        vector_store_key = vector_store_object.get("Key")
+        if vector_store_key:
+            try:
+                logger.info(
+                    f"Deleting vector store file from S3: {vector_store_key}"
+                )
+                s3_client.delete_object(object_key=vector_store_key)
+                logger.info(
+                    f"Deleted vector store file from S3: {vector_store_key}"
+                )
+            except Exception as e:
+                logger.error(
+                    f"Error deleting vector store file from S3: {e}",
+                    extra={"vector_store_key": vector_store_key},
+                )
+                return JSONResponse(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    content={
+                        "error": "Could not delete vector store file from S3"
+                    },
+                )
+
+    # Initialize the database service
+    db_service = DatabaseService(table_name=DOCUMENTS_METADATA_TABLE_NAME)
+
+    # Delete all document records for the given SRD ID
+    logger.info(
+        f"Deleting all document metadata for SRD ID {srd_id}"
+    )
+    response = db_service.delete_all_document_records(
+        owner_id=owner_id, srd_id=srd_id
+    )
+    logger.info(
+        f"Response after deleting all metadata records for SRD ID {srd_id}: {response}"
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_204_NO_CONTENT,
+        content={"message": "All documents deleted successfully"},
+    )
+
+
 @router.get("/{srd_id}/documents", response_model=list)
 def list_document_records(
     x_arcane_auth_token: Annotated[str, Header(...)],
