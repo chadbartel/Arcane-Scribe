@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional
 from aws_lambda_powertools import Logger
 
 # Initialize logger
-logger = Logger(service="cck-api-authorizer-utils")
+logger = Logger(service="as-api-authorizer-utils")
 
 
 def generate_policy(
