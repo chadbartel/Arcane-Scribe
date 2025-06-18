@@ -136,9 +136,11 @@ def require_admin_user(request: Request) -> Dict[str, Union[str, bool]]:
         - 403 Forbidden if the user is not an admin.
     """
     # Extract the authorizer context from the request scope
-    authorizer_context = request.scope.get("aws.event", {}).get(
-        "requestContext", {}
-    ).get("authorizer", {})
+    authorizer_context = (
+        request.scope.get("aws.event", {})
+        .get("requestContext", {})
+        .get("authorizer", {})
+    )
 
     # Parse the isAdmin field from the authorizer context
     is_admin_str = authorizer_context.get("isAdmin", "false")

@@ -128,7 +128,8 @@ def lambda_handler(
 
         # Get a list of the group names
         group_names = [
-            group["GroupName"] for group in user_groups_response.get("Groups", [])
+            group["GroupName"]
+            for group in user_groups_response.get("Groups", [])
         ]
 
         # Check if the user is in the 'Admins' group

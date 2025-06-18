@@ -90,9 +90,7 @@ class CognitoIdpClient:
             raise e
 
     def admin_list_groups_for_user(
-        self,
-        user_pool_id: str,
-        username: str
+        self, user_pool_id: str, username: str
     ) -> Dict[str, List[Dict[str, str]]]:
         """Lists the groups that a user belongs to in a Cognito user pool.
 
@@ -119,8 +117,7 @@ class CognitoIdpClient:
                 f"Listing groups for user {username} in user pool {user_pool_id}"
             )
             response = self.client.admin_list_groups_for_user(
-                UserPoolId=user_pool_id,
-                Username=username
+                UserPoolId=user_pool_id, Username=username
             )
             return response
         except ClientError as e:
