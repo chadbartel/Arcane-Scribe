@@ -1,5 +1,5 @@
 # Standard Library
-from typing import Optional
+from typing import Optional, Dict, Union
 
 # Third Party
 from fastapi import Request, HTTPException, status
@@ -113,3 +113,44 @@ def verify_source_ip(request: Request) -> None:
     logger.info(
         f"IP address {source_ip} successfully verified against whitelist."
     )
+
+
+def require_admin_user(request: Request) -> Dict[str, Union[str, bool]]:
+    """Verifies if the user is an admin based on the authorizer context in the
+    request.
+
+    Parameters
+    ----------
+    request : Request
+        The FastAPI request object containing the authorizer context.
+
+    Returns
+    -------
+    Dict[str, Union[str, bool]]
+        A dictionary containing the username and admin status of the user.
+
+    Raises
+    ------
+    HTTPException
+        If the user is not an admin, a 403 Forbidden error is raised.
+        - 403 Forbidden if the user is not an admin.
+    """
+    # Extract the authorizer context from the request scope
+    authorizer_context = request.scope.get("aws.event", {}).get(
+        "requestContext", {}
+    ).get("authorizer", {})
+
+    # Parse the isAdmin field from the authorizer context
+    is_admin_str = authorizer_context.get("isAdmin", "false")
+
+    # Check if the user is an admin based on the authorizer context
+    if is_admin_str != "true":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin access required for this operation.",
+        )
+
+    # Extract the username from the authorizer context, defaulting to "unknown"
+    username = authorizer_context.get("principalId", "unknown")
+
+    return {"username": username, "is_admin": True}
