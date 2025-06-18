@@ -169,7 +169,7 @@ def lambda_handler(event, context):
         )
 
         # The actual Custom Resource
-        CustomResource(
+        self.custom_resource = CustomResource(
             self,
             "AdminUserResource",
             service_token=provider.service_token,
@@ -181,3 +181,13 @@ def lambda_handler(event, context):
             },
             removal_policy=RemovalPolicy.DESTROY,
         )
+
+    def get_resource(self) -> CustomResource:
+        """Get the underlying custom resource.
+
+        Returns
+        -------
+        CustomResource
+            The custom resource that creates the admin user.
+        """
+        return self.custom_resource
