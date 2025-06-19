@@ -32,7 +32,7 @@ class CognitoIdpClient:
         password: str,
         auth_flow: Optional[str] = "ADMIN_NO_SRP_AUTH",
         client_metadata: Optional[Dict[str, str]] = None,
-    ) -> Dict[str, Union[str, List[Dict[str, str]]]]:
+    ) -> Dict[str, Any]:
         """Initiates the authentication process for a user in a Cognito user
         pool.
 
@@ -53,15 +53,9 @@ class CognitoIdpClient:
 
         Returns
         -------
-        Dict[str, Union[str, List[Dict[str, str]]]]
-            The response from the Cognito service containing authentication
-            tokens and other information.
-
-        Raises
-        ------
-        ClientError
-            If there is an error during the authentication process, such as
-            invalid credentials or user not found.
+        Dict[str, Any]
+            A dictionary containing the authentication result, which may include
+            access tokens, ID tokens, and refresh tokens.
         """
 
         # Construct parameters for the auth flow
