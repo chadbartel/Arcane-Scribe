@@ -1,4 +1,3 @@
-
 # Third Party
 from pydantic import BaseModel, Field, ConfigDict
 
