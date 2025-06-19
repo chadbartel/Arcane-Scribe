@@ -6,7 +6,7 @@ from aws_lambda_powertools import Logger
 # Local Modules
 from core.aws import CognitoIdpClient
 from core.utils.config import USER_POOL_ID, USER_POOL_CLIENT_ID
-from api_backend.models import LoginRequest
+from api_backend.models import LoginRequest, TokenResponse
 
 # Initialize logger
 logger = Logger(service="authentication")
@@ -15,7 +15,7 @@ logger = Logger(service="authentication")
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
-@router.post("/login")
+@router.post("/login", response_model=TokenResponse)
 def login_for_access_token(
     login_request: LoginRequest = Body(...),
     cognito_client: CognitoIdpClient = Depends(),
