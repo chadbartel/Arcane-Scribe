@@ -178,7 +178,8 @@ def delete_document_record(
         content = {"error": "Document not found in database"}
         return JSONResponse(status_code=status_code, content=content)
     logger.info(
-        "Document found in database", extra=document_record["document_id"]
+        "Document found in database",
+        extra={"document_id": document_record["document_id"]},
     )
 
     # Delete the document from documents bucket in S3
@@ -354,7 +355,8 @@ def list_document_records(
             content={"error": "No documents found"},
         )
     logger.info(
-        "Document records retrieved successfully", extra=document_records
+        "Document records retrieved successfully",
+        extra={"document_records": document_records},
     )
 
     return JSONResponse(
@@ -400,7 +402,8 @@ def get_document_record(
             content={"error": "Document not found"},
         )
     logger.info(
-        "Document record retrieved successfully", extra=document_record
+        "Document record retrieved successfully",
+        extra={"document_records": document_record},
     )
 
     return JSONResponse(
