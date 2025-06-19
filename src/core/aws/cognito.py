@@ -1,7 +1,7 @@
 """Cognito client wrapper for AWS Cognito Identity Provider operations."""
 
 # Standard Library
-from typing import Dict, List, Optional, Union, Any
+from typing import Dict, List, Optional, Any
 
 # Third Party
 import boto3
