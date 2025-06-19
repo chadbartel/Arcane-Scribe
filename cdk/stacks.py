@@ -355,7 +355,7 @@ class ArcaneScribeStack(Stack):
             doc_resource.add_method(
                 "GET",
                 integration=lambda_integration,
-                authorizer=apigw.AuthorizationType.NONE,
+                authorization_type=apigw.AuthorizationType.NONE,
             )
 
         # Add a /login resource for user login
@@ -363,7 +363,7 @@ class ArcaneScribeStack(Stack):
         login_resource.add_method(
             "POST",
             integration=lambda_integration,
-            authorizer=apigw.AuthorizationType.NONE,
+            authorization_type=apigw.AuthorizationType.NONE,
         )
 
         # Add {proxy+} resource integration to the REST API
