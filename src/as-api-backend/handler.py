@@ -37,7 +37,7 @@ docs_router = APIRouter(
 )
 
 
-@app.get("/docs", include_in_schema=False)
+@docs_router.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html() -> HTMLResponse:
     """Custom Swagger UI HTML endpoint.
 
@@ -52,7 +52,7 @@ async def custom_swagger_ui_html() -> HTMLResponse:
     )
 
 
-@app.get("/redoc", include_in_schema=False)
+@docs_router.get("/redoc", include_in_schema=False)
 async def custom_redoc_html() -> HTMLResponse:
     """Custom ReDoc HTML endpoint.
 
