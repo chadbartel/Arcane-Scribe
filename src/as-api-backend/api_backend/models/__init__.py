@@ -10,7 +10,7 @@ from api_backend.models.srd import (
     PresignedUrlResponse,
     PresignedUrlErrorResponse,
 )
-from api_backend.models.auth import User
+from api_backend.models.auth import User, TokenResponse
 from api_backend.models.login import LoginRequest
 from api_backend.models.query import (
     RagQueryRequest,
@@ -29,4 +29,5 @@ __all__ = [
     "RagQueryErrorResponse",
     "LoginRequest",
     "User",
+    "TokenResponse",
 ]
