@@ -10,7 +10,7 @@ from api_backend.models.srd import (
     PresignedUrlResponse,
     PresignedUrlErrorResponse,
 )
-from api_backend.models.auth import LoginRequest
+from api_backend.models.login import LoginRequest
 from api_backend.models.query import (
     RagQueryRequest,
     GenerationConfig,
