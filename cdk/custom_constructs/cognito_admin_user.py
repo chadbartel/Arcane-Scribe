@@ -11,6 +11,7 @@ from aws_cdk import (
     CustomResource,
     Duration,
     RemovalPolicy,
+    CfnResource,
 )
 from constructs import Construct
 
@@ -182,7 +183,7 @@ def lambda_handler(event, context):
             removal_policy=RemovalPolicy.DESTROY,
         )
 
-    def get_resource(self) -> CustomResource:
+    def get_resource(self) -> CfnResource:
         """Get the underlying custom resource.
 
         Returns
@@ -190,4 +191,4 @@ def lambda_handler(event, context):
         CustomResource
             The custom resource that creates the admin user.
         """
-        return self.custom_resource
+        return self.custom_resource.node.default_child
