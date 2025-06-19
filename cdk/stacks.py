@@ -337,6 +337,14 @@ class ArcaneScribeStack(Stack):
         #     ),
         # )
 
+        # Create Cognito authorizer for the REST API
+        cognito_authorizer = apigw.CognitoUserPoolsAuthorizer(
+            self,
+            "ArcaneScribeCognitoAuthorizer",
+            cognito_user_pools=[cognito_nested_stack.user_pool],
+            identity_source="method.request.header.Authorization",
+        )
+
         # Create a custom REST API Gateway
         self.rest_api = self.create_rest_api_gateway(
             construct_id="ArcaneScribeRestApi",
