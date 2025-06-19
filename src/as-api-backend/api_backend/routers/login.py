@@ -12,10 +12,10 @@ from api_backend.models import LoginRequest, TokenResponse
 logger = Logger(service="authentication")
 
 # Initialize router for authentication endpoints
-router = APIRouter(prefix="/auth", tags=["Authentication"])
+router = APIRouter(prefix="/login", tags=["Authentication"])
 
 
-@router.post("/login", response_model=TokenResponse)
+@router.post("", response_model=TokenResponse)
 def login_for_access_token(
     login_request: LoginRequest = Body(...),
     cognito_client: CognitoIdpClient = Depends(),
