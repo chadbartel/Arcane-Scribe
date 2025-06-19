@@ -6,8 +6,12 @@ and ensure it matches a whitelisted IP address stored in AWS Systems Manager
 """
 
 # Local Modules
-from api_backend.dependencies.dependencies import verify_source_ip
+from api_backend.dependencies.dependencies import (
+    verify_source_ip,
+    get_current_user,
+)
 
 __all__ = [
     "verify_source_ip",
+    "get_current_user",
 ]
