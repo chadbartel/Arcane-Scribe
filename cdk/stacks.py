@@ -225,6 +225,10 @@ class ArcaneScribeStack(Stack):
                 "DOCUMENTS_METADATA_TABLE_NAME": (
                     self.documents_metadata_table.table_name
                 ),
+                "USER_POOL_ID": cognito_nested_stack.user_pool.user_pool_id,
+                "USER_POOL_CLIENT_ID": (
+                    cognito_nested_stack.user_pool_client.user_pool_client_id
+                ),
             },
             memory_size=1024,
             timeout=Duration.seconds(30),
