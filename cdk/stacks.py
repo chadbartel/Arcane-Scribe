@@ -294,49 +294,9 @@ class ArcaneScribeStack(Stack):
             s3n.LambdaDestination(self.pdf_ingestor_lambda),
             s3.NotificationKeyFilter(suffix=".pdf"),  # Only for PDFs
         )
-
-        # Lambda for the custom authorizer
-        # Create authorizer Lambda role
-        # authorizer_lambda_role = self.create_iam_role(
-        #     construct_id="AuthorizerLambdaRole",
-        #     name="arcane-scribe-authorizer-role",
-        # ).role
-
-        # Grant permission to call AdminInitiateAuth on the user pool
-        # authorizer_lambda_role.add_to_policy(
-        #     self.create_iam_policy_statement(
-        #         construct_id="AuthorizerLambdaAdminAuthPolicy",
-        #         actions=["cognito-idp:AdminInitiateAuth"],
-        #         resources=[cognito_nested_stack.user_pool.user_pool_arn],
-        #     ).statement
-        # )
-
-        # Create the authorizer Lambda function
-        # self.authorizer_lambda = self.create_lambda_function(
-        #     construct_id="ArcaneScribeAuthorizerLambda",
-        #     name="as-authorizer",
-        #     environment={
-        #         "USER_POOL_ID": cognito_nested_stack.user_pool.user_pool_id,
-        #         "USER_POOL_CLIENT_ID": (
-        #             cognito_nested_stack.user_pool_client_id
-        #         ),
-        #     },
-        #     role=authorizer_lambda_role,
-        #     description="Custom authorizer for Arcane Scribe REST API",
-        # )
         # endregion
 
         # region API Gateway
-        # Create an authorizer for the REST API
-        # api_authorizer = self.create_token_authorizer(
-        #     construct_id="ArcaneScribeAuthorizer",
-        #     name="arcane-scribe-api-authorizer",
-        #     handler=self.authorizer_lambda,
-        #     identity_source=apigw.IdentitySource.header(
-        #         self.auth_header_name
-        #     ),
-        # )
-
         # Create Cognito authorizer for the REST API
         cognito_authorizer = apigw.CognitoUserPoolsAuthorizer(
             self,
