@@ -69,6 +69,14 @@ class CognitoStack(NestedStack):
             username=admin_username,
         )
 
+        # 6. Add a unique domain prefix for our User Pool
+        self.user_pool_domain = self.user_pool.add_domain(
+            "CognitoDomain",
+            cognito_domain=cognito.CognitoDomainOptions(
+                domain_prefix=f"arcane-scribe-users{self.stack_suffix}"
+            )
+        )
+
         # This dependency ensures the user is created before we try to add them to a group
         _add_admin_to_group.add_dependency(_admin_user.get_resource())
 

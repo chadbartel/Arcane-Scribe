@@ -96,7 +96,7 @@ class ArcaneScribeStack(Stack):
             stack_suffix=self.stack_suffix,
         )
 
-        # Output user pool ID and client ID
+        # Output user pool ID, client ID, and token endpoint URL
         CfnOutput(
             self,
             "UserPoolIdOutput",
@@ -111,6 +111,17 @@ class ArcaneScribeStack(Stack):
             description="Cognito User Pool Client ID for Arcane Scribe",
             export_name=(
                 f"arcane-scribe-user-pool-client-id{self.stack_suffix}"
+            ),
+        )
+        CfnOutput(
+            self,
+            "UserPoolTokenEndpointOutput",
+            value=(
+                f"{cognito_nested_stack.user_pool_domain.base_url()}/oauth2/token"
+            ),
+            description="Cognito User Pool Token Endpoint URL for Arcane Scribe",
+            export_name=(
+                f"arcane-scribe-user-pool-token-endpoint{self.stack_suffix}"
             ),
         )
         # endregion
