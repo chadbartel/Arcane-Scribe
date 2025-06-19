@@ -35,6 +35,8 @@ class TokenResponse(BaseModel):
         TokenType: The type of token issued (usually "Bearer
     """
 
+    model_config = ConfigDict(populate_by_name=True)
+
     access_token: str = Field(
         ..., alias="AccessToken", description="Access token issued to the user"
     )
