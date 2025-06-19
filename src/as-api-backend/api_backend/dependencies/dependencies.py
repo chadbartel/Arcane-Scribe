@@ -1,14 +1,15 @@
 # Standard Library
-from typing import Optional, Dict, Union
+from typing import Optional
 
 # Third Party
-from fastapi import Request, HTTPException, status
+from fastapi import Request, HTTPException, status, Depends
 from botocore.exceptions import ClientError
 from aws_lambda_powertools import Logger
 
 # Local Modules
 from core.aws import SsmClient
 from core.utils.config import HOME_IP_SSM_PARAMETER_NAME
+from api_backend.models import User
 
 # Initialize logger
 logger = Logger(service="dependencies")
@@ -115,44 +116,75 @@ def verify_source_ip(request: Request) -> None:
     )
 
 
-def require_admin_user(request: Request) -> Dict[str, Union[str, bool]]:
-    """Verifies if the user is an admin based on the authorizer context in the
-    request.
+def get_current_user(request: Request) -> User:
+    """Retrieves the current user from the request context, extracting
+    user information from the JWT claims provided by the API Gateway.
 
     Parameters
     ----------
     request : Request
-        The FastAPI request object containing the authorizer context.
+        The FastAPI request object containing the JWT claims.
 
     Returns
     -------
-    Dict[str, Union[str, bool]]
-        A dictionary containing the username and admin status of the user.
+    User
+        A User model instance containing the username, email, and groups of the
+        user.
 
     Raises
     ------
     HTTPException
-        If the user is not an admin, a 403 Forbidden error is raised.
-        - 403 Forbidden if the user is not an admin.
+        If the JWT claims are missing or invalid, a 401 Unauthorized error is
+        raised.
+        - 401 Unauthorized if the JWT claims are missing or invalid.
     """
-    # Extract the authorizer context from the request scope
-    authorizer_context = (
-        request.scope.get("aws.event", {})
-        .get("requestContext", {})
-        .get("authorizer", {})
-    )
+    try:
+        # API Gateway passes claims here after validating the JWT
+        claims = request.scope["aws.event"]["requestContext"]["authorizer"][
+            "claims"
+        ]
 
-    # Parse the isAdmin field from the authorizer context
-    is_admin_str = authorizer_context.get("isAdmin", "false")
+        # The 'cognito:groups' claim is an array of group names
+        user_groups = claims.get("cognito:groups", [])
 
-    # Check if the user is an admin based on the authorizer context
-    if is_admin_str != "true":
+        return User(
+            username=claims["cognito:username"],
+            email=claims["email"],
+            groups=user_groups,
+        )
+    except KeyError:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Admin access required for this operation.",
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials. Claims missing.",
         )
 
-    # Extract the username from the authorizer context, defaulting to "unknown"
-    username = authorizer_context.get("principalId", "unknown")
 
-    return {"username": username, "is_admin": True}
+def require_admin_user(current_user: User = Depends(get_current_user)) -> User:
+    """Verifies that the current user has admin privileges by checking
+    if the user belongs to the "Admins" group.
+
+    Parameters
+    ----------
+    current_user : User, optional
+        The current user object, automatically injected by FastAPI's dependency
+        injection system. Defaults to the result of `get_current_user()`.
+
+    Returns
+    -------
+    User
+        The current user object if the user has admin privileges.
+
+    Raises
+    ------
+    HTTPException
+        If the user does not have admin privileges, a 403 Forbidden error is
+        raised.
+        - 403 Forbidden if the user does not belong to the "Admins" group.
+    """
+    if "Admins" not in current_user.groups:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="User does not have admin privileges.",
+        )
+
+    return current_user
