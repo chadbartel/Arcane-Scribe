@@ -1,19 +1,20 @@
 # Standard Library
-from typing import Union, Annotated
+from typing import Union
 
 # Third Party
-from aws_lambda_powertools import Logger
-from fastapi import APIRouter, Body, status, Header
+from fastapi import APIRouter, Body, status, Depends
 from fastapi.responses import JSONResponse
+from aws_lambda_powertools import Logger
 
 # Local Modules
-from core.utils import extract_username_from_basic_auth
 from api_backend.utils import get_answer_from_rag
 from api_backend.models import (
+    User,
     RagQueryRequest,
     RagQueryResponse,
     RagQueryErrorResponse,
 )
+from api_backend.dependencies import get_current_user
 
 # Initialize logger
 logger = Logger(service="query")
@@ -28,42 +29,23 @@ router = APIRouter(prefix="/query", tags=["Query"])
     status_code=status.HTTP_200_OK,
 )
 def query_endpoint(
-    x_arcane_auth_token: Annotated[str, Header(...)],
+    current_user: User = Depends(get_current_user),
     request: RagQueryRequest = Body(...),
 ) -> JSONResponse:
     """Query endpoint for Retrieval-Augmented Generation (RAG) queries.
 
     **Parameters:**
-    - **x_arcane_auth_token**: str
-        The authentication token for the request, typically provided in the
-        `x-arcane-auth-token` header.
-    - **request**: RagQueryRequest
-        The request body containing the query text, SRD ID, and optional
-        parameters for generative LLM configuration, including:
-        - `query_text`: The text of the query to process.
-        - `srd_id`: The ID of the SRD document to query against.
-        - `invoke_generative_llm`: Flag to indicate if a generative LLM should be invoked.
-        - `use_conversation_style`: Flag to indicate if conversational style should be used.
-        - `generation_config`: Optional configuration for generation.
-        - `number_of_documents`: Optional parameter to specify the number of documents to retrieve.
+    - **current_user**: The currently authenticated user, obtained from the
+      `get_current_user` dependency.
+    - **request**: The request body containing the query text, SRD ID, and
+      optional parameters for generative LLM configuration.
 
     **Returns:**
     - **JSONResponse**: A JSON response containing the query results or an
     error message if the request fails.
     """
-    # Extract username from Basic Auth header
-    owner_id = extract_username_from_basic_auth(x_arcane_auth_token)
-
-    # Validate the owner_id
-    if not owner_id:
-        logger.error(
-            "Invalid or missing authentication token",
-            extra={"raw_body": request.model_dump_json()},
-        )
-        return JSONResponse(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            content={"error": "Invalid or missing authentication token"},
-        )
+    # Extract the username
+    owner_id = current_user.username
 
     try:
         # Extract query text and SRD ID from the request body
