@@ -1,7 +1,7 @@
 """Cognito client wrapper for AWS Cognito Identity Provider operations."""
 
 # Standard Library
-from typing import Dict, List, Optional, Union
+from typing import Dict, List, Optional, Union, Any
 
 # Third Party
 import boto3
@@ -13,6 +13,7 @@ logger = Logger(service="cognito-idp-client-wrapper")
 
 
 class CognitoIdpClient:
+    """A wrapper for the Boto3 Cognito Identity Provider client."""
 
     def __init__(self, region_name: Optional[str] = None) -> None:
         try:
@@ -84,9 +85,97 @@ class CognitoIdpClient:
                 f"Initiating auth for user {username} in user pool {user_pool_id}"
             )
             response = self.client.admin_initiate_auth(**parameters)
-            return response
+            return response.get("AuthenticationResult", {})
         except ClientError as e:
-            logger.error(f"Error initiating auth: {e}")
+            logger.error(f"Error initiating auth for user '{username}': {e}")
+            raise e
+
+    def admin_create_user(
+        self,
+        user_pool_id: str,
+        username: str,
+        email: str,
+        temporary_password: str,
+    ) -> Dict[str, Any]:
+        """Creates a new user in a Cognito user pool.
+
+        Parameters
+        ----------
+        user_pool_id : str
+            The ID of the Cognito user pool.
+        username : str
+            The username for the new user.
+        email : str
+            The email address for the new user.
+        temporary_password : str
+            The temporary password for the new user.
+
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary containing the details of the created user.
+
+        Raises
+        ------
+        ClientError
+            If there is an error creating the user, such as user already exists
+            or invalid parameters.
+        """
+        try:
+            logger.info(
+                f"Creating new user '{username}' in pool {user_pool_id}"
+            )
+            response = self.client.admin_create_user(
+                UserPoolId=user_pool_id,
+                Username=username,
+                UserAttributes=[
+                    {"Name": "email", "Value": email},
+                    {"Name": "email_verified", "Value": "true"},
+                ],
+                TemporaryPassword=temporary_password,
+                MessageAction="SUPPRESS",  # Don't send the default welcome email
+            )
+            return response.get("User", {})
+        except ClientError as e:
+            logger.error(f"Error creating user '{username}': {e}")
+            raise e
+
+    def list_users(self, user_pool_id: str) -> List[Dict[str, Any]]:
+        """Lists all users in a Cognito user pool.
+
+        Parameters
+        ----------
+        user_pool_id : str
+            The ID of the Cognito user pool.
+
+        Returns
+        -------
+        List[Dict[str, Any]]
+            A list of users in the user pool.
+
+        Raises
+        ------
+        ClientError
+            If there is an error retrieving the list of users.
+        """
+        try:
+            logger.info(f"Listing all users in user pool {user_pool_id}")
+            response = self.client.list_users(UserPoolId=user_pool_id)
+            return response.get("Users", [])
+        except ClientError as e:
+            logger.error(f"Error listing users: {e}")
+            raise e
+
+    def admin_delete_user(self, user_pool_id: str, username: str) -> None:
+        """Deletes a user from the user pool."""
+        try:
+            logger.info(f"Deleting user '{username}' from pool {user_pool_id}")
+            self.client.admin_delete_user(
+                UserPoolId=user_pool_id,
+                Username=username,
+            )
+        except ClientError as e:
+            logger.error(f"Error deleting user '{username}': {e}")
             raise e
 
     def admin_list_groups_for_user(
@@ -119,7 +208,7 @@ class CognitoIdpClient:
             response = self.client.admin_list_groups_for_user(
                 UserPoolId=user_pool_id, Username=username
             )
-            return response
+            return response.get("Groups", [])
         except ClientError as e:
             logger.error(f"Error listing groups for user: {e}")
             raise e
