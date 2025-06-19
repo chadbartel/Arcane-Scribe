@@ -13,7 +13,6 @@ class PresignedUrlRequest(BaseModel):
 
     Attributes:
         file_name: The name of the file to upload.
-        srd_id: The ID of the SRD document.
         content_type: Optional content type for the file.
     """
 
@@ -22,10 +21,6 @@ class PresignedUrlRequest(BaseModel):
     file_name: str = Field(
         ...,
         description="The name of the file to upload.",
-    )
-    srd_id: str = Field(
-        ...,
-        description="The ID of the SRD document.",
     )
     content_type: Optional[str] = Field(
         "application/pdf",
