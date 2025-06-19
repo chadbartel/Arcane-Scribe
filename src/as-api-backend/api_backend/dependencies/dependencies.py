@@ -150,7 +150,9 @@ def get_current_user(request: Request) -> User:
         return User(
             username=claims["cognito:username"],
             email=claims["email"],
-            groups=user_groups,
+            groups=(
+                [user_groups] if isinstance(user_groups, str) else user_groups
+            ),
         )
     except KeyError:
         raise HTTPException(
