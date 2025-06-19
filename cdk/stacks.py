@@ -411,7 +411,7 @@ class ArcaneScribeStack(Stack):
         api_proxy_resource.add_method(
             "ANY",
             integration=lambda_integration,
-            # authorizer=api_authorizer,  # Use the authorizer for all other routes
+            authorizer=cognito_authorizer,
         )
 
         # Output the REST API URL
