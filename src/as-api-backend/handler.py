@@ -71,8 +71,6 @@ async def custom_redoc_html() -> HTMLResponse:
     return get_redoc_html(
         openapi_url=f"{API_PREFIX}/openapi.json", title=app.title + " - ReDoc"
     )
-
-
 # endregion
 
 # Add the API router to the FastAPI app
