@@ -252,6 +252,7 @@ class ArcaneScribeStack(Stack):
             self.create_iam_policy_statement(
                 construct_id="CognitoAdminInitiateAuthPolicy",
                 actions=[
+                    "cognito-idp:AdminInitiateAuth",
                     "cognito-idp:AdminCreateUser",
                     "cognito-idp:AdminDeleteUser",
                     "cognito-idp:AdminGetUser",
