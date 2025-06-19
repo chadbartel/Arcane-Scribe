@@ -3,10 +3,9 @@ from typing import Dict, Any
 
 # Third Party
 from mangum import Mangum
-from fastapi import FastAPI, Depends
+from fastapi import FastAPI, Depends, APIRouter
 from fastapi.responses import HTMLResponse
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
-from fastapi.openapi.utils import get_openapi
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.logging import correlation_paths
 from aws_lambda_powertools.utilities.typing import LambdaContext
@@ -24,27 +23,21 @@ app = FastAPI(
     title="Arcane Scribe API",
     version="0.2.0",
     description="API for Arcane Scribe, a tool for managing and querying knowledge bases.",
-    docs_url=f"{API_PREFIX}/docs",
-    redoc_url=f"{API_PREFIX}/redoc",
+    docs_url=None,  # Disable default docs URL
+    redoc_url=None,  # Disable default ReDoc URL
     openapi_url=f"{API_PREFIX}/openapi.json",
-    dependencies=[Depends(verify_source_ip)],
 )
 
 
 # region Define custom documentation routes
-@app.get(f"{API_PREFIX}/openapi.json", include_in_schema=False)
-async def custom_openapi_endpoint() -> Dict[str, Any]:
-    """Custom OpenAPI endpoint to return the OpenAPI schema.
-
-    Returns
-    -------
-    Dict[str, Any]
-        The OpenAPI schema for the FastAPI application.
-    """
-    return get_openapi(title=app.title, version=app.version, routes=app.routes)
+docs_router = APIRouter(
+    prefix=API_PREFIX,
+    tags=["Documentation"],
+    dependencies=[Depends(verify_source_ip)],
+)
 
 
-@app.get(f"{API_PREFIX}/docs", include_in_schema=False)
+@app.get("/docs", include_in_schema=False)
 async def custom_swagger_ui_html() -> HTMLResponse:
     """Custom Swagger UI HTML endpoint.
 
@@ -54,12 +47,12 @@ async def custom_swagger_ui_html() -> HTMLResponse:
         The HTML response for the Swagger UI documentation.
     """
     return get_swagger_ui_html(
-        openapi_url=f"{API_PREFIX}/openapi.json",
+        openapi_url=app.openapi_url,  # Use the app's openapi_url
         title=app.title + " - Swagger UI",
     )
 
 
-@app.get(f"{API_PREFIX}/redoc", include_in_schema=False)
+@app.get("/redoc", include_in_schema=False)
 async def custom_redoc_html() -> HTMLResponse:
     """Custom ReDoc HTML endpoint.
 
@@ -69,7 +62,8 @@ async def custom_redoc_html() -> HTMLResponse:
         The HTML response for the ReDoc documentation.
     """
     return get_redoc_html(
-        openapi_url=f"{API_PREFIX}/openapi.json", title=app.title + " - ReDoc"
+        openapi_url=app.openapi_url,  # Use the app's openapi_url
+        title=app.title + " - ReDoc",
     )
 
 
@@ -77,6 +71,9 @@ async def custom_redoc_html() -> HTMLResponse:
 
 # Add the API router to the FastAPI app
 app.include_router(router, prefix=API_PREFIX)
+
+# Add the documentation endpoints to the FastAPI app
+app.include_router(docs_router)
 
 # Initialize Mangum handler globally
 # This instance will be reused across invocations in a warm Lambda environment.
