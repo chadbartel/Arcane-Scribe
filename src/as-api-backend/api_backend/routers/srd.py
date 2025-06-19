@@ -49,6 +49,8 @@ def get_presigned_upload_url(
     """Generate a presigned URL for uploading a file to S3.
 
     **Parameters:**
+    - **srd_id**: The ID of the SRD document.
+    - **request**: The request body containing the file name and content type.
 
     **Returns:**
     - **JSONResponse**: A JSON response containing the presigned URL and other
@@ -148,6 +150,8 @@ def delete_document_record(
     """Delete a document record from the database and S3.
 
     **Parameters:**
+    - **srd_id**: The ID of the SRD document.
+    - **document_id**: The ID of the document to delete.
 
     **Returns:**
     - **JSONResponse**: A JSON response indicating the success or failure of
@@ -231,6 +235,7 @@ def delete_all_document_records(
     """Delete all document records for a given SRD document.
 
     **Parameters:**
+    - **srd_id**: The ID of the SRD document.
 
     **Returns:**
     - **JSONResponse**: A JSON response indicating the success or failure of
@@ -323,6 +328,7 @@ def list_document_records(
     """List all document records for a given SRD document.
 
     **Parameters:**
+    - **srd_id**: The ID of the SRD document.
 
     **Returns:**
     - **JSONResponse**: A JSON response containing a list of document records
@@ -365,6 +371,8 @@ def get_document_record(
     """Retrieve a document record from the database.
 
     **Parameters:**
+    - **srd_id**: The ID of the SRD document.
+    - **document_id**: The ID of the document to retrieve.
 
     **Returns:**
     - **JSONResponse**: A JSON response containing the document record or an
