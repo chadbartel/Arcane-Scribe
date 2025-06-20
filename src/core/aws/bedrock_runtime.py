@@ -14,47 +14,61 @@ from langchain_aws import (
 # Initialize logger
 logger = Logger(service="bedrock-runtime-client-wrapper")
 
+# Define global variables for your clients, but initialize them to None
+_bedrock_runtime_client: Optional[boto3.client] = None
+_embedding_model_instance: Optional[BedrockEmbeddings] = None
+
 
 class BedrockRuntimeClient:
     """
     A client wrapper for AWS Bedrock Runtime services.
     """
 
-    def __init__(self, region_name: Optional[str] = None):
-        """
-        Initialize the BedrockRuntimeClient.
+    def _get_boto_client(self) -> boto3.client:
+        """Lazily initializes and returns a boto3 bedrock-runtime client.
 
-        Parameters
-        ----------
-        region_name : str
-            The AWS region where the Bedrock service is hosted.
+        Returns
+        -------
+        boto3.client
+            An initialized boto3 client for AWS Bedrock Runtime.
         """
-        try:
-            self.client = boto3.client(
-                "bedrock-runtime", region_name=region_name
-            )
-        except Exception as e:
-            logger.error(f"Failed to create Bedrock Runtime client: {e}")
-            raise e
+        global _bedrock_runtime_client
+
+        # Check if the client is already initialized
+        logger.info("Checking if Bedrock runtime client is initialized.")
+        if _bedrock_runtime_client is None:
+            _bedrock_runtime_client = boto3.client("bedrock-runtime")
+        return _bedrock_runtime_client
 
     def get_embedding_model(
         self,
         model_id: str,
     ) -> BedrockEmbeddings:
-        """
-        Get an embedding model from AWS Bedrock.
+        """Get an embedding model from AWS Bedrock.
+
+        This method initializes a BedrockEmbeddings instance if it hasn't been
+        created yet, and returns it. The instance is created with the provided
+        model_id and the lazily initialized Bedrock runtime client.
 
         Parameters
         ----------
         model_id : str
-            The ID of the Bedrock model to use for embeddings.
+            _description_
 
         Returns
         -------
         BedrockEmbeddings
-            An instance of BedrockEmbeddings configured with the specified model.
+            _description_
         """
-        return BedrockEmbeddings(client=self.client, model_id=model_id)
+        global _embedding_model_instance
+
+        # Ensure the Bedrock runtime client is initialized
+        logger.info("Checking if embedding model instance is initialized.")
+        if _embedding_model_instance is None:
+            _embedding_model_instance = BedrockEmbeddings(
+                client=self._get_boto_client(), model_id=model_id
+            )
+        return _embedding_model_instance
 
     def get_chat_model(
         self,
@@ -78,8 +92,11 @@ class BedrockRuntimeClient:
         ChatBedrock
             An instance of ChatBedrock configured with the specified model.
         """
+        logger.info(
+            "Creating ChatBedrock instance with model ID: %s", model_id
+        )
         return ChatBedrock(
-            client=self.client,
+            client=self._get_boto_client(),
             model=model_id,
             model_kwargs=model_kwargs,
         )

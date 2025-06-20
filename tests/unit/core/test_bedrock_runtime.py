@@ -14,86 +14,61 @@ from core.aws.bedrock_runtime import BedrockRuntimeClient
 class TestBedrockRuntimeClient:
     """Test cases for the BedrockRuntimeClient class."""
 
-    @patch("core.aws.bedrock_runtime.boto3.client")
-    def test_init_success_with_region(self, mock_boto3_client):
-        """Test successful initialization with region_name."""
-        mock_client = MagicMock()
-        mock_boto3_client.return_value = mock_client
-        region_name = "us-east-1"
-
-        client = BedrockRuntimeClient(region_name=region_name)
-
-        mock_boto3_client.assert_called_once_with(
-            "bedrock-runtime", region_name=region_name
-        )
-        assert client.client == mock_client
+    def setup_method(self):
+        """Reset global variables before each test."""
+        # Import the module to reset global variables
+        import core.aws.bedrock_runtime
+        core.aws.bedrock_runtime._bedrock_runtime_client = None
+        core.aws.bedrock_runtime._embedding_model_instance = None
 
     @patch("core.aws.bedrock_runtime.boto3.client")
-    def test_init_success_without_region(self, mock_boto3_client):
-        """Test successful initialization without region_name."""
+    def test_get_boto_client_first_call(self, mock_boto3_client):
+        """Test that _get_boto_client initializes client on first call."""
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
 
         client = BedrockRuntimeClient()
+        result = client._get_boto_client()
 
-        mock_boto3_client.assert_called_once_with(
-            "bedrock-runtime", region_name=None
-        )
-        assert client.client == mock_client
+        mock_boto3_client.assert_called_once_with("bedrock-runtime")
+        assert result == mock_client
 
     @patch("core.aws.bedrock_runtime.boto3.client")
-    @patch("core.aws.bedrock_runtime.logger")
-    def test_init_failure_no_credentials(self, mock_logger, mock_boto3_client):
-        """Test initialization failure due to missing credentials."""
+    def test_get_boto_client_subsequent_calls(self, mock_boto3_client):
+        """Test that _get_boto_client reuses existing client."""
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+
+        client = BedrockRuntimeClient()
+        
+        # First call
+        result1 = client._get_boto_client()
+        # Second call
+        result2 = client._get_boto_client()
+
+        # boto3.client should only be called once
+        mock_boto3_client.assert_called_once_with("bedrock-runtime")
+        assert result1 == mock_client
+        assert result2 == mock_client
+        assert result1 is result2
+
+    @patch("core.aws.bedrock_runtime.boto3.client")
+    def test_get_boto_client_exception_propagated(self, mock_boto3_client):
+        """Test that exceptions during client creation are propagated."""
         error = NoCredentialsError()
         mock_boto3_client.side_effect = error
 
+        client = BedrockRuntimeClient()
+        
         with pytest.raises(NoCredentialsError):
-            BedrockRuntimeClient()
-
-        mock_logger.error.assert_called_once_with(
-            f"Failed to create Bedrock Runtime client: {error}"
-        )
-
-    @patch("core.aws.bedrock_runtime.boto3.client")
-    @patch("core.aws.bedrock_runtime.logger")
-    def test_init_failure_client_error(self, mock_logger, mock_boto3_client):
-        """Test initialization failure due to AWS client error."""
-        error = ClientError(
-            {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
-            "CreateClient",
-        )
-        mock_boto3_client.side_effect = error
-
-        with pytest.raises(ClientError):
-            BedrockRuntimeClient()
-
-        mock_logger.error.assert_called_once_with(
-            f"Failed to create Bedrock Runtime client: {error}"
-        )
-
-    @patch("core.aws.bedrock_runtime.boto3.client")
-    @patch("core.aws.bedrock_runtime.logger")
-    def test_init_failure_generic_exception(
-        self, mock_logger, mock_boto3_client
-    ):
-        """Test initialization failure due to generic exception."""
-        error = ValueError("Invalid configuration")
-        mock_boto3_client.side_effect = error
-
-        with pytest.raises(ValueError):
-            BedrockRuntimeClient()
-
-        mock_logger.error.assert_called_once_with(
-            f"Failed to create Bedrock Runtime client: {error}"
-        )
+            client._get_boto_client()
 
     @patch("core.aws.bedrock_runtime.BedrockEmbeddings")
     @patch("core.aws.bedrock_runtime.boto3.client")
-    def test_get_embedding_model_success(
+    def test_get_embedding_model_first_call(
         self, mock_boto3_client, mock_bedrock_embeddings
     ):
-        """Test successful creation of embedding model."""
+        """Test embedding model creation on first call."""
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
         mock_embedding_instance = MagicMock()
@@ -103,6 +78,7 @@ class TestBedrockRuntimeClient:
         client = BedrockRuntimeClient()
         result = client.get_embedding_model(model_id)
 
+        mock_boto3_client.assert_called_once_with("bedrock-runtime")
         mock_bedrock_embeddings.assert_called_once_with(
             client=mock_client, model_id=model_id
         )
@@ -110,30 +86,36 @@ class TestBedrockRuntimeClient:
 
     @patch("core.aws.bedrock_runtime.BedrockEmbeddings")
     @patch("core.aws.bedrock_runtime.boto3.client")
-    def test_get_embedding_model_with_different_model_id(
+    def test_get_embedding_model_subsequent_calls_same_instance(
         self, mock_boto3_client, mock_bedrock_embeddings
     ):
-        """Test embedding model creation with different model ID."""
+        """Test that subsequent calls return the same embedding instance."""
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
         mock_embedding_instance = MagicMock()
         mock_bedrock_embeddings.return_value = mock_embedding_instance
-        model_id = "cohere.embed-english-v3"
 
         client = BedrockRuntimeClient()
-        result = client.get_embedding_model(model_id)
+        
+        # First call
+        result1 = client.get_embedding_model("model1")
+        # Second call with different model_id (should still return same instance)
+        result2 = client.get_embedding_model("model2")
 
+        # BedrockEmbeddings should only be created once
         mock_bedrock_embeddings.assert_called_once_with(
-            client=mock_client, model_id=model_id
+            client=mock_client, model_id="model1"
         )
-        assert result == mock_embedding_instance
+        assert result1 == mock_embedding_instance
+        assert result2 == mock_embedding_instance
+        assert result1 is result2
 
     @patch("core.aws.bedrock_runtime.ChatBedrock")
     @patch("core.aws.bedrock_runtime.boto3.client")
-    def test_get_chat_model_success_without_kwargs(
+    def test_get_chat_model_without_kwargs(
         self, mock_boto3_client, mock_chat_bedrock
     ):
-        """Test successful creation of chat model without model_kwargs."""
+        """Test chat model creation without model_kwargs."""
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
         mock_chat_instance = MagicMock()
@@ -143,6 +125,7 @@ class TestBedrockRuntimeClient:
         client = BedrockRuntimeClient()
         result = client.get_chat_model(model_id)
 
+        mock_boto3_client.assert_called_once_with("bedrock-runtime")
         mock_chat_bedrock.assert_called_once_with(
             client=mock_client,
             model=model_id,
@@ -152,10 +135,10 @@ class TestBedrockRuntimeClient:
 
     @patch("core.aws.bedrock_runtime.ChatBedrock")
     @patch("core.aws.bedrock_runtime.boto3.client")
-    def test_get_chat_model_success_with_kwargs(
+    def test_get_chat_model_with_kwargs(
         self, mock_boto3_client, mock_chat_bedrock
     ):
-        """Test successful creation of chat model with model_kwargs."""
+        """Test chat model creation with model_kwargs."""
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
         mock_chat_instance = MagicMock()
@@ -170,6 +153,7 @@ class TestBedrockRuntimeClient:
         client = BedrockRuntimeClient()
         result = client.get_chat_model(model_id, model_kwargs)
 
+        mock_boto3_client.assert_called_once_with("bedrock-runtime")
         mock_chat_bedrock.assert_called_once_with(
             client=mock_client,
             model=model_id,
@@ -179,10 +163,10 @@ class TestBedrockRuntimeClient:
 
     @patch("core.aws.bedrock_runtime.ChatBedrock")
     @patch("core.aws.bedrock_runtime.boto3.client")
-    def test_get_chat_model_success_with_empty_kwargs(
+    def test_get_chat_model_with_empty_kwargs(
         self, mock_boto3_client, mock_chat_bedrock
     ):
-        """Test successful creation of chat model with empty model_kwargs."""
+        """Test chat model creation with empty model_kwargs."""
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
         mock_chat_instance = MagicMock()
@@ -193,6 +177,7 @@ class TestBedrockRuntimeClient:
         client = BedrockRuntimeClient()
         result = client.get_chat_model(model_id, model_kwargs)
 
+        mock_boto3_client.assert_called_once_with("bedrock-runtime")
         mock_chat_bedrock.assert_called_once_with(
             client=mock_client,
             model=model_id,
@@ -202,77 +187,187 @@ class TestBedrockRuntimeClient:
 
     @patch("core.aws.bedrock_runtime.ChatBedrock")
     @patch("core.aws.bedrock_runtime.boto3.client")
-    def test_get_chat_model_with_different_model_id(
+    def test_get_chat_model_multiple_calls_create_new_instances(
         self, mock_boto3_client, mock_chat_bedrock
     ):
-        """Test chat model creation with different model ID."""
+        """Test that each call to get_chat_model creates a new ChatBedrock instance."""
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+        mock_chat_instance1 = MagicMock()
+        mock_chat_instance2 = MagicMock()
+        mock_chat_bedrock.side_effect = [mock_chat_instance1, mock_chat_instance2]
+
+        client = BedrockRuntimeClient()
+        
+        # First call
+        result1 = client.get_chat_model("model1")
+        # Second call
+        result2 = client.get_chat_model("model2")
+
+        # boto3.client should only be called once (cached)
+        mock_boto3_client.assert_called_once_with("bedrock-runtime")
+        # ChatBedrock should be called twice (new instance each time)
+        assert mock_chat_bedrock.call_count == 2
+        assert result1 == mock_chat_instance1
+        assert result2 == mock_chat_instance2
+        assert result1 is not result2
+
+    @patch("core.aws.bedrock_runtime.boto3.client")
+    def test_multiple_client_instances_share_global_state(self, mock_boto3_client):
+        """Test that multiple BedrockRuntimeClient instances share global state."""
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+
+        client1 = BedrockRuntimeClient()
+        client2 = BedrockRuntimeClient()
+        
+        # Both clients should use the same underlying boto3 client
+        result1 = client1._get_boto_client()
+        result2 = client2._get_boto_client()
+
+        # boto3.client should only be called once due to global caching
+        mock_boto3_client.assert_called_once_with("bedrock-runtime")
+        assert result1 == mock_client
+        assert result2 == mock_client
+        assert result1 is result2
+
+    @patch("core.aws.bedrock_runtime.BedrockEmbeddings")
+    @patch("core.aws.bedrock_runtime.boto3.client")
+    def test_embedding_model_shared_across_instances(
+        self, mock_boto3_client, mock_bedrock_embeddings
+    ):
+        """Test that embedding model is shared across BedrockRuntimeClient instances."""
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+        mock_embedding_instance = MagicMock()
+        mock_bedrock_embeddings.return_value = mock_embedding_instance
+
+        client1 = BedrockRuntimeClient()
+        client2 = BedrockRuntimeClient()
+        
+        # Both clients should get the same embedding instance
+        result1 = client1.get_embedding_model("model1")
+        result2 = client2.get_embedding_model("model2")
+
+        # BedrockEmbeddings should only be created once
+        mock_bedrock_embeddings.assert_called_once_with(
+            client=mock_client, model_id="model1"
+        )
+        assert result1 == mock_embedding_instance
+        assert result2 == mock_embedding_instance
+        assert result1 is result2
+
+    @patch("core.aws.bedrock_runtime.logger")
+    @patch("core.aws.bedrock_runtime.boto3.client")
+    def test_logging_in_get_boto_client(self, mock_boto3_client, mock_logger):
+        """Test that _get_boto_client logs appropriate messages."""
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+
+        client = BedrockRuntimeClient()
+        client._get_boto_client()
+
+        mock_logger.info.assert_called_with(
+            "Checking if Bedrock runtime client is initialized."
+        )
+
+    @patch("core.aws.bedrock_runtime.logger")
+    @patch("core.aws.bedrock_runtime.BedrockEmbeddings")
+    @patch("core.aws.bedrock_runtime.boto3.client")
+    def test_logging_in_get_embedding_model(
+        self, mock_boto3_client, mock_bedrock_embeddings, mock_logger
+    ):
+        """Test that get_embedding_model logs appropriate messages."""
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+        mock_embedding_instance = MagicMock()
+        mock_bedrock_embeddings.return_value = mock_embedding_instance
+
+        client = BedrockRuntimeClient()
+        client.get_embedding_model("test-model")
+
+        # Should log both boto client and embedding model checks
+        mock_logger.info.assert_any_call(
+            "Checking if Bedrock runtime client is initialized."
+        )
+        mock_logger.info.assert_any_call(
+            "Checking if embedding model instance is initialized."
+        )
+
+    @patch("core.aws.bedrock_runtime.logger")
+    @patch("core.aws.bedrock_runtime.ChatBedrock")
+    @patch("core.aws.bedrock_runtime.boto3.client")
+    def test_logging_in_get_chat_model(
+        self, mock_boto3_client, mock_chat_bedrock, mock_logger
+    ):
+        """Test that get_chat_model logs appropriate messages."""
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
         mock_chat_instance = MagicMock()
         mock_chat_bedrock.return_value = mock_chat_instance
-        model_id = "meta.llama3-70b-instruct-v1:0"
+        model_id = "test-model"
 
         client = BedrockRuntimeClient()
-        result = client.get_chat_model(model_id)
+        client.get_chat_model(model_id)
 
-        mock_chat_bedrock.assert_called_once_with(
-            client=mock_client,
-            model=model_id,
-            model_kwargs=None,
+        # Should log both boto client check and chat model creation
+        mock_logger.info.assert_any_call(
+            "Checking if Bedrock runtime client is initialized."
         )
-        assert result == mock_chat_instance
+        mock_logger.info.assert_any_call(
+            "Creating ChatBedrock instance with model ID: %s", model_id
+        )
 
+    @patch("core.aws.bedrock_runtime.BedrockEmbeddings")
     @patch("core.aws.bedrock_runtime.boto3.client")
-    def test_client_attribute_persistence(self, mock_boto3_client):
-        """Test that the client attribute persists across method calls."""
+    def test_embedding_model_exception_propagated(
+        self, mock_boto3_client, mock_bedrock_embeddings
+    ):
+        """Test that exceptions during embedding model creation are propagated."""
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
+        error = ValueError("Invalid model configuration")
+        mock_bedrock_embeddings.side_effect = error
 
         client = BedrockRuntimeClient()
+        
+        with pytest.raises(ValueError, match="Invalid model configuration"):
+            client.get_embedding_model("invalid-model")
 
-        # Verify client is stored correctly
-        assert client.client == mock_client
+    @patch("core.aws.bedrock_runtime.ChatBedrock")
+    @patch("core.aws.bedrock_runtime.boto3.client")
+    def test_chat_model_exception_propagated(
+        self, mock_boto3_client, mock_chat_bedrock
+    ):
+        """Test that exceptions during chat model creation are propagated."""
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+        error = ClientError(
+            {"Error": {"Code": "AccessDenied", "Message": "Access denied"}},
+            "CreateChatModel",
+        )
+        mock_chat_bedrock.side_effect = error
 
-        # Make multiple method calls and verify same client is used
-        with (
-            patch(
-                "core.aws.bedrock_runtime.BedrockEmbeddings"
-            ) as mock_embeddings,
-            patch("core.aws.bedrock_runtime.ChatBedrock") as mock_chat,
-        ):
-
-            client.get_embedding_model("test-embedding-model")
-            client.get_chat_model("test-chat-model")
-
-            # Verify both calls used the same client instance
-            mock_embeddings.assert_called_once_with(
-                client=mock_client, model_id="test-embedding-model"
-            )
-            mock_chat.assert_called_once_with(
-                client=mock_client,
-                model="test-chat-model",
-                model_kwargs=None,
-            )
+        client = BedrockRuntimeClient()
+        
+        with pytest.raises(ClientError):
+            client.get_chat_model("test-model")
 
     @patch("core.aws.bedrock_runtime.boto3.client")
-    def test_multiple_instances_independent(self, mock_boto3_client):
-        """Test that multiple client instances are independent."""
-        mock_client1 = MagicMock()
-        mock_client2 = MagicMock()
-        mock_boto3_client.side_effect = [mock_client1, mock_client2]
-
-        client1 = BedrockRuntimeClient(region_name="us-east-1")
-        client2 = BedrockRuntimeClient(region_name="us-west-2")
-
-        assert client1.client == mock_client1
-        assert client2.client == mock_client2
-        assert client1.client != client2.client
-
-        # Verify both clients were created with correct regions
-        assert mock_boto3_client.call_count == 2
-        mock_boto3_client.assert_any_call(
-            "bedrock-runtime", region_name="us-east-1"
+    def test_client_creation_with_botocore_client_error(self, mock_boto3_client):
+        """Test that boto3 client creation errors are propagated."""
+        error = ClientError(
+            {"Error": {"Code": "ServiceUnavailable", "Message": "Service unavailable"}},
+            "CreateClient",
         )
-        mock_boto3_client.assert_any_call(
-            "bedrock-runtime", region_name="us-west-2"
-        )
+        mock_boto3_client.side_effect = error
+
+        client = BedrockRuntimeClient()
+        
+        with pytest.raises(ClientError):
+            client._get_boto_client()
+
+    def test_class_instantiation_no_args(self):
+        """Test that BedrockRuntimeClient can be instantiated without arguments."""
+        client = BedrockRuntimeClient()
+        assert isinstance(client, BedrockRuntimeClient)
