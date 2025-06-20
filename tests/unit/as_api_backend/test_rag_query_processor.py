@@ -13,7 +13,7 @@ from core.utils import DocumentProcessingStatus
 
 # Patch AWS clients and services before any imports that use them
 with patch(
-    "core.aws.BedrockRuntimeClient"
+    "core.aws.bedrock_runtime.BedrockRuntimeClient"
 ) as mock_bedrock_runtime_client_class:
     with patch("core.services.DatabaseService") as mock_db_service_class:
         with patch("core.aws.S3Client") as mock_s3_client_class:

@@ -11,12 +11,10 @@ from core.aws.s3 import S3Client
 from core.aws.ssm import SsmClient
 from core.aws.dynamodb import DynamoDb
 from core.aws.cognito import CognitoIdpClient
-from core.aws.bedrock_runtime import BedrockRuntimeClient
 
 __all__ = [
     "S3Client",
     "SsmClient",
     "DynamoDb",
     "CognitoIdpClient",
-    "BedrockRuntimeClient",
 ]
