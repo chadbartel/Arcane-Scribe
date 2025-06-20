@@ -181,6 +181,22 @@ class TestGetLlmInstance:
         assert call_args[1]["model_kwargs"]["top_p"] == 0.9
         assert call_args[1]["model_kwargs"]["max_tokens"] == 1500
 
+    def test_get_llm_instance_both_calls_fail(self, mock_bedrock_client):
+        """Test get_llm_instance when both dynamic and default calls fail."""
+        # Local Modules
+        from api_backend.utils.rag_query_processor import get_llm_instance
+
+        # Arrange
+        mock_bedrock_client.get_chat_model.side_effect = [
+            Exception("First call failed"),
+            Exception("Second call also failed"),
+        ]
+        generation_config = {"temperature": 0.5}
+
+        # Act & Assert
+        with pytest.raises(Exception, match="Second call also failed"):
+            get_llm_instance(generation_config)
+
 
 class TestLoadAndMergeFaissIndicesForSrd:
     """Test cases for the _load_and_merge_faiss_indices_for_srd function."""
@@ -328,11 +344,10 @@ class TestLoadAndMergeFaissIndicesForSrd:
         mock_db_service_class.return_value = mock_db_service
         result = _load_and_merge_faiss_indices_for_srd(
             owner_id, srd_id, mock_logger
-        )
-
-        # Assert
+        )        # Assert
         assert result is None
 
+    @patch("api_backend.utils.rag_query_processor.BEDROCK_RUNTIME_CLIENT")
     @patch("api_backend.utils.rag_query_processor.os")
     @patch("api_backend.utils.rag_query_processor.shutil")
     @patch("api_backend.utils.rag_query_processor.FAISS")
@@ -345,13 +360,11 @@ class TestLoadAndMergeFaissIndicesForSrd:
         mock_faiss,
         mock_shutil,
         mock_os,
-    ):
-        """Test successful loading and merging of a single document."""
-        # Local Modules
+        mock_bedrock_client,
+    ):        # Local Modules
         from api_backend.utils.rag_query_processor import (
             FAISS_INDEX_CACHE,
             _load_and_merge_faiss_indices_for_srd,
-            BEDROCK_RUNTIME_CLIENT,
         )
 
         # Arrange
@@ -376,9 +389,9 @@ class TestLoadAndMergeFaissIndicesForSrd:
         mock_s3_client = MagicMock()
         mock_s3_client_class.return_value = mock_s3_client
 
-        # Setup Bedrock client - directly mock the global instance
+        # Setup Bedrock client - use the mocked parameter
         mock_embedding_model = MagicMock()
-        BEDROCK_RUNTIME_CLIENT.get_embedding_model.return_value = (
+        mock_bedrock_client.get_embedding_model.return_value = (
             mock_embedding_model
         )
 
@@ -491,14 +504,13 @@ class TestLoadAndMergeFaissIndicesForSrd:
         # Act
         result = _load_and_merge_faiss_indices_for_srd(
             owner_id, srd_id, mock_logger
-        )
-
-        # Assert
+        )        # Assert
         assert result == mock_vector_store1
         mock_vector_store1.merge_from.assert_called_once_with(
             mock_vector_store2  # First store is the base for merging
         )
 
+    @patch("api_backend.utils.rag_query_processor.BEDROCK_RUNTIME_CLIENT")
     @patch("api_backend.utils.rag_query_processor.DatabaseService")
     @patch("api_backend.utils.rag_query_processor.S3Client")
     @patch("api_backend.utils.rag_query_processor.shutil")
@@ -509,12 +521,10 @@ class TestLoadAndMergeFaissIndicesForSrd:
         mock_shutil,
         mock_s3_client_class,
         mock_db_service_class,
-    ):
-        """Test that S3 errors for individual documents are handled gracefully."""
-        # Local Modules
+        mock_bedrock_client,
+    ):        # Local Modules
         from api_backend.utils.rag_query_processor import (
             _load_and_merge_faiss_indices_for_srd,
-            BEDROCK_RUNTIME_CLIENT,
         )
 
         # Arrange
@@ -536,7 +546,7 @@ class TestLoadAndMergeFaissIndicesForSrd:
 
         # Setup Bedrock client
         mock_embedding_model = MagicMock()
-        BEDROCK_RUNTIME_CLIENT.get_embedding_model.return_value = (
+        mock_bedrock_client.get_embedding_model.return_value = (
             mock_embedding_model
         )
 
@@ -561,18 +571,65 @@ class TestLoadAndMergeFaissIndicesForSrd:
         assert result is None  # No vector stores loaded successfully
         mock_logger.error.assert_called()
 
-
-class TestGetAnswerFromRag:
-    """Test cases for the get_answer_from_rag function."""
-
-    def setup_method(self):
-        """Setup method to clear cache before each test."""
+    @patch("api_backend.utils.rag_query_processor.os")
+    @patch("api_backend.utils.rag_query_processor.shutil")
+    @patch("api_backend.utils.rag_query_processor.FAISS")
+    @patch("api_backend.utils.rag_query_processor.S3Client")
+    @patch("api_backend.utils.rag_query_processor.DatabaseService")
+    def test_load_and_merge_faiss_indices_missing_document_id(
+        self,
+        mock_db_service_class,
+        mock_s3_client_class,
+        mock_faiss,
+        mock_shutil,
+        mock_os,
+    ):
+        """Test scenario with documents missing document_id field."""
         # Local Modules
         from api_backend.utils.rag_query_processor import (
-            FAISS_INDEX_CACHE,
+            _load_and_merge_faiss_indices_for_srd,
         )
 
-        FAISS_INDEX_CACHE.clear()
+        # Arrange
+        owner_id = "test-owner"
+        srd_id = "test-srd"
+        mock_logger = MagicMock()
+
+        mock_db_service = MagicMock()
+        mock_db_service.list_document_records.return_value = {
+            "Items": [
+                {
+                    # Missing document_id field
+                    "processing_status": DocumentProcessingStatus.completed.value,
+                },
+                {
+                    "document_id": "valid-doc",
+                    "processing_status": DocumentProcessingStatus.completed.value,
+                },
+            ]
+        }
+        mock_db_service_class.return_value = mock_db_service
+
+        # Set up S3 and FAISS mocks
+        mock_s3_client = MagicMock()
+        mock_s3_client_class.return_value = mock_s3_client
+
+        mock_vector_store = MagicMock()
+        mock_faiss.load_local.return_value = mock_vector_store
+
+        mock_os.path.join.side_effect = lambda *args: "/".join(args)
+        mock_os.makedirs = MagicMock()
+
+        # Act
+        result = _load_and_merge_faiss_indices_for_srd(
+            owner_id, srd_id, mock_logger
+        )
+
+        # Assert
+        assert result == mock_vector_store
+        # Should only process one document (the valid one)
+        assert mock_s3_client.download_file.call_count == 2  # .faiss and .pkl
+        mock_faiss.load_local.assert_called_once()
 
     @patch("api_backend.utils.rag_query_processor.DynamoDb")
     @patch(
@@ -960,21 +1017,15 @@ class TestGetAnswerFromRag:
         # Setup FAISS
         mock_vector_store = MagicMock()
         mock_retriever = MagicMock()
-        mock_vector_store.as_retriever.return_value = mock_retriever
-        mock_load_faiss.return_value = mock_vector_store
-
-        # Setup LLM
-        mock_llm = MagicMock()
-        mock_get_llm.return_value = mock_llm
-
-        # Setup RetrievalQA
-        mock_qa_chain = MagicMock()
         mock_qa_result = {
             "result": "LLM generated answer",
             "source_documents": [],
         }
+        mock_qa_chain = MagicMock()
         mock_qa_chain.invoke.return_value = mock_qa_result
         mock_retrieval_qa.from_chain_type.return_value = mock_qa_chain
+        mock_vector_store.as_retriever.return_value = mock_retriever
+        mock_load_faiss.return_value = mock_vector_store
 
         # Act
         result = get_answer_from_rag(
@@ -1193,36 +1244,26 @@ class TestGetAnswerFromRag:
         "api_backend.utils.rag_query_processor._load_and_merge_faiss_indices_for_srd"
     )
     def test_get_answer_from_rag_retriever_creation_error(
-        self, mock_load_faiss, mock_dynamodb_class
+        self, mock_load_faiss, mock_dynamo_class
     ):
-        """Test retriever creation error handling."""
+        """Test when vector_store.as_retriever() fails with exception."""
         # Local Modules
-        from api_backend.utils.rag_query_processor import (
-            get_answer_from_rag,
-        )
+        from api_backend.utils.rag_query_processor import get_answer_from_rag
 
         # Arrange
-        query_text = "test query"
-        owner_id = "test-owner"
-        srd_id = "test-srd"
-        mock_logger = MagicMock()
-
-        # Setup FAISS with retriever error
         mock_vector_store = MagicMock()
-        mock_vector_store.as_retriever.side_effect = Exception(
-            "Retriever error"
-        )
+        mock_vector_store.as_retriever.side_effect = Exception("Retriever creation failed")
         mock_load_faiss.return_value = mock_vector_store
 
         # Act
         result = get_answer_from_rag(
-            query_text=query_text,
-            owner_id=owner_id,
-            srd_id=srd_id,
+            query_text="test query",
+            owner_id="test-owner",
+            srd_id="test-srd",
             invoke_generative_llm=False,
             use_conversational_style=False,
             generation_config_payload={},
-            lambda_logger=mock_logger,
+            number_of_documents=4,
         )
 
         # Assert
@@ -1279,13 +1320,11 @@ class TestGetAnswerFromRag:
 
         # Setup LLM
         mock_llm = MagicMock()
-        mock_get_llm.return_value = mock_llm
-
-        # Setup RetrievalQA
+        mock_get_llm.return_value = mock_llm        # Setup RetrievalQA
         mock_qa_chain = MagicMock()
         mock_qa_result = {
             "result": "LLM generated answer",
-            "source_documents": [],
+            "source_documents": [MagicMock(page_content="test doc content")],  # Add a source document
         }
         mock_qa_chain.invoke.return_value = mock_qa_result
         mock_retrieval_qa.from_chain_type.return_value = mock_qa_chain
@@ -1305,3 +1344,105 @@ class TestGetAnswerFromRag:
         # Should still return successful result despite cache put error
         assert result["answer"] == "LLM generated answer"
         assert result["source"] == "bedrock_llm"
+        assert result["source_documents_retrieved"] == 1
+
+    @patch("api_backend.utils.rag_query_processor.os")
+    @patch("api_backend.utils.rag_query_processor.shutil")
+    @patch("api_backend.utils.rag_query_processor.FAISS")
+    @patch("api_backend.utils.rag_query_processor.S3Client")
+    @patch("api_backend.utils.rag_query_processor.DatabaseService")
+    def test_load_and_merge_faiss_indices_cache_eviction(
+        self,
+        mock_db_service_class,
+        mock_s3_client_class,
+        mock_faiss,
+        mock_shutil,
+        mock_os,
+    ):
+        """Test cache eviction when MAX_CACHE_SIZE is reached."""
+        # Local Modules
+        from api_backend.utils.rag_query_processor import (
+            _load_and_merge_faiss_indices_for_srd,
+            FAISS_INDEX_CACHE,
+            MAX_CACHE_SIZE,
+        )
+
+        # Arrange - Fill cache to maximum capacity
+        FAISS_INDEX_CACHE.clear()
+        for i in range(MAX_CACHE_SIZE):
+            FAISS_INDEX_CACHE[f"owner{i}#srd{i}"] = MagicMock()
+
+        owner_id = "new-owner"
+        srd_id = "new-srd"
+        mock_logger = MagicMock()
+
+        # Set up mocks
+        mock_db_service = MagicMock()
+        mock_db_service.list_document_records.return_value = {
+            "Items": [
+                {
+                    "document_id": "doc1",
+                    "processing_status": DocumentProcessingStatus.completed.value,
+                }
+            ]
+        }
+        mock_db_service_class.return_value = mock_db_service
+
+        mock_s3_client = MagicMock()
+        mock_s3_client_class.return_value = mock_s3_client
+
+        mock_vector_store = MagicMock()
+        mock_faiss.load_local.return_value = mock_vector_store
+
+        mock_os.path.join.side_effect = lambda *args: "/".join(args)
+        mock_os.makedirs = MagicMock()
+
+        # Capture the first key before eviction
+        first_key = next(iter(FAISS_INDEX_CACHE))
+
+        # Act
+        result = _load_and_merge_faiss_indices_for_srd(
+            owner_id, srd_id, mock_logger
+        )
+
+        # Assert
+        assert result == mock_vector_store
+        # Cache should still have MAX_CACHE_SIZE items
+        assert len(FAISS_INDEX_CACHE) == MAX_CACHE_SIZE
+        # New key should be in cache
+        assert f"{owner_id}#{srd_id}" in FAISS_INDEX_CACHE
+        # Oldest key should have been evicted
+        assert first_key not in FAISS_INDEX_CACHE
+
+    @patch("api_backend.utils.rag_query_processor.DynamoDb")
+    @patch(
+        "api_backend.utils.rag_query_processor._load_and_merge_faiss_indices_for_srd"
+    )
+    def test_get_answer_from_rag_retriever_invoke_error_no_llm(
+        self, mock_load_faiss, mock_dynamo_class
+    ):
+        """Test retriever invoke error when not using LLM."""
+        # Local Modules
+        from api_backend.utils.rag_query_processor import get_answer_from_rag
+
+        # Arrange
+        mock_vector_store = MagicMock()
+        mock_retriever = MagicMock()
+        mock_retriever.invoke.side_effect = Exception("Retriever error")
+        mock_vector_store.as_retriever.return_value = mock_retriever
+        mock_load_faiss.return_value = mock_vector_store
+
+        # Act
+        result = get_answer_from_rag(
+            query_text="test query",
+            owner_id="test-owner",
+            srd_id="test-srd",
+            invoke_generative_llm=False,
+            use_conversational_style=False,
+            generation_config_payload={},
+            number_of_documents=4,
+        )
+
+        # Assert
+        assert "error" in result
+        assert "Failed to prepare for information retrieval" in result["error"]
