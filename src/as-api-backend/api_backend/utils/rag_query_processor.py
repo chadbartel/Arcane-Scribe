@@ -15,7 +15,7 @@ from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.prompts import PromptTemplate
 
 # Local Modules
-from core.aws import S3Client, DynamoDb
+from core.aws import S3Client, DynamoDb, BedrockRuntimeClient
 from core.utils import DocumentProcessingStatus
 from core.services import DatabaseService
 from core.utils.config import (
@@ -25,7 +25,6 @@ from core.utils.config import (
     QUERY_CACHE_TABLE_NAME,
     DOCUMENTS_METADATA_TABLE_NAME,
 )
-from api_backend.aws.bedrock_runtime import BedrockRuntimeClient
 
 # Initialize logger
 logger = Logger(service="rag-query-processor")
