@@ -114,7 +114,7 @@ def get_llm_instance(
             model_id=BEDROCK_TEXT_GENERATION_MODEL_ID,
             model_kwargs={
                 "temperature": 0.1,
-                "maxTokenCount": 1024,
+                "max_tokens": 1024,
             },
         )
         return DEFAULT_LLM_INSTANCE  # Return default instance if dynamic config fails
