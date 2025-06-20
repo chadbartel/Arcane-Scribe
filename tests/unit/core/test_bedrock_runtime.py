@@ -8,7 +8,7 @@ import pytest
 from botocore.exceptions import ClientError, NoCredentialsError
 
 # Local Modules
-from pdf_ingestor.aws.bedrock_runtime import BedrockRuntimeClient
+from core.aws.bedrock_runtime import BedrockRuntimeClient
 
 
 class TestBedrockRuntimeClient:
