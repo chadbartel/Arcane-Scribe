@@ -8,7 +8,7 @@ import pytest
 from botocore.exceptions import ClientError
 
 # Local Modules
-from pdf_ingestor import processor as processor_module
+from pdf_ingestor import processor
 
 
 class TestExtractPathInfo:
@@ -17,7 +17,7 @@ class TestExtractPathInfo:
     def test_extract_path_info_valid_path(self):
         """Test extraction with a valid S3 object key."""
         object_key = "user123/campaign456/doc789/example.pdf"
-        result = processor_module.extract_path_info(object_key)
+        result = processor.extract_path_info(object_key)
 
         expected = ("user123", "campaign456", "doc789", "example.pdf")
         assert result == expected
@@ -25,7 +25,7 @@ class TestExtractPathInfo:
     def test_extract_path_info_nested_filename(self):
         """Test extraction with nested folder structure in filename."""
         object_key = "user123/campaign456/doc789/subfolder/example.pdf"
-        result = processor_module.extract_path_info(object_key)
+        result = processor.extract_path_info(object_key)
 
         expected = (
             "user123",
@@ -40,7 +40,7 @@ class TestExtractPathInfo:
         object_key = (
             "user-with-dashes/campaign_with_underscores/doc@123/file.pdf"
         )
-        result = processor_module.extract_path_info(object_key)
+        result = processor.extract_path_info(object_key)
 
         expected = (
             "user-with-dashes",
@@ -55,28 +55,28 @@ class TestExtractPathInfo:
         object_key = "user123/campaign456"
 
         with pytest.raises(ValueError, match="Invalid S3 object key format"):
-            processor_module.extract_path_info(object_key)
+            processor.extract_path_info(object_key)
 
     def test_extract_path_info_invalid_path_empty(self):
         """Test extraction with empty path."""
         object_key = ""
 
         with pytest.raises(ValueError, match="Invalid S3 object key format"):
-            processor_module.extract_path_info(object_key)
+            processor.extract_path_info(object_key)
 
     def test_extract_path_info_single_part(self):
         """Test extraction with single path component."""
         object_key = "justfilename.pdf"
 
         with pytest.raises(ValueError, match="Invalid S3 object key format"):
-            processor_module.extract_path_info(object_key)
+            processor.extract_path_info(object_key)
 
     def test_extract_path_info_three_parts(self):
         """Test extraction with only three path components."""
         object_key = "user123/campaign456/doc789"
 
         with pytest.raises(ValueError, match="Invalid S3 object key format"):
-            processor_module.extract_path_info(object_key)
+            processor.extract_path_info(object_key)
 
 
 class TestProcessS3Object:
@@ -152,7 +152,7 @@ class TestProcessS3Object:
         mock_faiss.from_documents.return_value = mock_vector_store
 
         # Execute the function
-        result = processor_module.process_s3_object(
+        result = processor.process_s3_object(
             bucket_name=self.bucket_name,
             object_key=self.object_key,
             lambda_logger=self.mock_logger,
@@ -173,7 +173,7 @@ class TestProcessS3Object:
 
         # Verify database service calls
         mock_db_service_class.assert_called_once_with(
-            table_name=processor_module.DOCUMENTS_METADATA_TABLE_NAME
+            table_name=processor.DOCUMENTS_METADATA_TABLE_NAME
         )
         assert mock_db_service.update_document_record.call_count == 2
 
@@ -243,7 +243,7 @@ class TestProcessS3Object:
         mock_pdf_loader_class.return_value = mock_pdf_loader
 
         # Execute the function
-        result = processor_module.process_s3_object(
+        result = processor.process_s3_object(
             bucket_name=self.bucket_name,
             object_key=self.object_key,
             lambda_logger=self.mock_logger,
@@ -312,7 +312,7 @@ class TestProcessS3Object:
         mock_text_splitter_class.return_value = mock_text_splitter
 
         # Execute the function
-        result = processor_module.process_s3_object(
+        result = processor.process_s3_object(
             bucket_name=self.bucket_name,
             object_key=self.object_key,
             lambda_logger=self.mock_logger,
@@ -367,7 +367,7 @@ class TestProcessS3Object:
 
         # Execute the function and verify exception is raised
         with pytest.raises(ClientError):
-            processor_module.process_s3_object(
+            processor.process_s3_object(
                 bucket_name=self.bucket_name,
                 object_key=self.object_key,
                 lambda_logger=self.mock_logger,
@@ -416,7 +416,7 @@ class TestProcessS3Object:
         mock_bedrock_client = MagicMock()
         mock_bedrock_client_class.return_value = mock_bedrock_client  # Execute the function and verify exception is raised
         with pytest.raises(ValueError, match="Unexpected error"):
-            processor_module.process_s3_object(
+            processor.process_s3_object(
                 bucket_name=self.bucket_name,
                 object_key=self.object_key,
                 lambda_logger=self.mock_logger,
@@ -504,7 +504,7 @@ class TestProcessS3Object:
         mock_faiss.from_documents.return_value = mock_vector_store
 
         # Execute the function - should complete successfully despite cleanup errors
-        result = processor_module.process_s3_object(
+        result = processor.process_s3_object(
             bucket_name=self.bucket_name,
             object_key=self.object_key,
             lambda_logger=self.mock_logger,
@@ -534,7 +534,7 @@ class TestProcessS3Object:
 
         # Execute the function and verify exception is raised
         with pytest.raises(ValueError, match="Invalid S3 object key format"):
-            processor_module.process_s3_object(
+            processor.process_s3_object(
                 bucket_name=self.bucket_name,
                 object_key="invalid/key",
                 lambda_logger=self.mock_logger,
