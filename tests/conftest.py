@@ -114,6 +114,7 @@ def pytest_configure(config):
     )
     os.environ["BEDROCK_EMBEDDING_MODEL_ID"] = "amazon.titan-embed-text-v1"
     os.environ["QUERY_CACHE_TABLE_NAME"] = "test-query-cache-table"
+    os.environ["DOCUMENTS_METADATA_TABLE_NAME"] = "test-documents-metadata-table"
 
     return config
 
