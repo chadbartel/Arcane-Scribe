@@ -14,7 +14,7 @@ from core.aws.bedrock_runtime import BedrockRuntimeClient
 class TestBedrockRuntimeClient:
     """Test cases for the BedrockRuntimeClient class."""
 
-    @patch("pdf_ingestor.aws.bedrock_runtime.boto3.client")
+    @patch("core.aws.bedrock_runtime.boto3.client")
     def test_init_success_with_region(self, mock_boto3_client):
         """Test successful initialization with region_name."""
         mock_client = MagicMock()
@@ -28,7 +28,7 @@ class TestBedrockRuntimeClient:
         )
         assert client.client == mock_client
 
-    @patch("pdf_ingestor.aws.bedrock_runtime.boto3.client")
+    @patch("core.aws.bedrock_runtime.boto3.client")
     def test_init_success_without_region(self, mock_boto3_client):
         """Test successful initialization without region_name."""
         mock_client = MagicMock()
@@ -41,8 +41,8 @@ class TestBedrockRuntimeClient:
         )
         assert client.client == mock_client
 
-    @patch("pdf_ingestor.aws.bedrock_runtime.boto3.client")
-    @patch("pdf_ingestor.aws.bedrock_runtime.logger")
+    @patch("core.aws.bedrock_runtime.boto3.client")
+    @patch("core.aws.bedrock_runtime.logger")
     def test_init_failure_no_credentials(self, mock_logger, mock_boto3_client):
         """Test initialization failure due to missing credentials."""
         error = NoCredentialsError()
@@ -55,8 +55,8 @@ class TestBedrockRuntimeClient:
             f"Failed to create Bedrock Runtime client: {error}"
         )
 
-    @patch("pdf_ingestor.aws.bedrock_runtime.boto3.client")
-    @patch("pdf_ingestor.aws.bedrock_runtime.logger")
+    @patch("core.aws.bedrock_runtime.boto3.client")
+    @patch("core.aws.bedrock_runtime.logger")
     def test_init_failure_client_error(self, mock_logger, mock_boto3_client):
         """Test initialization failure due to AWS client error."""
         error = ClientError(
@@ -72,8 +72,8 @@ class TestBedrockRuntimeClient:
             f"Failed to create Bedrock Runtime client: {error}"
         )
 
-    @patch("pdf_ingestor.aws.bedrock_runtime.boto3.client")
-    @patch("pdf_ingestor.aws.bedrock_runtime.logger")
+    @patch("core.aws.bedrock_runtime.boto3.client")
+    @patch("core.aws.bedrock_runtime.logger")
     def test_init_failure_generic_exception(
         self, mock_logger, mock_boto3_client
     ):
@@ -88,8 +88,8 @@ class TestBedrockRuntimeClient:
             f"Failed to create Bedrock Runtime client: {error}"
         )
 
-    @patch("pdf_ingestor.aws.bedrock_runtime.BedrockEmbeddings")
-    @patch("pdf_ingestor.aws.bedrock_runtime.boto3.client")
+    @patch("core.aws.bedrock_runtime.BedrockEmbeddings")
+    @patch("core.aws.bedrock_runtime.boto3.client")
     def test_get_embedding_model_success(
         self, mock_boto3_client, mock_bedrock_embeddings
     ):
@@ -108,8 +108,8 @@ class TestBedrockRuntimeClient:
         )
         assert result == mock_embedding_instance
 
-    @patch("pdf_ingestor.aws.bedrock_runtime.BedrockEmbeddings")
-    @patch("pdf_ingestor.aws.bedrock_runtime.boto3.client")
+    @patch("core.aws.bedrock_runtime.BedrockEmbeddings")
+    @patch("core.aws.bedrock_runtime.boto3.client")
     def test_get_embedding_model_with_different_model_id(
         self, mock_boto3_client, mock_bedrock_embeddings
     ):
@@ -128,8 +128,8 @@ class TestBedrockRuntimeClient:
         )
         assert result == mock_embedding_instance
 
-    @patch("pdf_ingestor.aws.bedrock_runtime.ChatBedrock")
-    @patch("pdf_ingestor.aws.bedrock_runtime.boto3.client")
+    @patch("core.aws.bedrock_runtime.ChatBedrock")
+    @patch("core.aws.bedrock_runtime.boto3.client")
     def test_get_chat_model_success_without_kwargs(
         self, mock_boto3_client, mock_chat_bedrock
     ):
@@ -150,8 +150,8 @@ class TestBedrockRuntimeClient:
         )
         assert result == mock_chat_instance
 
-    @patch("pdf_ingestor.aws.bedrock_runtime.ChatBedrock")
-    @patch("pdf_ingestor.aws.bedrock_runtime.boto3.client")
+    @patch("core.aws.bedrock_runtime.ChatBedrock")
+    @patch("core.aws.bedrock_runtime.boto3.client")
     def test_get_chat_model_success_with_kwargs(
         self, mock_boto3_client, mock_chat_bedrock
     ):
@@ -177,8 +177,8 @@ class TestBedrockRuntimeClient:
         )
         assert result == mock_chat_instance
 
-    @patch("pdf_ingestor.aws.bedrock_runtime.ChatBedrock")
-    @patch("pdf_ingestor.aws.bedrock_runtime.boto3.client")
+    @patch("core.aws.bedrock_runtime.ChatBedrock")
+    @patch("core.aws.bedrock_runtime.boto3.client")
     def test_get_chat_model_success_with_empty_kwargs(
         self, mock_boto3_client, mock_chat_bedrock
     ):
@@ -200,8 +200,8 @@ class TestBedrockRuntimeClient:
         )
         assert result == mock_chat_instance
 
-    @patch("pdf_ingestor.aws.bedrock_runtime.ChatBedrock")
-    @patch("pdf_ingestor.aws.bedrock_runtime.boto3.client")
+    @patch("core.aws.bedrock_runtime.ChatBedrock")
+    @patch("core.aws.bedrock_runtime.boto3.client")
     def test_get_chat_model_with_different_model_id(
         self, mock_boto3_client, mock_chat_bedrock
     ):
@@ -222,7 +222,7 @@ class TestBedrockRuntimeClient:
         )
         assert result == mock_chat_instance
 
-    @patch("pdf_ingestor.aws.bedrock_runtime.boto3.client")
+    @patch("core.aws.bedrock_runtime.boto3.client")
     def test_client_attribute_persistence(self, mock_boto3_client):
         """Test that the client attribute persists across method calls."""
         mock_client = MagicMock()
@@ -236,9 +236,9 @@ class TestBedrockRuntimeClient:
         # Make multiple method calls and verify same client is used
         with (
             patch(
-                "pdf_ingestor.aws.bedrock_runtime.BedrockEmbeddings"
+                "core.aws.bedrock_runtime.BedrockEmbeddings"
             ) as mock_embeddings,
-            patch("pdf_ingestor.aws.bedrock_runtime.ChatBedrock") as mock_chat,
+            patch("core.aws.bedrock_runtime.ChatBedrock") as mock_chat,
         ):
 
             client.get_embedding_model("test-embedding-model")
@@ -254,7 +254,7 @@ class TestBedrockRuntimeClient:
                 model_kwargs=None,
             )
 
-    @patch("pdf_ingestor.aws.bedrock_runtime.boto3.client")
+    @patch("core.aws.bedrock_runtime.boto3.client")
     def test_multiple_instances_independent(self, mock_boto3_client):
         """Test that multiple client instances are independent."""
         mock_client1 = MagicMock()
