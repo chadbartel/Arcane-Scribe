@@ -32,8 +32,8 @@ router = APIRouter(prefix="/srd", tags=["SRD"])
 
 # Initialize S3 clients and database service
 db_service = DatabaseService(table_name=DOCUMENTS_METADATA_TABLE_NAME)
-s3_client_docs = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
-s3_client_vectors = S3Client(bucket_name=VECTOR_STORE_BUCKET_NAME)
+# s3_client_docs = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
+# s3_client_vectors = S3Client(bucket_name=VECTOR_STORE_BUCKET_NAME)
 
 
 @router.post(
@@ -86,6 +86,7 @@ def get_presigned_upload_url(
         logger.info(
             f"Generating presigned URL for s3://{DOCUMENTS_BUCKET_NAME}/{object_key}"
         )
+        s3_client_docs = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
         presigned_url = s3_client_docs.generate_presigned_upload_url(
             object_key=object_key,
             expiration=expiration_seconds,
@@ -181,6 +182,7 @@ def delete_document_record(
     try:
         s3_key = document_record["s3_key"]
         logger.info(f"Deleting document from documents bucket in S3: {s3_key}")
+        s3_client_docs = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
         s3_client_docs.delete_object(object_key=s3_key)
         logger.info(f"Deleted document from documents bucket in S3: {s3_key}")
     except Exception as e:
@@ -194,6 +196,7 @@ def delete_document_record(
         faiss_key = f"{owner_id}/{srd_id}/vector_store/{document_id}.faiss"
         pickle_key = f"{owner_id}/{srd_id}/vector_store/{document_id}.pkl"
         logger.info("Deleting index from vector store bucket in S3")
+        s3_client_vectors = S3Client(bucket_name=VECTOR_STORE_BUCKET_NAME)
         s3_client_vectors.delete_object(object_key=faiss_key)
         s3_client_vectors.delete_object(object_key=pickle_key)
         logger.info("Deleted index from vector store bucket in S3")
@@ -242,6 +245,7 @@ def delete_all_document_records(
 
     # Get all documents for the given owner ID and SRD ID
     logger.info(f"Retrieving all document files for SRD ID {srd_id}")
+    s3_client_docs = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
     document_objects = s3_client_docs.list_objects(
         prefix=f"{owner_id}/{srd_id}/"
     )
@@ -268,6 +272,7 @@ def delete_all_document_records(
     # Get all vector store files for the given owner ID and SRD ID
     vector_store_prefix = f"{owner_id}/{srd_id}/vector_store/"
     logger.info(f"Retrieving all vector store files for SRD ID {srd_id}")
+    s3_client_vectors = S3Client(bucket_name=VECTOR_STORE_BUCKET_NAME)
     vector_store_objects = s3_client_vectors.list_objects(
         prefix=vector_store_prefix
     )
