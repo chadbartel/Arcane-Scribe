@@ -407,7 +407,9 @@ def get_answer_from_rag(
             docs = retriever.invoke(query_text)  # Langchain 0.2.x uses invoke
         except Exception as e:
             lambda_logger.exception(f"Error during document retrieval: {e}")
-            return {"error": "Failed to prepare for information retrieval."}        # Check if no documents were retrieved
+            return {
+                "error": "Failed to prepare for information retrieval."
+            }  # Check if no documents were retrieved
         if not docs:
             return {
                 "answer": (
@@ -415,7 +417,7 @@ def get_answer_from_rag(
                 ),
                 "source": "retrieval_only",
                 "source_documents_retrieved": 0,
-            }        # Format the retrieved documents into a string
+            }  # Format the retrieved documents into a string
         context_str = "\n\n---\n\n".join([doc.page_content for doc in docs])
         formatted_answer = (
             "Based on the retrieved SRD content for your query "

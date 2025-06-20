@@ -61,9 +61,11 @@ def verify_source_ip(request: Request) -> None:
         - 503 Service Unavailable if the SSM parameter cannot be fetched.
     """
     # Initialize the source IP to None
-    source_ip = None    # For API Gateway with Lambda Proxy integration (works for both REST and HTTP APIs)
+    source_ip = None  # For API Gateway with Lambda Proxy integration (works for both REST and HTTP APIs)
     if "requestContext" in request.scope.get("aws.event", {}):
-        identity = request.scope["aws.event"]["requestContext"].get("identity", {})
+        identity = request.scope["aws.event"]["requestContext"].get(
+            "identity", {}
+        )
         source_ip = identity.get("sourceIp")
 
     # Fallback for local testing where Uvicorn sets `request.client`
