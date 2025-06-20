@@ -403,24 +403,29 @@ def get_answer_from_rag(
         lambda_logger.info(
             "Generative LLM not invoked by client request. Returning retrieved context."
         )
-        docs = retriever.invoke(query_text)  # Langchain 0.2.x uses invoke
-
-        # Check if no documents were retrieved
+        try:
+            docs = retriever.invoke(query_text)  # Langchain 0.2.x uses invoke
+        except Exception as e:
+            lambda_logger.exception(f"Error during document retrieval: {e}")
+            return {"error": "Failed to prepare for information retrieval."}        # Check if no documents were retrieved
         if not docs:
             return {
                 "answer": (
                     "No specific information found to answer your query based on retrieval."
                 ),
                 "source": "retrieval_only",
-            }
-
-        # Format the retrieved documents into a string
+                "source_documents_retrieved": 0,
+            }        # Format the retrieved documents into a string
         context_str = "\n\n---\n\n".join([doc.page_content for doc in docs])
         formatted_answer = (
             "Based on the retrieved SRD content for your query "
             f"'{query_text}':\n{context_str}"
         )
-        return {"answer": formatted_answer, "source": "retrieval_only"}
+        return {
+            "answer": formatted_answer,
+            "source": "retrieval_only",
+            "source_documents_retrieved": len(docs),
+        }
 
     # Initialize LLM instance with dynamic config for this request
     current_llm_instance = get_llm_instance(generation_config_payload)
