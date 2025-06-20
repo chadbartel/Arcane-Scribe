@@ -43,6 +43,9 @@ def lambda_handler(event: S3Event, context: LambdaContext) -> Dict[str, Any]:
         event_name = record.event_name
         event_time = record.event_time
 
+        # Call head_object to get the object's metadata
+        logger.info(f"Fetching metadata for s3://{bucket_name}/{object_key}")
+
         # Log the event details for debugging and traceability
         logger.info(
             "Processing S3 event record.",
@@ -68,7 +71,9 @@ def lambda_handler(event: S3Event, context: LambdaContext) -> Dict[str, Any]:
             # Call the main processing function from the local module
             # Pass the Powertools logger instance so the processor module can use the same contextual logging
             result = processor.process_s3_object(
-                bucket_name, object_key, logger
+                bucket_name=bucket_name,
+                object_key=object_key,
+                lambda_logger=logger,
             )
 
             # Append the result to the results list for further processing or logging

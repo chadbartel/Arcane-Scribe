@@ -109,7 +109,9 @@ def test_lambda_handler_success_single_pdf(
 
     assert result == {"results": [expected_result]}
     mock_processor.process_s3_object.assert_called_once_with(
-        "test-documents-bucket", "documents/test_document.pdf", mock_logger
+        bucket_name="test-documents-bucket",
+        object_key="documents/test_document.pdf",
+        lambda_logger=mock_logger,
     )
     mock_logger.info.assert_any_call("PDF ingestion Lambda triggered.")
     mock_logger.info.assert_any_call(
@@ -201,10 +203,14 @@ def test_lambda_handler_multiple_pdf_files(
     assert result == {"results": expected_results}
     assert mock_processor.process_s3_object.call_count == 2
     mock_processor.process_s3_object.assert_any_call(
-        "test-documents-bucket", "doc1.pdf", mock_logger
+        bucket_name="test-documents-bucket",
+        object_key="doc1.pdf",
+        lambda_logger=mock_logger,
     )
     mock_processor.process_s3_object.assert_any_call(
-        "test-documents-bucket", "doc2.pdf", mock_logger
+        bucket_name="test-documents-bucket",
+        object_key="doc2.pdf",
+        lambda_logger=mock_logger,
     )
 
 
@@ -309,7 +315,9 @@ def test_lambda_handler_file_extension_handling(
 
     if should_process:
         mock_processor.process_s3_object.assert_called_once_with(
-            "test-documents-bucket", filename, mock_logger
+            bucket_name="test-documents-bucket",
+            object_key=filename,
+            lambda_logger=mock_logger,
         )
         assert len(result["results"]) == 1
     else:
@@ -408,8 +416,8 @@ def test_lambda_handler_mixed_success_and_failure(
     success_result = {"status": "success", "message": "Processed successfully"}
     error_message = "Processing failed"
 
-    def side_effect(bucket, key, logger):
-        if key == "success.pdf":
+    def side_effect(bucket_name, object_key, lambda_logger):
+        if object_key == "success.pdf":
             return success_result
         else:
             raise Exception(error_message)
@@ -490,7 +498,9 @@ def test_lambda_handler_url_encoded_object_key(
     handler_module.lambda_handler(s3_event, sample_lambda_context)
 
     mock_processor.process_s3_object.assert_called_once_with(
-        "test-documents-bucket", "documents/file with spaces.pdf", mock_logger
+        bucket_name="test-documents-bucket",
+        object_key="documents/file with spaces.pdf",
+        lambda_logger=mock_logger,
     )
 
 
@@ -555,5 +565,7 @@ def test_s3_event_data_class_usage(
 
     # Verify that the handler accesses S3Event properties correctly
     mock_processor.process_s3_object.assert_called_once_with(
-        "test-bucket", "test.pdf", handler_module.logger
+        bucket_name="test-bucket",
+        object_key="test.pdf",
+        lambda_logger=handler_module.logger,
     )

@@ -1,86 +1,68 @@
 # Standard Library
 import os
 import shutil
-from pathlib import Path
-from typing import Tuple
+import urllib.parse
+from typing import Tuple, Dict, Any, Optional
 
 # Third Party
-import boto3
 from botocore.exceptions import ClientError
 from aws_lambda_powertools import Logger
 from langchain_community.document_loaders import PyPDFLoader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain_aws import BedrockEmbeddings
 from langchain_community.vectorstores import FAISS
 
-# Initialize logger
-logger = Logger(service="pdf_ingestor_processor_bedrock")
-
-# Initialize Bedrock runtime client
-try:
-    s3_client = boto3.client("s3")
-    bedrock_runtime_client = boto3.client(service_name="bedrock-runtime")
-except Exception as e:
-    logger.exception(
-        f"Failed to initialize Boto3 clients in processor module: {e}"
-    )
-    s3_client = None
-    bedrock_runtime_client = None
-
-# Get the Bedrock embedding model ID from environment variables or use a default
-BEDROCK_EMBEDDING_MODEL_ID = os.environ.get(
-    "BEDROCK_EMBEDDING_MODEL_ID", "amazon.titan-embed-text-v2:0"
+# Local Modules
+from core.aws import S3Client, BedrockRuntimeClient
+from core.utils import DocumentProcessingStatus
+from core.services import DatabaseService
+from core.utils.config import (
+    DOCUMENTS_BUCKET_NAME,
+    VECTOR_STORE_BUCKET_NAME,
+    BEDROCK_EMBEDDING_MODEL_ID,
+    DOCUMENTS_METADATA_TABLE_NAME,
 )
 
-# Initialize the BedrockEmbeddings model
-try:
-    logger.info(
-        f"Initializing BedrockEmbeddings model: {BEDROCK_EMBEDDING_MODEL_ID}"
-    )
-    embedding_model = BedrockEmbeddings(
-        client=bedrock_runtime_client, model_id=BEDROCK_EMBEDDING_MODEL_ID
-    )
-    logger.info("BedrockEmbeddings model initialized.")
-except Exception as e:
-    logger.exception(f"Failed to initialize BedrockEmbeddings model: {e}")
-    embedding_model = None
-
-# Get the S3 bucket name for storing the FAISS index
-VECTOR_STORE_BUCKET_NAME = os.environ.get("VECTOR_STORE_BUCKET_NAME")
+# Initialize logger
+logger = Logger(service="pdf-ingestor-processor-bedrock")
 
 
-def extract_srd_info(object_key: str) -> Tuple[str, str]:
-    """Extract the SRD ID and filename from the S3 object key.
+def extract_path_info(object_key: str) -> Tuple[str, str, str, str]:
+    """Extracts the owner ID, SRD ID, document ID, and filename from an S3
+    object key.
 
     The S3 object key is expected to be in the format:
-    `<srd_id>/<filename>`, where `<srd_id>` is the SRD ID and
-    `<filename>` is the name of the file.
+    `<owner_id>/<srd_id>/<document_id>/<filename>`, where:
+    - `<owner_id>` is the Cognito username of the document owner.
+    - `<srd_id>` is the client-specified SRD identifier.
+    - `<document_id>` is the unique identifier for the document.
+    - `<filename>` is the name of the file being processed.
 
     Parameters
     ----------
     object_key : str
-        The S3 object key to extract the SRD ID and filename from.
+        The S3 object key from which to extract the information.
 
     Returns
     -------
-    Tuple[str, str]
-        A tuple containing the SRD ID and the filename.
-        If the object key does not contain a slash, the filename is returned
-        as the second element, and the SRD ID is set to an empty string.
+    Tuple[str, str, str, str]
+        A tuple containing the owner ID, SRD ID, document ID, and filename.
     """
-    # Split the object key into parts to extract SRD ID and filename
-    parts = object_key.split("/", 1)
+    # Split the object key into parts
+    parts = object_key.split("/", 3)
 
-    # No SRD ID in path, use the filename as both SRD ID and filename
-    if len(parts) < 2:
-        return Path(object_key).stem, object_key
+    # Ensure there are enough parts to extract the required information
+    if len(parts) < 4:
+        raise ValueError(
+            f"Invalid S3 object key format: {object_key}. "
+            "Expected format is '<owner_id>/<srd_id>/<document_id>/<filename>'."
+        )
 
-    return parts[0], parts[1]
+    return parts[0], parts[1], parts[2], parts[3]
 
 
 def process_s3_object(
     bucket_name: str, object_key: str, lambda_logger: Logger
-) -> None:
+) -> Optional[Dict[str, Any]]:
     """Process a PDF file from S3, generate embeddings using Bedrock,
     and create a FAISS index. The FAISS index is then uploaded back to S3.
 
@@ -92,6 +74,14 @@ def process_s3_object(
         The key of the PDF file in the S3 bucket.
     lambda_logger : Logger
         The logger instance for logging messages.
+
+    Returns
+    -------
+    Optional[Dict[str, Any]]
+        A dictionary containing metadata about the processed document,
+        including the owner ID, SRD ID, original filename, chunk count,
+        source bucket, source key, and vector index location in S3. If no
+        documents are loaded or no text chunks are generated, returns None.
 
     Raises
     -------
@@ -105,23 +95,51 @@ def process_s3_object(
         For any other unexpected errors during processing.
     """
     # Extract SRD ID form object key
-    srd_id, filename = extract_srd_info(object_key=object_key)
-
-    # Validate the bucket name and object key
-    base_file_name = os.path.basename(filename)
-    safe_base_file_name = "".join(
-        c if c.isalnum() or c in [".", "-"] else "_" for c in base_file_name
+    owner_id, srd_id, document_id, filename = extract_path_info(
+        object_key=object_key
     )
-    temp_pdf_path = f"/tmp/{safe_base_file_name}"
-    temp_faiss_index_name = f"{srd_id}_faiss_index"
-    temp_faiss_index_path = f"/tmp/{temp_faiss_index_name}"
+
+    # Initialize database service
+    db_service = DatabaseService(table_name=DOCUMENTS_METADATA_TABLE_NAME)
+
+    # Update the document metadata in the database to 'processing'
+    db_service.update_document_record(
+        owner_id=owner_id,
+        srd_id=srd_id,
+        document_id=document_id,
+        update_map={
+            "processing_status": DocumentProcessingStatus.processing.value,
+        },
+    )
+
+    # Initialize the S3 client
+    s3_client = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
+
+    # Initialize the Bedrock runtime client
+    bedrock_runtime_client = BedrockRuntimeClient()
+
+    # Get the embedding model
+    embedding_model = bedrock_runtime_client.get_embedding_model(
+        model_id=BEDROCK_EMBEDDING_MODEL_ID
+    )
+
+    # Decode object key to handle any URL encoding
+    decoded_key = urllib.parse.unquote_plus(object_key)
+
+    # Define a unique temporary path for the FAISS index using the document_id
+    temp_pdf_path = f"/tmp/{os.path.basename(filename)}"
+    temp_faiss_index_path = (
+        f"/tmp/{document_id}"  # Use document_id for the temp folder name
+    )
 
     try:
         # Download the PDF file from S3
         lambda_logger.info(
             f"Downloading s3://{bucket_name}/{object_key} to {temp_pdf_path}"
         )
-        s3_client.download_file(bucket_name, object_key, temp_pdf_path)
+        s3_client.download_file(
+            object_key=decoded_key, download_path=temp_pdf_path
+        )
         lambda_logger.info(f"Successfully downloaded PDF to {temp_pdf_path}")
 
         # Load the PDF document using PyPDFLoader
@@ -137,6 +155,17 @@ def process_s3_object(
             lambda_logger.warning(
                 f"No documents loaded from PDF: {object_key}."
             )
+
+            # Update the document metadata in the database to 'failed'
+            db_service.update_document_record(
+                owner_id=owner_id,
+                srd_id=srd_id,
+                document_id=document_id,
+                update_map={
+                    "processing_status": DocumentProcessingStatus.failed.value,
+                },
+            )
+
             return
 
         # Split the document into manageable text chunks
@@ -147,6 +176,17 @@ def process_s3_object(
         lambda_logger.info(f"Split into {len(texts)} text chunks.")
         if not texts:
             lambda_logger.warning(f"No text chunks generated: {object_key}.")
+
+            # Update the document metadata in the database to 'failed'
+            db_service.update_document_record(
+                owner_id=owner_id,
+                srd_id=srd_id,
+                document_id=document_id,
+                update_map={
+                    "processing_status": DocumentProcessingStatus.failed.value,
+                },
+            )
+
             return
 
         # Generate embeddings for the text chunks using Bedrock
@@ -156,27 +196,37 @@ def process_s3_object(
         vector_store = FAISS.from_documents(texts, embedding_model)
         lambda_logger.info("FAISS index created successfully in memory.")
 
-        # Save the FAISS index to a temporary directory
+        # Clean up any old temporary directories if they exist
         if os.path.exists(temp_faiss_index_path):
             shutil.rmtree(temp_faiss_index_path)
         os.makedirs(temp_faiss_index_path, exist_ok=True)
-        vector_store.save_local(folder_path=temp_faiss_index_path)
+
+        # Save the FAISS index locally using the document_id as the index_name
+        vector_store.save_local(
+            folder_path=temp_faiss_index_path,
+            index_name=document_id,
+        )
         lambda_logger.info(
             f"FAISS index saved locally to directory: {temp_faiss_index_path}"
         )
 
+        # Define a more specific S3 prefix for the vector store
+        s3_index_prefix = f"{owner_id}/{srd_id}/vector_store"
+
         # Upload the FAISS index files to S3
-        s3_index_prefix = f"{srd_id}/faiss_index"
         for file_name_in_index_dir in os.listdir(temp_faiss_index_path):
             local_file_to_upload = os.path.join(
                 temp_faiss_index_path, file_name_in_index_dir
             )
             s3_target_key = f"{s3_index_prefix}/{file_name_in_index_dir}"
+
             lambda_logger.info(
                 f"Uploading {local_file_to_upload} to s3://{VECTOR_STORE_BUCKET_NAME}/{s3_target_key}"
             )
             s3_client.upload_file(
-                local_file_to_upload, VECTOR_STORE_BUCKET_NAME, s3_target_key
+                file_path=local_file_to_upload,
+                object_key=s3_target_key,
+                bucket_name=VECTOR_STORE_BUCKET_NAME,
             )
         lambda_logger.info(
             f"FAISS index for {object_key} uploaded to S3: {VECTOR_STORE_BUCKET_NAME}/{s3_index_prefix}"
@@ -187,10 +237,28 @@ def process_s3_object(
         lambda_logger.exception(
             f"AWS ClientError during processing of {object_key}: {e}"
         )
+        # Update the document metadata in the database to 'failed'
+        db_service.update_document_record(
+            owner_id=owner_id,
+            srd_id=srd_id,
+            document_id=document_id,
+            update_map={
+                "processing_status": DocumentProcessingStatus.failed.value,
+            },
+        )
         raise
     except Exception as e:
         lambda_logger.exception(
             f"Unexpected error during processing of {object_key}: {e}"
+        )
+        # Update the document metadata in the database to 'failed'
+        db_service.update_document_record(
+            owner_id=owner_id,
+            srd_id=srd_id,
+            document_id=document_id,
+            update_map={
+                "processing_status": DocumentProcessingStatus.failed.value,
+            },
         )
         raise
     finally:
@@ -211,13 +279,25 @@ def process_s3_object(
                     f"Error cleaning temp FAISS dir {temp_faiss_index_path}: {e_clean}"
                 )
 
+    # Update the document metadata in the database to 'completed'
+    db_service.update_document_record(
+        owner_id=owner_id,
+        srd_id=srd_id,
+        document_id=document_id,
+        update_map={
+            "processing_status": DocumentProcessingStatus.completed.value,
+        },
+    )
+
     # Save metadata about the processed document
     metadata = {
+        "owner_id": owner_id,
         "srd_id": srd_id,
+        "document_id": document_id,
         "original_filename": filename,
         "chunk_count": len(texts),
         "source_bucket": bucket_name,
-        "source_key": object_key,
+        "source_key": decoded_key,
         "vector_index_location": f"{s3_index_prefix}/",
     }
 
