@@ -18,6 +18,7 @@ class TestBedrockRuntimeClient:
         """Reset global variables before each test."""
         # Import the module to reset global variables
         import core.aws.bedrock_runtime
+
         core.aws.bedrock_runtime._bedrock_runtime_client = None
         core.aws.bedrock_runtime._embedding_model_instance = None
 
@@ -40,7 +41,7 @@ class TestBedrockRuntimeClient:
         mock_boto3_client.return_value = mock_client
 
         client = BedrockRuntimeClient()
-        
+
         # First call
         result1 = client._get_boto_client()
         # Second call
@@ -59,7 +60,7 @@ class TestBedrockRuntimeClient:
         mock_boto3_client.side_effect = error
 
         client = BedrockRuntimeClient()
-        
+
         with pytest.raises(NoCredentialsError):
             client._get_boto_client()
 
@@ -96,7 +97,7 @@ class TestBedrockRuntimeClient:
         mock_bedrock_embeddings.return_value = mock_embedding_instance
 
         client = BedrockRuntimeClient()
-        
+
         # First call
         result1 = client.get_embedding_model("model1")
         # Second call with different model_id (should still return same instance)
@@ -195,10 +196,13 @@ class TestBedrockRuntimeClient:
         mock_boto3_client.return_value = mock_client
         mock_chat_instance1 = MagicMock()
         mock_chat_instance2 = MagicMock()
-        mock_chat_bedrock.side_effect = [mock_chat_instance1, mock_chat_instance2]
+        mock_chat_bedrock.side_effect = [
+            mock_chat_instance1,
+            mock_chat_instance2,
+        ]
 
         client = BedrockRuntimeClient()
-        
+
         # First call
         result1 = client.get_chat_model("model1")
         # Second call
@@ -213,14 +217,16 @@ class TestBedrockRuntimeClient:
         assert result1 is not result2
 
     @patch("core.aws.bedrock_runtime.boto3.client")
-    def test_multiple_client_instances_share_global_state(self, mock_boto3_client):
+    def test_multiple_client_instances_share_global_state(
+        self, mock_boto3_client
+    ):
         """Test that multiple BedrockRuntimeClient instances share global state."""
         mock_client = MagicMock()
         mock_boto3_client.return_value = mock_client
 
         client1 = BedrockRuntimeClient()
         client2 = BedrockRuntimeClient()
-        
+
         # Both clients should use the same underlying boto3 client
         result1 = client1._get_boto_client()
         result2 = client2._get_boto_client()
@@ -244,7 +250,7 @@ class TestBedrockRuntimeClient:
 
         client1 = BedrockRuntimeClient()
         client2 = BedrockRuntimeClient()
-        
+
         # Both clients should get the same embedding instance
         result1 = client1.get_embedding_model("model1")
         result2 = client2.get_embedding_model("model2")
@@ -330,7 +336,7 @@ class TestBedrockRuntimeClient:
         mock_bedrock_embeddings.side_effect = error
 
         client = BedrockRuntimeClient()
-        
+
         with pytest.raises(ValueError, match="Invalid model configuration"):
             client.get_embedding_model("invalid-model")
 
@@ -349,21 +355,28 @@ class TestBedrockRuntimeClient:
         mock_chat_bedrock.side_effect = error
 
         client = BedrockRuntimeClient()
-        
+
         with pytest.raises(ClientError):
             client.get_chat_model("test-model")
 
     @patch("core.aws.bedrock_runtime.boto3.client")
-    def test_client_creation_with_botocore_client_error(self, mock_boto3_client):
+    def test_client_creation_with_botocore_client_error(
+        self, mock_boto3_client
+    ):
         """Test that boto3 client creation errors are propagated."""
         error = ClientError(
-            {"Error": {"Code": "ServiceUnavailable", "Message": "Service unavailable"}},
+            {
+                "Error": {
+                    "Code": "ServiceUnavailable",
+                    "Message": "Service unavailable",
+                }
+            },
             "CreateClient",
         )
         mock_boto3_client.side_effect = error
 
         client = BedrockRuntimeClient()
-        
+
         with pytest.raises(ClientError):
             client._get_boto_client()
 
