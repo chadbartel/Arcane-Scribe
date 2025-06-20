@@ -21,7 +21,7 @@ from core.utils.config import (
     BEDROCK_EMBEDDING_MODEL_ID,
     DOCUMENTS_METADATA_TABLE_NAME,
 )
-from pdf_ingestor.aws import BedrockRuntimeClient
+from core.aws import BedrockRuntimeClient
 
 # Initialize logger
 logger = Logger(service="pdf-ingestor-processor-bedrock")
