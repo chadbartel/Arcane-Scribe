@@ -255,11 +255,11 @@ class TestProcessS3Object:
         # Verify database service was called to mark as failed
         update_calls = mock_db_service.update_document_record.call_args_list
         assert len(update_calls) == 2
-        
+
         # First call should set status to 'processing'
         first_call = update_calls[0]
         assert first_call[1]["update_map"]["processing_status"] == "processing"
-        
+
         # Second call should set status to 'failed'
         second_call = update_calls[1]
         assert second_call[1]["update_map"]["processing_status"] == "failed"
@@ -324,7 +324,7 @@ class TestProcessS3Object:
         # Verify database service was called to mark as failed
         update_calls = mock_db_service.update_document_record.call_args_list
         assert len(update_calls) == 2
-        
+
         # Second call should set status to 'failed'
         second_call = update_calls[1]
         assert second_call[1]["update_map"]["processing_status"] == "failed"
@@ -376,7 +376,7 @@ class TestProcessS3Object:
         # Verify database service was called to mark as failed
         update_calls = mock_db_service.update_document_record.call_args_list
         assert len(update_calls) == 2
-        
+
         # Second call should set status to 'failed'
         second_call = update_calls[1]
         assert second_call[1]["update_map"]["processing_status"] == "failed"
@@ -414,7 +414,7 @@ class TestProcessS3Object:
 
         # Mock Bedrock client
         mock_bedrock_client = MagicMock()
-        mock_bedrock_client_class.return_value = mock_bedrock_client        # Execute the function and verify exception is raised
+        mock_bedrock_client_class.return_value = mock_bedrock_client  # Execute the function and verify exception is raised
         with pytest.raises(ValueError, match="Unexpected error"):
             processor_module.process_s3_object(
                 bucket_name=self.bucket_name,
@@ -425,7 +425,7 @@ class TestProcessS3Object:
         # Verify database service was called to mark as failed
         update_calls = mock_db_service.update_document_record.call_args_list
         assert len(update_calls) == 2
-        
+
         # Second call should set status to 'failed'
         second_call = update_calls[1]
         assert second_call[1]["update_map"]["processing_status"] == "failed"
@@ -451,7 +451,7 @@ class TestProcessS3Object:
         mock_s3_client_class,
         mock_db_service_class,
     ):
-        """Test handling of cleanup errors in finally block."""        # Setup mocks
+        """Test handling of cleanup errors in finally block."""  # Setup mocks
         mock_unquote_plus.return_value = self.object_key
         mock_os.path.basename.return_value = "test.pdf"
 
@@ -462,21 +462,23 @@ class TestProcessS3Object:
             elif path == "/tmp/test.pdf":  # temp_pdf_path
                 return True  # For finally cleanup
             return False
-        
+
         mock_os.path.exists.side_effect = mock_exists_side_effect
         mock_os.listdir.return_value = ["doc789.faiss", "doc789.pkl"]
         mock_os.path.join.side_effect = lambda *args: "/".join(args)
         mock_os.makedirs.return_value = None
-        
+
         # Mock cleanup errors for finally block calls
-        mock_os.remove.side_effect = OSError("File removal error")        # Mock rmtree to work normally first, then fail in finally
+        mock_os.remove.side_effect = OSError(
+            "File removal error"
+        )  # Mock rmtree to work normally first, then fail in finally
         call_count = {"rmtree": 0}
-        
+
         def mock_rmtree_side_effect(*args):
             call_count["rmtree"] += 1
             if call_count["rmtree"] > 1:  # After first successful call
                 raise OSError("Directory removal error")
-        
+
         mock_shutil.rmtree.side_effect = mock_rmtree_side_effect
 
         # Mock all other services
@@ -511,10 +513,11 @@ class TestProcessS3Object:
         # Verify the result is still returned
         assert result is not None
         assert result["owner_id"] == "user123"
-        
+
         # Verify cleanup errors were logged
         error_log_calls = [
-            call for call in self.mock_logger.error.call_args_list
+            call
+            for call in self.mock_logger.error.call_args_list
             if "Error cleaning" in str(call)
         ]
         assert len(error_log_calls) == 2
