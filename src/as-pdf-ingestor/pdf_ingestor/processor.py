@@ -12,8 +12,7 @@ from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 
 # Local Modules
-from core.aws import S3Client
-from core.aws.bedrock_runtime import BedrockRuntimeClient
+from core.aws import S3Client, BedrockRuntimeClient
 from core.utils import DocumentProcessingStatus
 from core.services import DatabaseService
 from core.utils.config import (

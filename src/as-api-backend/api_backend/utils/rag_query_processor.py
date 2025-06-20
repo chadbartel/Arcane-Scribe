@@ -15,8 +15,7 @@ from langchain.chains.retrieval_qa.base import RetrievalQA
 from langchain.prompts import PromptTemplate
 
 # Local Modules
-from core.aws import S3Client, DynamoDb
-from core.aws.bedrock_runtime import BedrockRuntimeClient
+from core.aws import S3Client, DynamoDb, BedrockRuntimeClient
 from core.utils import DocumentProcessingStatus
 from core.services import DatabaseService
 from core.utils.config import (
