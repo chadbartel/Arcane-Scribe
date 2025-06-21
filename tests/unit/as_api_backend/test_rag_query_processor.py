@@ -362,6 +362,7 @@ class TestLoadAndMergeFaissIndicesForSrd:
         mock_os,
         mock_bedrock_client,
     ):  # Local Modules
+        # Local Modules
         from api_backend.utils.rag_query_processor import (
             FAISS_INDEX_CACHE,
             _load_and_merge_faiss_indices_for_srd,
@@ -523,6 +524,7 @@ class TestLoadAndMergeFaissIndicesForSrd:
         mock_db_service_class,
         mock_bedrock_client,
     ):  # Local Modules
+        # Local Modules
         from api_backend.utils.rag_query_processor import (
             _load_and_merge_faiss_indices_for_srd,
         )

@@ -17,6 +17,7 @@ class TestBedrockRuntimeClient:
     def setup_method(self):
         """Reset global variables before each test."""
         # Import the module to reset global variables
+        # Local Modules
         import core.aws.bedrock_runtime
 
         core.aws.bedrock_runtime._bedrock_runtime_client = None
