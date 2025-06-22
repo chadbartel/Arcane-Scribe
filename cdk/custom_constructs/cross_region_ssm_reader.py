@@ -1,13 +1,14 @@
 # Standard Library
-from typing import Optional
+import os
 
 # Third Party
 from aws_cdk import (
+    Stack,
+    CustomResource,
+    BundlingOptions,
     aws_iam as iam,
     aws_lambda as _lambda,
     custom_resources as cr,
-    CustomResource,
-    Stack,
 )
 from constructs import Construct
 
@@ -23,44 +24,70 @@ class CrossRegionSsmReader(Construct):
         id: str,
         parameter_name: str,
         region: str,
-        stack_suffix: Optional[str] = "",
     ):
         super().__init__(scope, id)
 
-        # The inline code for the Lambda function that will perform the lookup
-        lambda_handler_code = f"""
+        # This directory will hold the lambda code and its dependencies
+        lambda_code_path = os.path.join(
+            os.getcwd(), "cdk/custom_constructs/ssm_reader_lambda"
+        )
+        os.makedirs(lambda_code_path, exist_ok=True)
+
+        # Create requirements.txt for the handler
+        with open(
+            os.path.join(lambda_code_path, "requirements.txt"), "w"
+        ) as f:
+            f.write("boto3\\n")
+            f.write("cfn-response-python\\n")
+
+        # Create the handler code file
+        with open(os.path.join(lambda_code_path, "index.py"), "w") as f:
+            f.write("""
+import os
 import boto3
+import logging
 import cfnresponse
+
+logger = logging.getLogger()
+logger.setLevel("INFO")
 
 def handler(event, context):
     response_data = {{}}
     status = cfnresponse.SUCCESS
-    physical_resource_id = event.get('PhysicalResourceId')
+    # Use the a unique value for the physical resource id
+    physical_resource_id = f"SsmReader-{{event['LogicalResourceId']}}"
 
     try:
         if event['RequestType'] in ['Create', 'Update']:
-            ssm_client = boto3.client('ssm', region_name='{region}')
+            region = event['ResourceProperties']['Region']
             param_name = event['ResourceProperties']['ParameterName']
-            print(f"Fetching SSM parameter '{{param_name}}' from region '{{region}}'")
             
-            response = ssm_client.get_parameter(Name=param_name)
+            logger.info(
+                f"Fetching SSM parameter '{{param_name}}' from region '{{region}}'"
+            )
+            ssm_client = boto3.client('ssm', region_name=region)
+            
+            response = ssm_client.get_parameter(
+                Name=param_name, WithDecryption=True
+            )
             response_data['Value'] = response['Parameter']['Value']
-            physical_resource_id = f"ssm-reader-{{param_name}}"
-
     except Exception as e:
-        print(f"Error: {{str(e)}}")
+        logger.error(f"Error: {{str(e)}}", exc_info=True)
         status = cfnresponse.FAILED
-        response_data['Error'] = str(e)
+        # Keep the error message short to avoid response size limits
+        response_data['Error'] = str(e)[:256]
 
-    cfnresponse.send(event, context, status, response_data, physical_resource_id)
-"""
+    cfnresponse.send(
+        event, context, status, response_data, physical_resource_id
+    )
+""")
 
         current_stack = Stack.of(self)
 
         # IAM Role for the custom resource Lambda
         lambda_role = iam.Role(
             self,
-            f"SsmReaderLambdaRole{stack_suffix}",
+            "SsmReaderLambdaRole",
             assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
             managed_policies=[
                 iam.ManagedPolicy.from_aws_managed_policy_name(
@@ -68,37 +95,61 @@ def handler(event, context):
                 )
             ],
         )
-        # Grant permission to get the specific SSM parameter from the other region
+
+        # CORRECTED IAM POLICY
+        ssm_parameter_arn = f"arn:{current_stack.partition}:ssm:{region}:{current_stack.account}:parameter{parameter_name}"
+
         lambda_role.add_to_policy(
             iam.PolicyStatement(
-                actions=["ssm:GetParameter"],
-                resources=[
-                    f"arn:aws:ssm:{region}:{current_stack.account}:parameter{parameter_name}"
-                ],
+                actions=["ssm:GetParameter"], resources=[ssm_parameter_arn]
             )
         )
 
-        # The provider framework encapsulates the Lambda function
+        kms_key_arn_for_ssm = f"arn:{current_stack.partition}:kms:{region}:{current_stack.account}:key/*"
+        lambda_role.add_to_policy(
+            iam.PolicyStatement(
+                actions=["kms:Decrypt"],
+                resources=[kms_key_arn_for_ssm],
+                conditions={
+                    {
+                        "StringEquals": {
+                            {"kms:ViaService": f"ssm.{region}.amazonaws.com"}
+                        }
+                    }
+                },
+            )
+        )
+
+        # The provider framework that bundles and deploys the Lambda
         provider = cr.Provider(
             self,
-            f"SsmReaderProvider{stack_suffix}",
+            "SsmReaderProvider",
             on_event_handler=_lambda.Function(
                 self,
-                f"SsmReaderEventHandler{stack_suffix}",
-                runtime=_lambda.Runtime.PYTHON_3_12,
+                "SsmReaderEventHandler",
+                runtime=lambda_.Runtime.PYTHON_3_12,
                 handler="index.handler",
-                code=_lambda.Code.from_inline(lambda_handler_code),
                 role=lambda_role,
+                code=lambda_.Code.from_asset(
+                    lambda_code_path,
+                    bundling=BundlingOptions(
+                        image=runtime.bundling_image,
+                        command=[
+                            "bash",
+                            "-c",
+                            "pip install -r requirements.txt -t /asset-output && cp index.py /asset-output/",
+                        ],
+                    ),
+                ),
             ),
         )
 
         # The actual Custom Resource that triggers the Lambda
         custom_resource = CustomResource(
             self,
-            f"SsmReaderResource{stack_suffix}",
+            "SsmReaderResource",
             service_token=provider.service_token,
-            properties={"ParameterName": parameter_name},
+            properties={"ParameterName": parameter_name, "Region": region},
         )
 
-        # Make the looked-up value available as a property of the construct
         self.value = custom_resource.get_att_string("Value")
