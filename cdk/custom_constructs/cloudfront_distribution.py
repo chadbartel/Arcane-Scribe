@@ -6,6 +6,7 @@ from aws_cdk import (
     aws_s3 as s3,
     aws_cloudfront as cloudfront,
     aws_cloudfront_origins as origins,
+    aws_certificatemanager as acm,
 )
 from constructs import Construct
 
@@ -17,6 +18,9 @@ class CustomCdn(Construct):
         id: str,
         name: str,
         s3_origin: s3.IBucket,
+        domain_name: str,
+        api_certificate: acm.ICertificate,
+        origin_access_identity: Optional[cloudfront.IOriginAccessIdentity] = None,
         stack_suffix: Optional[str] = "",
         default_root_object: Optional[str] = "index.html",
     ) -> None:
@@ -48,10 +52,27 @@ class CustomCdn(Construct):
             self,
             id,
             default_root_object=default_root_object,
+            # Default behavior to serve content from S3 bucket
             default_behavior=cloudfront.BehaviorOptions(
-                origin=origins.S3Origin(s3_origin),
+                origin=origins.S3Origin(
+                    s3_origin,
+                    origin_access_identity=origin_access_identity,
+                ),
+                viewer_protocol_policy=(
+                    cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS
+                ),
+                allowed_methods=(
+                    cloudfront.AllowedMethods.ALLOW_GET_HEAD_OPTIONS
+                ),
+                cached_methods=(
+                    cloudfront.CachedMethods.CACHE_GET_HEAD_OPTIONS
+                ),
+                compress=True,
             ),
+            domain_names=[domain_name],
+            certificate=api_certificate,
             comment=name,
             enable_logging=True,
             log_bucket=s3_origin,  # Use the same S3 bucket for logging
+            price_class=cloudfront.PriceClass.PRICE_CLASS_100,
         )
