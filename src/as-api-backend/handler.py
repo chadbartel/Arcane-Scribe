@@ -5,6 +5,7 @@ from typing import Dict, Any
 from mangum import Mangum
 from fastapi import FastAPI, Depends, APIRouter
 from fastapi.responses import HTMLResponse
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.openapi.docs import get_redoc_html, get_swagger_ui_html
 from aws_lambda_powertools import Logger
 from aws_lambda_powertools.logging import correlation_paths
@@ -28,6 +29,14 @@ app = FastAPI(
     openapi_url=f"{API_PREFIX}/openapi.json",
 )
 
+# Add CORS Middleware to the FastAPI app
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow all origins for CORS
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods
+    allow_headers=["*"],  # Allow all headers
+)
 
 # region Define custom documentation routes
 docs_router = APIRouter(
