@@ -36,9 +36,7 @@ s3_client_docs = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
 s3_client_vectors = S3Client(bucket_name=VECTOR_STORE_BUCKET_NAME)
 
 
-@router.get(
-    "", status_code=status.HTTP_200_OK, response_model=list
-)
+@router.get("", status_code=status.HTTP_200_OK, response_model=list)
 def list_owner_documents(
     current_user: User = Depends(get_current_user),
 ) -> JSONResponse:
