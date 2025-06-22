@@ -5,7 +5,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const loginError = document.getElementById("login-error");
 
     // Replace with your actual API Gateway URL
-    const API_BASE_URL = "https://arcane-scribe.thatsmidnight.com/api/v1"; 
+    const API_BASE_URL = "https://arcane-scribe-dev.thatsmidnight.com/api/v1"; 
 
     // --- LOGIN LOGIC ---
     loginForm.addEventListener("submit", async (e) => {
@@ -16,7 +16,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const password = document.getElementById("password").value;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            const response = await fetch(`${API_BASE_URL}/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password }),
