@@ -33,7 +33,11 @@ else:
 
 # Create the stack with the final name and environment
 ArcaneScribeStack(
-    app, final_stack_name, stack_suffix=formatted_stack_suffix, env=aws_env
+    app,
+    final_stack_name,
+    stack_suffix=formatted_stack_suffix,
+    env=aws_env,
+    cross_region_references=True,
 )
 
 # Synthesize the app
