@@ -72,7 +72,5 @@ class CustomCdn(Construct):
             domain_names=[domain_name],
             certificate=api_certificate,
             comment=name,
-            enable_logging=True,
-            log_bucket=s3_origin,  # Use the same S3 bucket for logging
             price_class=cloudfront.PriceClass.PRICE_CLASS_100,
         )
