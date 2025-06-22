@@ -29,7 +29,7 @@ from .iam_policy_statement import CustomIAMPolicyStatement
 from .iam_role import CustomIamRole
 from .lambda_function import CustomLambdaFromDockerImage, CustomLambdaFunction
 from .rest_api import CustomRestApi
-from .s3_bucket import CustomS3Bucket
+from .s3_bucket import CustomS3Bucket, CustomBucketDeployment
 from .token_authorizer import CustomTokenAuthorizer
 from .cognito_user_pool import CustomCognitoUserPool
 from .cognito_admin_user import CognitoAdminUser
@@ -50,4 +50,5 @@ __all__ = [
     "CustomCognitoUserPool",
     "CognitoAdminUser",
     "CustomCdn",
+    "CustomBucketDeployment",
 ]

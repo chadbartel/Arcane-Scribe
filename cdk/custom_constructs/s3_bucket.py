@@ -2,7 +2,13 @@
 from typing import Optional, List
 
 # Third Party
-from aws_cdk import aws_s3 as s3, RemovalPolicy, Duration
+from aws_cdk import (
+    Duration,
+    RemovalPolicy,
+    aws_s3 as s3,
+    aws_cloudfront as cloudfront,
+    aws_s3_deployment as s3_deployment,
+)
 from constructs import Construct
 
 
@@ -86,4 +92,45 @@ class CustomS3Bucket(Construct):
             event_bridge_enabled=event_bridge_enabled,
             public_read_access=public_read_access,
             website_index_document=website_index_document,
+        )
+
+
+class CustomBucketDeployment(Construct):
+    def __init__(
+        self,
+        scope: Construct,
+        id: str,
+        destination_bucket: s3.IBucket,
+        source: str,
+        distribution: Optional[cloudfront.IDistribution] = None,
+        distribution_paths: Optional[List[str]] = ["/*"],
+    ) -> None:
+        """Custom Bucket Deployment Construct for AWS CDK.
+
+        Parameters
+        ----------
+        scope : Construct
+            The scope in which this construct is defined.
+        id : str
+            The ID of the construct.
+        destination_bucket : s3.IBucket
+            The S3 bucket where the contents will be deployed.
+        source : str
+            The local path to the source directory containing the files to deploy.
+        distribution : Optional[cloudfront.IDistribution], optional
+            The CloudFront distribution to invalidate after deployment, by default None
+        distribution_paths : Optional[List[str]], optional
+            The paths to invalidate in the CloudFront distribution, by default ["/*"]
+        """
+        super().__init__(scope, id)
+
+        # Deploy the contents from the source bucket to the target bucket
+        self.deployment = s3_deployment.BucketDeployment(
+            self,
+            "DeployBucketContents",
+            sources=[s3_deployment.Source.asset(source)],
+            destination_bucket=destination_bucket,
+            distribution=distribution,
+            distribution_paths=distribution_paths,
+            retain_on_delete=False,  # Remove contents on deletion
         )
