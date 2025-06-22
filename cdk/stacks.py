@@ -148,7 +148,6 @@ class ArcaneScribeStack(Stack):
         self.frontend_bucket = self.create_s3_bucket(
             construct_id="ArcaneScribeFrontendBucket",
             name="arcane-scribe-frontend",
-            public_read_access=True,
             website_index_document="index.html",
         )
         # endregion
