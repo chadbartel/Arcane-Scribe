@@ -85,6 +85,18 @@ class ArcaneScribeStack(Stack):
         imported_home_ip_ssm_param_name = Fn.import_value(
             "home-ip-ssm-param-name"
         )
+
+        # Import the wildcard domain certificate ARN
+        wildcard_certificate_arn = Fn.import_value(
+            self.node.try_get_context(
+                "wildcard_domain_certificate_output_name"
+            )
+        )
+        wildcard_api_certificate = acm.Certificate.from_certificate_arn(
+            self,
+            "WildcardApiCertificate",
+            certificate_arn=wildcard_certificate_arn,
+        )
         # endregion
 
         # region Cognito User Pool for Authentication
