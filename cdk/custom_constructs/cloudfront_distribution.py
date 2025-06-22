@@ -36,8 +36,14 @@ class CustomCdn(Construct):
             The name of the CloudFront distribution.
         s3_origin : s3.IBucket
             The S3 bucket to use as the origin for the CloudFront distribution.
+        domain_name : str
+            The domain name for the CloudFront distribution.
+        api_certificate : acm.ICertificate
+            The ACM certificate for the CloudFront distribution.
+        origin_access_identity : Optional[cloudfront.IOriginAccessIdentity], optional
+            The origin access identity for the S3 bucket, by default None
         stack_suffix : Optional[str], optional
-            Suffix to append to the CloudFront distribution name, by default ""
+            A suffix to append to the stack name, by default ""
         default_root_object : Optional[str], optional
             The default root object for the CloudFront distribution, by default "index.html"
         """
