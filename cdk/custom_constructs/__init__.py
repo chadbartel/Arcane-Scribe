@@ -33,6 +33,7 @@ from .s3_bucket import CustomS3Bucket
 from .token_authorizer import CustomTokenAuthorizer
 from .cognito_user_pool import CustomCognitoUserPool
 from .cognito_admin_user import CognitoAdminUser
+from .cloudfront_distribution import CustomCdn
 
 __all__ = [
     "ApiCustomDomain",
@@ -48,4 +49,5 @@ __all__ = [
     "CustomTokenAuthorizer",
     "CustomCognitoUserPool",
     "CognitoAdminUser",
+    "CustomCdn",
 ]
