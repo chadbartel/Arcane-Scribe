@@ -8,5 +8,6 @@
   "bedrock_text_generation_model_id": "anthropic.claude-3-5-haiku-20241022-v1:0",
   "admin_secret_name": "prod/arcane-scribe/admin",
   "admin_email": "thatsmidnight@thatsmidnight.com",
-  "admin_username": "thatsmidnight"
+  "admin_username": "thatsmidnight",
+  "wildcard_domain_certificate_output_name": "wildcard-api-certificate-arn"
 }
