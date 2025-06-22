@@ -34,6 +34,7 @@ from .token_authorizer import CustomTokenAuthorizer
 from .cognito_user_pool import CustomCognitoUserPool
 from .cognito_admin_user import CognitoAdminUser
 from .cloudfront_distribution import CustomCdn
+from .cloudfront_oai import CustomOai
 
 __all__ = [
     "ApiCustomDomain",
@@ -51,4 +52,5 @@ __all__ = [
     "CognitoAdminUser",
     "CustomCdn",
     "CustomBucketDeployment",
+    "CustomOai",
 ]
