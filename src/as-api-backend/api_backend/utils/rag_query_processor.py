@@ -520,9 +520,7 @@ Helpful Answer:"""
             {"query": final_query_text}
         )  # Langchain 0.2.x uses invoke
         answer = result.get("result", "No answer generated.")
-        source_docs_content = [
-            doc.page_content for doc in result.get("source_documents", [])
-        ]
+        source_docs_content = format_docs(result.get("source_documents", []))
 
         # Cache the successful Bedrock response
         if (
@@ -540,9 +538,7 @@ Helpful Answer:"""
                         "owner_id": owner_id,
                         "srd_id": srd_id,
                         "query_text": query_text,
-                        "source_documents_summary": (
-                            "; ".join(source_docs_content)
-                        )[:1000],
+                        "source_documents": source_docs_content,
                         "timestamp": str(time.time()),
                         "ttl": str(ttl_value),
                         "generation_config_used": json.dumps(
@@ -567,6 +563,7 @@ Helpful Answer:"""
         return {
             "answer": answer,
             "source_documents_retrieved": len(source_docs_content),
+            "source_documents_content": source_docs_content,
             "source": "bedrock_llm",
         }
     # Catch specific Bedrock client errors
