@@ -9,5 +9,6 @@
   "admin_secret_name": "prod/arcane-scribe/admin",
   "admin_email": "thatsmidnight@thatsmidnight.com",
   "admin_username": "thatsmidnight",
-  "wildcard_domain_certificate_output_name": "wildcard-api-certificate-arn"
+  "wildcard_parameter_name": "/api/certificate/wilcard-certificate-arn",
+  "wildcart_certificate_region": "us-east-1"
 }
