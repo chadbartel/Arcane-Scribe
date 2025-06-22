@@ -35,6 +35,7 @@ from .cognito_user_pool import CustomCognitoUserPool
 from .cognito_admin_user import CognitoAdminUser
 from .cloudfront_distribution import CustomCdn
 from .cloudfront_oai import CustomOai
+from .cross_region_ssm_reader import CrossRegionSsmReader
 
 __all__ = [
     "ApiCustomDomain",
@@ -53,4 +54,5 @@ __all__ = [
     "CustomCdn",
     "CustomBucketDeployment",
     "CustomOai",
+    "CrossRegionSsmReader",
 ]
