@@ -32,6 +32,7 @@ from cdk.custom_constructs import (
     CustomCdn,
     CustomBucketDeployment,
     CustomOai,
+    CrossRegionSsmReader,
 )
 
 
@@ -84,6 +85,19 @@ class ArcaneScribeStack(Stack):
         # Import home IP SSM Parameter Name
         imported_home_ip_ssm_param_name = Fn.import_value(
             "home-ip-ssm-param-name"
+        )
+
+        # Import the wildcard certificate for the API domain
+        cert_arn_reader = CrossRegionSsmReader(
+            self, "CertArnReader",
+            parameter_name=self.node.try_get_context(
+                "wildcard_parameter_name"
+            ),
+            region=self.node.try_get_context("wildcart_certificate_region"),
+        )
+        wildcard_certificate_arn = cert_arn_reader.value
+        wildcard_api_certificate = acm.Certificate.from_certificate_arn(
+            self, "ImportedApiCertificate", wildcard_certificate_arn
         )
         # endregion
 
