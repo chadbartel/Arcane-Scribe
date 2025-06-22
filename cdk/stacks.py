@@ -463,7 +463,12 @@ class ArcaneScribeStack(Stack):
         # endregion
 
     def create_s3_bucket(
-        self, construct_id: str, name: str, versioned: Optional[bool] = False
+        self,
+        construct_id: str,
+        name: str,
+        versioned: Optional[bool] = False,
+        public_read_access: Optional[bool] = False,
+        website_index_document: Optional[str] = None,
     ) -> s3.Bucket:
         """Helper method to create an S3 bucket with a specific name and versioning.
 
@@ -475,6 +480,10 @@ class ArcaneScribeStack(Stack):
             The name of the S3 bucket.
         versioned : Optional[bool], optional
             Whether to enable versioning on the bucket, by default False
+        public_read_access : Optional[bool], optional
+            Whether to allow public read access to the bucket, by default False
+        website_index_document : Optional[str], optional
+            The index document for static website hosting, by default None
 
         Returns
         -------
@@ -487,6 +496,8 @@ class ArcaneScribeStack(Stack):
             name=name,
             stack_suffix=self.stack_suffix,
             versioned=versioned,
+            public_read_access=public_read_access,
+            website_index_document=website_index_document,
         )
         return custom_s3_bucket.bucket
 
