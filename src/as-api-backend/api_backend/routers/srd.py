@@ -36,6 +36,49 @@ s3_client_docs = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
 s3_client_vectors = S3Client(bucket_name=VECTOR_STORE_BUCKET_NAME)
 
 
+@router.get(
+    "", status_code=status.HTTP_200_OK, response_model=list
+)
+def list_owner_documents(
+    current_user: User = Depends(get_current_user),
+) -> JSONResponse:
+    """List all SRD documents for the current user.
+
+    **Parameters:**
+    - **current_user**: The current authenticated user.
+
+    **Returns:**
+    - **JSONResponse**: A JSON response containing a list of SRD IDs or an
+        error message if no documents are found.
+    """
+    # Extract the username
+    owner_id = current_user.username
+
+    # Retrieve the list of SRD IDs from the database
+    logger.info(f"Retrieving SRD IDs for owner_id={owner_id}")
+
+    # Get list of objects in S3 bucket under user's owner_id
+    srd_objects = s3_client_docs.list_objects(prefix=f"{owner_id}/")
+
+    # Check if any SRD objects were found
+    if not srd_objects:
+        logger.warning("No SRD documents found for the user")
+        return JSONResponse(
+            status_code=status.HTTP_404_NOT_FOUND,
+            content={"error": "No SRD documents found"},
+        )
+
+    logger.info(
+        "SRD documents retrieved successfully",
+        extra={"srd_objects": srd_objects},
+    )
+
+    return JSONResponse(
+        status_code=status.HTTP_200_OK,
+        content=[obj["Key"].split("/")[1] for obj in srd_objects],
+    )
+
+
 @router.post(
     "/{srd_id}/documents/upload-url",
     response_model=Union[PresignedUrlResponse, PresignedUrlErrorResponse],
@@ -228,7 +271,7 @@ def delete_document_record(
     return JSONResponse(status_code=status_code, content=None)
 
 
-@router.delete("/{srd_id}/documents")
+@router.delete("/{srd_id}/documents", status_code=status.HTTP_204_NO_CONTENT)
 def delete_all_document_records(
     srd_id: str = Path(..., description="The ID of the SRD document"),
     current_user: User = Depends(get_current_user),
@@ -321,7 +364,9 @@ def delete_all_document_records(
     return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content=None)
 
 
-@router.get("/{srd_id}/documents", response_model=list)
+@router.get(
+    "/{srd_id}/documents", status_code=status.HTTP_200_OK, response_model=list
+)
 def list_document_records(
     srd_id: str = Path(..., description="The ID of the SRD document"),
     current_user: User = Depends(get_current_user),
