@@ -486,11 +486,6 @@ class ArcaneScribeStack(Stack):
         self.frontend_bucket.grant_read(self.frontend_oai.oai)
 
         # Create a CloudFront distribution for the frontend bucket
-        certificate_arn = Fn.import_value(
-            self.node.try_get_context(
-                "wildcard_domain_certificate_output_name"
-            )
-        )
         self.frontend_cdn = CustomCdn(
             scope=self,
             id="ArcaneScribeFrontendCdn",
