@@ -189,6 +189,11 @@ def process_s3_object(
 
             return
 
+        # Add source and page number to metadata of each text chunk
+        for _, text in enumerate(texts):
+            # PyPDFLoader adds a 'page' key automatically
+            text.metadata["source"] = filename  # The PDF file path in S3
+
         # Generate embeddings for the text chunks using Bedrock
         lambda_logger.info(
             "Generating embeddings with Bedrock and creating FAISS index..."
