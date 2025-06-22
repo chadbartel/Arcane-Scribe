@@ -482,6 +482,11 @@ class ArcaneScribeStack(Stack):
         self.frontend_bucket.grant_read(self.frontend_oai.oai)
 
         # Create a CloudFront distribution for the frontend bucket
+        certificate_arn = Fn.import_value(
+            self.node.try_get_context(
+                "wildcard_domain_certificate_output_name"
+            )
+        )
         self.frontend_cdn = CustomCdn(
             scope=self,
             id="ArcaneScribeFrontendCdn",
@@ -489,7 +494,7 @@ class ArcaneScribeStack(Stack):
             s3_origin=self.frontend_bucket,
             stack_suffix=self.stack_suffix,
             domain_name=self.full_domain_name,
-            api_certificate=api_certificate,
+            api_certificate_arn=certificate_arn,
         )
 
         # Deploy static website files to the frontend bucket
