@@ -36,34 +36,6 @@ s3_client_docs = S3Client(bucket_name=DOCUMENTS_BUCKET_NAME)
 s3_client_vectors = S3Client(bucket_name=VECTOR_STORE_BUCKET_NAME)
 
 
-@router.get("", status_code=status.HTTP_200_OK)
-def get_all_srd_ids(
-    current_user: User = Depends(get_current_user),
-) -> JSONResponse:
-    """Retrieve all SRD IDs for the current user.
-
-    **Returns:**
-    - **JSONResponse**: A JSON response containing a list of SRD IDs.
-    """
-    # Extract the username
-    owner_id = current_user.username
-
-    # Retrieve all SRD IDs from the database
-    logger.info(f"Retrieving all SRD IDs for owner_id={owner_id}")
-    srd_ids = db_service.list_srd_ids_for_owner(owner_id=owner_id)
-
-    # Check if any SRD IDs were found
-    if not srd_ids:
-        logger.warning("No SRD IDs found in database")
-        return JSONResponse(
-            status_code=status.HTTP_404_NOT_FOUND,
-            content={"error": "No SRDs found"},
-        )
-
-    logger.info("SRD IDs retrieved successfully", extra={"srd_ids": srd_ids})
-    return JSONResponse(status_code=status.HTTP_200_OK, content=srd_ids)
-
-
 @router.post(
     "/{srd_id}/documents/upload-url",
     response_model=Union[PresignedUrlResponse, PresignedUrlErrorResponse],
