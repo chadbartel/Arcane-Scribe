@@ -19,7 +19,7 @@ class CustomCdn(Construct):
         name: str,
         s3_origin: s3.IBucket,
         domain_name: str,
-        api_certificate_arn: str,
+        api_certificate: acm.ICertificate,
         origin_access_identity: Optional[cloudfront.IOriginAccessIdentity] = None,
         stack_suffix: Optional[str] = "",
         default_root_object: Optional[str] = "index.html",
@@ -36,29 +36,16 @@ class CustomCdn(Construct):
             The name of the CloudFront distribution.
         s3_origin : s3.IBucket
             The S3 bucket to use as the origin for the CloudFront distribution.
-        domain_name : str
-            The domain name for the CloudFront distribution.
-        api_certificate_arn : str
-            The ARN of the ACM certificate to use for the CloudFront distribution.
-        origin_access_identity : Optional[cloudfront.IOriginAccessIdentity], optional
-            The origin access identity for the CloudFront distribution, by default None.
         stack_suffix : Optional[str], optional
-            A suffix to append to the stack name, by default "".
+            Suffix to append to the CloudFront distribution name, by default ""
         default_root_object : Optional[str], optional
-            The default root object for the CloudFront distribution, by default "index.html".
+            The default root object for the CloudFront distribution, by default "index.html"
         """
         super().__init__(scope, id)
 
         # Append stack suffix to name if provided
         if stack_suffix:
             name = f"{name}{stack_suffix}"
-
-        # Import the ACM certificate using the provided ARN
-        api_certificate = acm.Certificate.from_certificate_arn(
-            self,
-            "ImportedApiCertificate",
-            certificate_arn=api_certificate_arn,
-        )
 
         # Create a CloudFront distribution with the specified S3 origin
         self.distribution = cloudfront.Distribution(
