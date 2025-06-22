@@ -189,9 +189,7 @@ class DatabaseService:
             )
         )
 
-    def list_srd_ids_for_owner(
-        self, owner_id: str
-    ) -> List[str]:
+    def list_srd_ids_for_owner(self, owner_id: str) -> List[str]:
         """List all SRD IDs for a specific owner.
 
         Parameters
