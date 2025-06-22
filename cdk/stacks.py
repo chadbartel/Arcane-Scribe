@@ -31,6 +31,7 @@ from cdk.custom_constructs import (
     CustomTokenAuthorizer,
     CustomCdn,
     CustomBucketDeployment,
+    CustomOai,
 )
 
 
@@ -149,25 +150,6 @@ class ArcaneScribeStack(Stack):
             name="arcane-scribe-frontend",
             public_read_access=True,
             website_index_document="index.html",
-        )
-
-        # Create a CloudFront distribution for the frontend bucket
-        self.frontend_cdn = CustomCdn(
-            scope=self,
-            id="ArcaneScribeFrontendCdn",
-            name="arcane-scribe-frontend-cdn",
-            s3_origin=self.frontend_bucket,
-            stack_suffix=self.stack_suffix,
-        )
-
-        # Deploy static website files to the frontend bucket
-        CustomBucketDeployment(
-            scope=self,
-            id="ArcaneScribeFrontendDeployment",
-            destination_bucket=self.frontend_bucket,
-            source="frontend",
-            distribution=self.frontend_cdn.distribution,
-            distribution_paths=["/*"],  # Invalidate all paths
         )
         # endregion
 
@@ -488,6 +470,46 @@ class ArcaneScribeStack(Stack):
             value=f"https://{self.full_domain_name}",
             description="Custom API URL for Arcane Scribe",
             export_name=f"arcane-scribe-custom-api-url{self.stack_suffix}",
+        )
+        # endregion
+
+        # region CloudFront Distribution for Frontend
+        # Create a custom origina access identity (OAI) for the frontend bucket
+        self.frontend_oai = CustomOai(
+            scope=self,
+            id="ArcaneScribeFrontendOAI",
+            comment="Arcane Scribe Frontend OAI",
+        )
+        self.frontend_bucket.grant_read(self.frontend_oai.oai)
+
+        # Create a CloudFront distribution for the frontend bucket
+        self.frontend_cdn = CustomCdn(
+            scope=self,
+            id="ArcaneScribeFrontendCdn",
+            name="arcane-scribe-frontend-cdn",
+            s3_origin=self.frontend_bucket,
+            stack_suffix=self.stack_suffix,
+            domain_name=self.full_domain_name,
+            api_certificate=api_certificate,
+        )
+
+        # Deploy static website files to the frontend bucket
+        CustomBucketDeployment(
+            scope=self,
+            id="ArcaneScribeFrontendDeployment",
+            destination_bucket=self.frontend_bucket,
+            source="frontend",
+            distribution=self.frontend_cdn.distribution,
+            distribution_paths=["/*"],  # Invalidate all paths
+        )
+
+        # Output the CloudFront URL so it can be used to access the frontend
+        CfnOutput(
+            self,
+            "ArcaneScribeWebAppUrl",
+            value=f"https://{self.frontend_cdn.distribution.distribution_domain_name}",
+            description="Arcane Scribe Web App URL",
+            export_name=f"arcane-scribe-webapp-url{self.stack_suffix}",
         )
         # endregion
 
