@@ -430,24 +430,16 @@ class ArcaneScribeStack(Stack):
             domain_name=self.base_domain_name,
         )
 
-        # 2. Create an ACM certificate for subdomain with DNS validation
-        api_certificate = acm.Certificate(
-            self,
-            "ApiCertificate",
-            domain_name=self.full_domain_name,
-            validation=acm.CertificateValidation.from_dns(hosted_zone),
-        )
-
-        # 3. Create the API Gateway Custom Domain Name resource (REST API v1)
+        # 2. Create the API Gateway Custom Domain Name resource (REST API v1)
         apigw_custom_domain = apigw.DomainName(
             self,
             "ApiCustomDomain",
             domain_name=self.full_domain_name,
-            certificate=api_certificate,
+            certificate=wildcard_api_certificate,  # Use the imported wildcard certificate
             endpoint_type=apigw.EndpointType.REGIONAL,
         )
 
-        # 4. Map REST API to this custom domain
+        # 3. Map REST API to this custom domain
         default_stage = self.rest_api.deployment_stage
         if not default_stage:
             raise ValueError(
@@ -463,7 +455,7 @@ class ArcaneScribeStack(Stack):
             stage=default_stage,
         )
 
-        # 5. Create the Route 53 Alias Record pointing to the API Gateway custom domain
+        # 4. Create the Route 53 Alias Record pointing to the API Gateway custom domain
         route53.ARecord(
             self,
             "ApiAliasRecord",
@@ -474,7 +466,7 @@ class ArcaneScribeStack(Stack):
             ),
         )
 
-        # 6. Output the custom API URL
+        # 5. Output the custom API URL
         CfnOutput(
             self,
             "CustomApiUrlOutput",
@@ -506,7 +498,7 @@ class ArcaneScribeStack(Stack):
             s3_origin=self.frontend_bucket,
             stack_suffix=self.stack_suffix,
             domain_name=self.full_domain_name,
-            api_certificate_arn=certificate_arn,
+            api_certificate=wildcard_api_certificate,
         )
 
         # Deploy static website files to the frontend bucket
