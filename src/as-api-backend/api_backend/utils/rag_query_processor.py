@@ -41,6 +41,38 @@ BEDROCK_RUNTIME_CLIENT = BedrockRuntimeClient()
 DEFAULT_LLM_INSTANCE: Optional[ChatBedrock] = None
 
 
+def format_docs(docs: List[Any]) -> List[Dict[str, str]]:
+    """Format a list of document objects into a list of dictionaries
+    containing source, page, and content. This function is useful for
+    preparing documents for display or further processing, ensuring that
+    each document's metadata is captured in a structured format.
+
+    Parameters
+    ----------
+    docs : List[Any]
+        A list of document objects, where each object is expected to have
+        `metadata` and `page_content` attributes. The `metadata` should
+        contain 'source' and 'page' keys, while `page_content` contains
+        the text content of the document.
+
+    Returns
+    -------
+    List[Dict[str, str]]
+        A list of dictionaries, each containing the 'source', 'page',
+        and 'content' of the document. If 'source' or 'page' is not
+        available in the metadata, it will default to 'Unknown' or 'N/A'
+        respectively.
+    """
+    return [
+        {
+            "source": doc.metadata.get("source", "Unknown"),
+            "page": doc.metadata.get("page", "N/A"),
+            "content": doc.page_content,
+        }
+        for doc in docs
+    ]
+
+
 def get_llm_instance(
     generation_config: Dict[str, Any],
 ) -> Optional[ChatBedrock]:
