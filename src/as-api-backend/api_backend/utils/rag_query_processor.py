@@ -63,6 +63,8 @@ def format_docs(docs: List[Any]) -> List[Dict[str, str]]:
         available in the metadata, it will default to 'Unknown' or 'N/A'
         respectively.
     """
+    if not docs:
+        return []
     return [
         {
             "source": doc.metadata.get("source", "Unknown"),
