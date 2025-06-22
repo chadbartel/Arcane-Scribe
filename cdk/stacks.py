@@ -90,8 +90,10 @@ class ArcaneScribeStack(Stack):
         # Import the wildcard certificate for the API domain
         cert_arn_reader = CrossRegionSsmReader(
             self, "CertArnReader",
-            parameter_name="/api/certificate/wilcard-certificate-arn",
-            region="us-east-1",
+            parameter_name=self.node.try_get_context(
+                "wildcard_parameter_name"
+            ),
+            region=self.node.try_get_context("wildcard_certificate_region"),
         )
         wildcard_certificate_arn = cert_arn_reader.value
         wildcard_api_certificate = acm.Certificate.from_certificate_arn(
