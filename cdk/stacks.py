@@ -29,6 +29,8 @@ from cdk.custom_constructs import (
     CustomS3Bucket,
     CustomRestApi,
     CustomTokenAuthorizer,
+    CustomCdn,
+    CustomBucketDeployment,
 )
 
 
@@ -139,6 +141,33 @@ class ArcaneScribeStack(Stack):
             construct_id="VectorStoreBucket",
             name="arcane-scribe-vector-store",
             versioned=True,
+        )
+
+        # Bucket to store static website files
+        self.frontend_bucket = self.create_s3_bucket(
+            construct_id="ArcaneScribeFrontendBucket",
+            name="arcane-scribe-frontend",
+            public_read_access=True,
+            website_index_document="index.html",
+        )
+
+        # Create a CloudFront distribution for the frontend bucket
+        self.frontend_cdn = CustomCdn(
+            scope=self,
+            id="ArcaneScribeFrontendCdn",
+            name="arcane-scribe-frontend-cdn",
+            s3_origin=self.frontend_bucket,
+            stack_suffix=self.stack_suffix,
+        )
+
+        # Deploy static website files to the frontend bucket
+        CustomBucketDeployment(
+            scope=self,
+            id="ArcaneScribeFrontendDeployment",
+            destination_bucket=self.frontend_bucket,
+            source="frontend",
+            distribution=self.frontend_cdn.distribution,
+            distribution_paths=["/*"],  # Invalidate all paths
         )
         # endregion
 
