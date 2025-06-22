@@ -1,6 +1,6 @@
 # Standard Library
 import uuid
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from datetime import datetime, timezone
 
 # Third Party
@@ -188,6 +188,40 @@ class DatabaseService:
                 owner_srd_composite
             )
         )
+
+    def list_srd_ids_for_owner(
+        self, owner_id: str
+    ) -> List[str]:
+        """List all SRD IDs for a specific owner.
+
+        Parameters
+        ----------
+        owner_id : str
+            The Cognito username of the owner.
+
+        Returns
+        -------
+        List[str]
+            A list of unique SRD IDs associated with the specified owner.
+            Each SRD ID is derived from the composite key format
+            "owner_id#srd_id".
+        """
+        result = self.dynamodb.query(
+            key_condition_expression=Key("owner_srd_composite").begins_with(
+                owner_id
+            )
+        )
+
+        # Extract unique SRD IDs from the results
+        srd_ids = set()
+        for item in result.get("Items", []):
+            # Split the composite key to get the SRD ID
+            owner_srd_composite = item.get("owner_srd_composite", "")
+            if "#" in owner_srd_composite:
+                _, srd_id = owner_srd_composite.split("#", 1)
+                srd_ids.add(srd_id)
+
+        return list(srd_ids)
 
     def update_document_record(
         self,
