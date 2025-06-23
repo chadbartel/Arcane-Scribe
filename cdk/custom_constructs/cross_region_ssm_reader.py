@@ -1,13 +1,15 @@
 # Standard Library
 import os
+from typing import Optional, List, Dict
 
 # Third Party
 from aws_cdk import (
     Stack,
     CustomResource,
     BundlingOptions,
+    Duration,
     aws_iam as iam,
-    aws_lambda as lambda_,
+    aws_lambda as _lambda,
     custom_resources as cr,
 )
 from constructs import Construct
@@ -34,21 +36,22 @@ class CrossRegionSsmReader(Construct):
         )
         os.makedirs(lambda_code_path, exist_ok=True)
 
-        # Create requirements.txt for the handler
+        # --- FIX IS HERE: Correct the package name ---
+        # Create requirements.txt for the handler with the correct package name
         with open(
             os.path.join(lambda_code_path, "requirements.txt"), "w"
         ) as f:
             f.write("boto3\n")
-            f.write("cfn-response-python\n")
+            f.write("cfn-response\n")  # Corrected from 'cfn-response-python'
 
-        # Create the handler code file
+        # Create the handler code file (no changes needed here)
         with open(os.path.join(lambda_code_path, "index.py"), "w") as f:
             f.write(
                 f"""
-import os
 import boto3
-import logging
 import cfnresponse
+import logging
+import os
 
 logger = logging.getLogger()
 logger.setLevel("INFO")
@@ -93,9 +96,17 @@ def handler(event, context):
         )
 
         ssm_parameter_arn = f"arn:{partition}:ssm:{region}:{current_stack.account}:parameter{parameter_name}"
+        secret_arn_without_wildcard = f"arn:{partition}:ssm:{region}:{current_stack.account}:secret:{parameter_name}"
+        secret_arn_with_wildcard = f"{secret_arn_without_wildcard}-*"
+
         lambda_role.add_to_policy(
             iam.PolicyStatement(
-                actions=["ssm:GetParameter"], resources=[ssm_parameter_arn]
+                actions=["ssm:GetParameter"],
+                resources=[
+                    ssm_parameter_arn,
+                    secret_arn_without_wildcard,
+                    secret_arn_with_wildcard,
+                ],
             )
         )
 
@@ -106,8 +117,6 @@ def handler(event, context):
             iam.PolicyStatement(
                 actions=["kms:Decrypt"],
                 resources=[kms_key_arn_for_ssm],
-                # --- THIS BLOCK IS CORRECTED ---
-                # Removed the extra curly braces `{}` around the StringEquals block
                 conditions={
                     "StringEquals": {
                         "kms:ViaService": f"ssm.{region}.amazonaws.com"
