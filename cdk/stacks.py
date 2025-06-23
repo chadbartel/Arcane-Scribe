@@ -501,23 +501,14 @@ class ArcaneScribeStack(Stack):
                 "Default stage could not be found for API mapping. Ensure API has a default stage or specify one."
             )
 
-        # 3. Create base path mapping for REST API
-        apigw.BasePathMapping(
-            self,
-            "ApiBasePathMapping",
-            domain_name=apigw_custom_domain,
-            rest_api=self.rest_api,
-            stage=default_stage,
-        )
-
-        # 4. Create the Route 53 Alias Record pointing to the API Gateway custom domain
+        # 3. Create the Route 53 Alias Record pointing to the API Gateway custom domain
         route53.ARecord(
             self,
             "ApiAliasRecord",
             zone=hosted_zone,
             record_name=f"{self.subdomain_part}{self.stack_suffix}",
             target=route53.RecordTarget.from_alias(
-                targets.ApiGatewayDomain(apigw_custom_domain)
+                targets.CloudFrontTarget(self.frontend_cdn)
             ),
         )
         # endregion
