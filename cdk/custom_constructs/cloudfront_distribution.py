@@ -3,7 +3,6 @@ from typing import Optional
 
 # Third Party
 from aws_cdk import (
-    aws_s3 as s3,
     aws_cloudfront as cloudfront,
     aws_cloudfront_origins as origins,
     aws_certificatemanager as acm,
@@ -17,10 +16,9 @@ class CustomCdn(Construct):
         scope: Construct,
         id: str,
         name: str,
-        s3_origin: s3.IBucket,
+        s3_origin: origins.S3Origin,
         domain_name: str,
         api_certificate: acm.ICertificate,
-        origin_access_identity: Optional[cloudfront.IOriginAccessIdentity] = None,
         stack_suffix: Optional[str] = "",
         default_root_object: Optional[str] = "index.html",
     ) -> None:
@@ -35,13 +33,11 @@ class CustomCdn(Construct):
         name : str
             The name of the CloudFront distribution.
         s3_origin : s3.IBucket
-            The S3 bucket to use as the origin for the CloudFront distribution.
+            The S3 bucket origin for the CloudFront distribution.
         domain_name : str
             The domain name for the CloudFront distribution.
         api_certificate : acm.ICertificate
             The ACM certificate for the CloudFront distribution.
-        origin_access_identity : Optional[cloudfront.IOriginAccessIdentity], optional
-            The origin access identity for the S3 bucket, by default None
         stack_suffix : Optional[str], optional
             A suffix to append to the stack name, by default ""
         default_root_object : Optional[str], optional
@@ -60,10 +56,7 @@ class CustomCdn(Construct):
             default_root_object=default_root_object,
             # Default behavior to serve content from S3 bucket
             default_behavior=cloudfront.BehaviorOptions(
-                origin=origins.S3Origin(
-                    s3_origin,
-                    origin_access_identity=origin_access_identity,
-                ),
+                origin=s3_origin,
                 viewer_protocol_policy=(
                     cloudfront.ViewerProtocolPolicy.REDIRECT_TO_HTTPS
                 ),
