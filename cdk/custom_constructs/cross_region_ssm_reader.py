@@ -50,13 +50,6 @@ class CrossRegionSsmReader(Construct):
                             f"arn:{Stack.of(self).partition}:ssm:{region}:{Stack.of(self).account}:parameter{parameter_name}"
                         ],
                     ),
-                    # Add KMS policy in case the parameter is encrypted
-                    iam.PolicyStatement(
-                        actions=["kms:Decrypt"],
-                        resources=[
-                            "*"
-                        ],  # Scoping this down is best practice if the key is known
-                    ),
                 ]
             ),
         )
