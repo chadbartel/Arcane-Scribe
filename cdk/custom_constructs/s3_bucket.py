@@ -23,7 +23,6 @@ class CustomS3Bucket(Construct):
         lifecycle_rules: Optional[List[s3.LifecycleRule]] = None,
         event_bridge_enabled: Optional[bool] = False,
         public_read_access: Optional[bool] = False,
-        website_index_document: Optional[str] = None,
         **kwargs,
     ) -> None:
         """Custom S3 Bucket Construct for AWS CDK.
@@ -46,8 +45,6 @@ class CustomS3Bucket(Construct):
             Whether to enable EventBridge for the S3 bucket, by default False
         public_read_access : Optional[bool], optional
             Whether to allow public read access to the S3 bucket, by default False
-        website_index_document : Optional[str], optional
-            The index document for the S3 bucket if it is a static website, by default None
         """
         super().__init__(scope, id, **kwargs)
 
@@ -91,7 +88,6 @@ class CustomS3Bucket(Construct):
             lifecycle_rules=lifecycle_rules,
             event_bridge_enabled=event_bridge_enabled,
             public_read_access=public_read_access,
-            website_index_document=website_index_document,
         )
 
 
