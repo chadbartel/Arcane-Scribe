@@ -438,7 +438,7 @@ class ArcaneScribeStack(Stack):
             "ApiCustomDomain",
             domain_name=self.full_domain_name,
             certificate=wildcard_api_certificate,  # Use the imported wildcard certificate
-            endpoint_type=apigw.EndpointType.REGIONAL,
+            endpoint_type=apigw.EndpointType.EDGE,
         )
 
         # 3. Map REST API to this custom domain
