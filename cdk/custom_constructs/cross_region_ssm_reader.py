@@ -4,6 +4,7 @@ import os
 # Third Party
 from aws_cdk import (
     Stack,
+    Duration,
     CustomResource,
     BundlingOptions,
     aws_iam as iam,
@@ -148,6 +149,7 @@ def handler(event, context):
                     ],
                 ),
             ),
+            timeout=Duration.seconds(30),
         )
 
         # The provider framework that bundles and deploys the Lambda
