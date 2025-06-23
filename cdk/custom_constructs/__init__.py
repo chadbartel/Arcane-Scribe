@@ -36,6 +36,7 @@ from .cognito_admin_user import CognitoAdminUser
 from .cloudfront_distribution import CustomCdn
 from .cloudfront_oai import CustomOai
 from .cross_region_ssm_reader import CrossRegionSsmReader
+from .origins import CustomS3Origin, CustomHttpOrigin
 
 __all__ = [
     "ApiCustomDomain",
@@ -55,4 +56,6 @@ __all__ = [
     "CustomBucketDeployment",
     "CustomOai",
     "CrossRegionSsmReader",
+    "CustomS3Origin",
+    "CustomHttpOrigin",
 ]
