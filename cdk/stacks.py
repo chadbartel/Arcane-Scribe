@@ -13,6 +13,7 @@ from aws_cdk import (
     aws_route53 as route53,
     aws_dynamodb as dynamodb,
     aws_apigateway as apigw,
+    aws_cloudfront as cloudfront,
     aws_route53_targets as targets,
     aws_s3_notifications as s3n,
     aws_certificatemanager as acm,
@@ -33,6 +34,8 @@ from cdk.custom_constructs import (
     CustomBucketDeployment,
     CustomOai,
     CrossRegionSsmReader,
+    CustomS3Origin,
+    CustomHttpOrigin,
 )
 
 
@@ -424,6 +427,65 @@ class ArcaneScribeStack(Stack):
         )
         # endregion
 
+        # region Define the origins
+        # Create a custom origina access identity (OAI) for the frontend bucket
+        self.frontend_oai = CustomOai(
+            scope=self,
+            id="ArcaneScribeFrontendOAI",
+            comment="Arcane Scribe Frontend OAI",
+        )
+        self.frontend_bucket.grant_read(self.frontend_oai.oai)
+
+        # Create a custom S3 origin for the frontend bucket
+        s3_origin = CustomS3Origin(
+            scope=self,
+            id="ArcaneScribeFrontendS3Origin",
+            bucket=self.frontend_bucket,
+            origin_access_identity=self.frontend_oai.oai
+        ).origin
+
+        # Create a custom HTTP origin for the API Gateway
+        api_origin = CustomHttpOrigin(
+            scope=self,
+            id="ArcaneScribeApiHttpOrigin",
+            domain_name=Fn.select(2, Fn.split("/", self.rest_api.url)),
+            origin_path=f"/{self.rest_api.deployment_stage.stage_name}",
+        ).origin
+        # endregion
+
+        # region Unified CloudFront Distribution
+        # Create a CloudFront distribution for the frontend bucket
+        self.frontend_cdn = CustomCdn(
+            scope=self,
+            id="ArcaneScribeFrontendCdn",
+            name="arcane-scribe-frontend-cdn",
+            s3_origin=s3_origin,
+            stack_suffix=self.stack_suffix,
+            domain_name=self.full_domain_name,
+            api_certificate=wildcard_api_certificate,
+        ).distribution
+
+        # Any reqeust to "https://my.domain/api/*" will be forwarded to the API Gateway
+        self.frontend_cdn.add_behavior(
+            path_pattern=f"{self.api_prefix}/*",  # '/api/v1/*'
+            origin=api_origin,
+            allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
+            cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
+            origin_request_policy=cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+            compress=True,
+        )
+
+        # Deploy static website files to the frontend bucket
+        CustomBucketDeployment(
+            scope=self,
+            id="ArcaneScribeFrontendDeployment",
+            destination_bucket=self.frontend_bucket,
+            source="frontend",
+            distribution=self.frontend_cdn,
+            distribution_paths=["/*"],  # Invalidate all paths
+        )
+        # endregion
+
         # region Custom Domain Setup for API Gateway
         # 1. Look up existing hosted zone for "thatsmidnight.com"
         hosted_zone = route53.HostedZone.from_lookup(
@@ -432,23 +494,14 @@ class ArcaneScribeStack(Stack):
             domain_name=self.base_domain_name,
         )
 
-        # 2. Create the API Gateway Custom Domain Name resource (REST API v1)
-        apigw_custom_domain = apigw.DomainName(
-            self,
-            "ApiCustomDomain",
-            domain_name=self.full_domain_name,
-            certificate=wildcard_api_certificate,  # Use the imported wildcard certificate
-            endpoint_type=apigw.EndpointType.EDGE,
-        )
-
-        # 3. Map REST API to this custom domain
+        # 2. Map REST API to this custom domain
         default_stage = self.rest_api.deployment_stage
         if not default_stage:
             raise ValueError(
                 "Default stage could not be found for API mapping. Ensure API has a default stage or specify one."
             )
 
-        # Create base path mapping for REST API
+        # 3. Create base path mapping for REST API
         apigw.BasePathMapping(
             self,
             "ApiBasePathMapping",
@@ -466,55 +519,6 @@ class ArcaneScribeStack(Stack):
             target=route53.RecordTarget.from_alias(
                 targets.ApiGatewayDomain(apigw_custom_domain)
             ),
-        )
-
-        # 5. Output the custom API URL
-        CfnOutput(
-            self,
-            "CustomApiUrlOutput",
-            value=f"https://{self.full_domain_name}",
-            description="Custom API URL for Arcane Scribe",
-            export_name=f"arcane-scribe-custom-api-url{self.stack_suffix}",
-        )
-        # endregion
-
-        # region CloudFront Distribution for Frontend
-        # Create a custom origina access identity (OAI) for the frontend bucket
-        self.frontend_oai = CustomOai(
-            scope=self,
-            id="ArcaneScribeFrontendOAI",
-            comment="Arcane Scribe Frontend OAI",
-        )
-        self.frontend_bucket.grant_read(self.frontend_oai.oai)
-
-        # Create a CloudFront distribution for the frontend bucket
-        self.frontend_cdn = CustomCdn(
-            scope=self,
-            id="ArcaneScribeFrontendCdn",
-            name="arcane-scribe-frontend-cdn",
-            s3_origin=self.frontend_bucket,
-            stack_suffix=self.stack_suffix,
-            domain_name=self.full_domain_name,
-            api_certificate=wildcard_api_certificate,
-        )
-
-        # Deploy static website files to the frontend bucket
-        CustomBucketDeployment(
-            scope=self,
-            id="ArcaneScribeFrontendDeployment",
-            destination_bucket=self.frontend_bucket,
-            source="frontend",
-            distribution=self.frontend_cdn.distribution,
-            distribution_paths=["/*"],  # Invalidate all paths
-        )
-
-        # Output the CloudFront URL so it can be used to access the frontend
-        CfnOutput(
-            self,
-            "ArcaneScribeWebAppUrl",
-            value=f"https://{self.frontend_cdn.distribution.distribution_domain_name}",
-            description="Arcane Scribe Web App URL",
-            export_name=f"arcane-scribe-webapp-url{self.stack_suffix}",
         )
         # endregion
 
