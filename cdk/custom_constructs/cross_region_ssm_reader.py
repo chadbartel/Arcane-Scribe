@@ -1,15 +1,13 @@
 # Standard Library
 import os
-from typing import Optional, List, Dict
 
 # Third Party
 from aws_cdk import (
     Stack,
     CustomResource,
     BundlingOptions,
-    Duration,
     aws_iam as iam,
-    aws_lambda as _lambda,
+    aws_lambda as lambda_,
     custom_resources as cr,
 )
 from constructs import Construct
