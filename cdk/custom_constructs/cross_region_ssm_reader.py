@@ -34,30 +34,53 @@ class CrossRegionSsmReader(Construct):
         )
         os.makedirs(lambda_code_path, exist_ok=True)
 
-        # --- FIX IS HERE: Correct the package name ---
         # Create requirements.txt for the handler with the correct package name
         with open(
             os.path.join(lambda_code_path, "requirements.txt"), "w"
         ) as f:
             f.write("boto3\n")
-            f.write("cfn-response\n")  # Corrected from 'cfn-response-python'
 
         # Create the handler code file (no changes needed here)
         with open(os.path.join(lambda_code_path, "index.py"), "w") as f:
             f.write(
                 f"""
+import json
 import boto3
-import cfnresponse
 import logging
-import os
+from urllib import request
 
 logger = logging.getLogger()
 logger.setLevel("INFO")
 
+def send(event, context, response_status, response_data, physical_resource_id=None):
+    response_url = event['ResponseURL']
+    
+    json_response_body = json.dumps({{
+        'Status': response_status,
+        'Reason': 'See the details in CloudWatch Log Stream: ' + context.log_stream_name,
+        'PhysicalResourceId': physical_resource_id or context.log_stream_name,
+        'StackId': event['StackId'],
+        'RequestId': event['RequestId'],
+        'LogicalResourceId': event['LogicalResourceId'],
+        'Data': response_data
+    }})
+    
+    # Encode the JSON string to bytes
+    encoded_body = json_response_body.encode('utf-8')
+    
+    headers = {{'content-type': '', 'content-length': str(len(encoded_body))}}
+    
+    try:
+        req = request.Request(response_url, data=encoded_body, headers=headers, method='PUT')
+        with request.urlopen(req) as response:
+            logger.info(f"Status code: {{response.getcode()}}")
+    except Exception as e:
+        logger.error(f"send(..) failed executing http.request(..): {{e}}", exc_info=True)
+
 def handler(event, context):
     response_data = {{}}
-    status = cfnresponse.SUCCESS
-    physical_resource_id = f"SsmReader-{{event['LogicalResourceId']}}"
+    status = 'SUCCESS'
+    physical_resource_id = event.get('PhysicalResourceId', f"SsmReader-{{event['LogicalResourceId']}}")
 
     try:
         if event['RequestType'] in ['Create', 'Update']:
@@ -71,10 +94,10 @@ def handler(event, context):
             response_data['Value'] = response['Parameter']['Value']
     except Exception as e:
         logger.error(f"Error: {{str(e)}}", exc_info=True)
-        status = cfnresponse.FAILED
+        status = 'FAILED'
         response_data['Error'] = str(e)[:256]
 
-    cfnresponse.send(event, context, status, response_data, physical_resource_id)
+    send(event, context, status, response_data, physical_resource_id)
 """
             )
 
