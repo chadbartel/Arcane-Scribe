@@ -34,16 +34,16 @@ class CrossRegionSsmReader(Construct):
         )
         os.makedirs(lambda_code_path, exist_ok=True)
 
-        # Create requirements.txt for the handler with the correct package name
+        # Create requirements.txt for the handler
         with open(
             os.path.join(lambda_code_path, "requirements.txt"), "w"
         ) as f:
             f.write("boto3\n")
+            f.write("cfn-response\n")
 
-        # Create the handler code file (no changes needed here)
+        # Create the handler code file
         with open(os.path.join(lambda_code_path, "index.py"), "w") as f:
-            f.write(
-                f"""
+            f.write(f"""
 import json
 import boto3
 import logging
@@ -116,33 +116,17 @@ def handler(event, context):
             ],
         )
 
-        ssm_parameter_arn = f"arn:{partition}:ssm:{region}:{current_stack.account}:parameter{parameter_name}"
-        secret_arn_without_wildcard = f"arn:{partition}:ssm:{region}:{current_stack.account}:secret:{parameter_name}"
-        secret_arn_with_wildcard = f"{secret_arn_without_wildcard}-*"
+        # The ARN format for SSM parameters with paths requires the slash
+        # to be part of the parameter name string.
+        ssm_parameter_arn = (
+            f"arn:{partition}:ssm:{region}:{current_stack.account}:parameter{parameter_name}"
+        )
 
         lambda_role.add_to_policy(
             iam.PolicyStatement(
                 actions=["ssm:GetParameter"],
-                resources=[
-                    ssm_parameter_arn,
-                    secret_arn_without_wildcard,
-                    secret_arn_with_wildcard,
-                ],
-            )
-        )
-
-        kms_key_arn_for_ssm = (
-            f"arn:{partition}:kms:{region}:{current_stack.account}:key/*"
-        )
-        lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["kms:Decrypt"],
-                resources=[kms_key_arn_for_ssm],
-                conditions={
-                    "StringEquals": {
-                        "kms:ViaService": f"ssm.{region}.amazonaws.com"
-                    }
-                },
+                # The resources list should ONLY contain the valid SSM parameter ARN
+                resources=[ssm_parameter_arn]
             )
         )
 
