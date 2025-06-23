@@ -1,14 +1,7 @@
-# Standard Library
-import os
-
 # Third Party
 from aws_cdk import (
     Stack,
-    Duration,
-    CustomResource,
-    BundlingOptions,
     aws_iam as iam,
-    aws_lambda as lambda_,
     custom_resources as cr,
 )
 from constructs import Construct
@@ -16,7 +9,8 @@ from constructs import Construct
 
 class CrossRegionSsmReader(Construct):
     """
-    A custom resource that can read an SSM parameter from another region.
+    A custom resource that reads an SSM parameter from another region
+    using the AWS SDK call framework provided by the CDK.
     """
 
     def __init__(
@@ -25,146 +19,48 @@ class CrossRegionSsmReader(Construct):
         id: str,
         parameter_name: str,
         region: str,
-        runtime: lambda_.Runtime = lambda_.Runtime.PYTHON_3_12,
     ):
         super().__init__(scope, id)
 
-        # This directory will hold the lambda code and its dependencies
-        lambda_code_path = os.path.join(
-            os.getcwd(), "cdk/custom_constructs/ssm_reader_lambda"
-        )
-        os.makedirs(lambda_code_path, exist_ok=True)
-
-        # Create requirements.txt for the handler
-        with open(
-            os.path.join(lambda_code_path, "requirements.txt"), "w"
-        ) as f:
-            f.write("boto3\n")
-            f.write("cfn-response\n")
-
-        # Create the handler code file
-        with open(os.path.join(lambda_code_path, "index.py"), "w") as f:
-            f.write(f"""
-import json
-import boto3
-import logging
-from urllib import request
-
-logger = logging.getLogger()
-logger.setLevel("INFO")
-
-def send(event, context, response_status, response_data, physical_resource_id=None):
-    response_url = event['ResponseURL']
-    
-    json_response_body = json.dumps({{
-        'Status': response_status,
-        'Reason': 'See the details in CloudWatch Log Stream: ' + context.log_stream_name,
-        'PhysicalResourceId': physical_resource_id or context.log_stream_name,
-        'StackId': event['StackId'],
-        'RequestId': event['RequestId'],
-        'LogicalResourceId': event['LogicalResourceId'],
-        'Data': response_data
-    }})
-    
-    # Encode the JSON string to bytes
-    encoded_body = json_response_body.encode('utf-8')
-    
-    headers = {{'content-type': '', 'content-length': str(len(encoded_body))}}
-    
-    try:
-        req = request.Request(response_url, data=encoded_body, headers=headers, method='PUT')
-        with request.urlopen(req) as response:
-            logger.info(f"Status code: {{response.getcode()}}")
-    except Exception as e:
-        logger.error(f"send(..) failed executing http.request(..): {{e}}", exc_info=True)
-
-def handler(event, context):
-    response_data = {{}}
-    status = 'SUCCESS'
-    physical_resource_id = event.get('PhysicalResourceId', f"SsmReader-{{event['LogicalResourceId']}}")
-
-    try:
-        if event['RequestType'] in ['Create', 'Update']:
-            region = event['ResourceProperties']['Region']
-            param_name = event['ResourceProperties']['ParameterName']
-            
-            logger.info(f"Fetching SSM parameter '{{param_name}}' from region '{{region}}'")
-            ssm_client = boto3.client('ssm', region_name=region)
-            
-            response = ssm_client.get_parameter(Name=param_name, WithDecryption=True)
-            response_data['Value'] = response['Parameter']['Value']
-    except Exception as e:
-        logger.error(f"Error: {{str(e)}}", exc_info=True)
-        status = 'FAILED'
-        response_data['Error'] = str(e)[:256]
-
-    send(event, context, status, response_data, physical_resource_id)
-"""
-            )
-
-        current_stack = Stack.of(self)
-        partition = current_stack.partition
-
-        # IAM Role for the custom resource Lambda
-        lambda_role = iam.Role(
-            self,
-            "SsmReaderLambdaRole",
-            assumed_by=iam.ServicePrincipal("lambda.amazonaws.com"),
-            managed_policies=[
-                iam.ManagedPolicy.from_aws_managed_policy_name(
-                    "service-role/AWSLambdaBasicExecutionRole"
-                )
-            ],
-        )
-
-        # The ARN format for SSM parameters with paths requires the slash
-        # to be part of the parameter name string.
-        ssm_parameter_arn = (
-            f"arn:{partition}:ssm:{region}:{current_stack.account}:parameter{parameter_name}"
-        )
-
-        lambda_role.add_to_policy(
-            iam.PolicyStatement(
-                actions=["ssm:GetParameter"],
-                # The resources list should ONLY contain the valid SSM parameter ARN
-                resources=[ssm_parameter_arn]
-            )
-        )
-
-        # The on_event_handler for the custom resource provider
-        on_event_handler = lambda_.Function(
-            self,
-            "SsmReaderEventHandler",
-            runtime=runtime,
-            handler="index.handler",
-            role=lambda_role,
-            code=lambda_.Code.from_asset(
-                lambda_code_path,
-                bundling=BundlingOptions(
-                    image=runtime.bundling_image,
-                    command=[
-                        "bash",
-                        "-c",
-                        "pip install -r requirements.txt -t /asset-output && cp index.py /asset-output/",
-                    ],
-                ),
+        # 1. Define the parameters for the AWS SDK call
+        ssm_get_parameter = cr.AwsSdkCall(
+            service="SSM",
+            action="getParameter",
+            parameters={"Name": parameter_name, "WithDecryption": True},
+            # This is the key: specify the region for the SDK call
+            region=region,
+            physical_resource_id=cr.PhysicalResourceId.of(
+                f"SsmReader-{region}-{parameter_name}"
             ),
-            timeout=Duration.seconds(30),
         )
 
-        # The provider framework that bundles and deploys the Lambda
-        provider = cr.Provider(
+        # 2. Create the custom resource using the AwsCustomResource construct
+        #    This construct handles the Lambda, its role, and the response logic for you.
+        aws_custom_resource = cr.AwsCustomResource(
             self,
-            "SsmReaderProvider",
-            on_event_handler=on_event_handler,
+            "SsmReaderCustomResource",
+            on_create=ssm_get_parameter,
+            on_update=ssm_get_parameter,  # Re-fetch the parameter on stack updates
+            policy=cr.AwsCustomResourcePolicy.from_statements(
+                [
+                    iam.PolicyStatement(
+                        actions=["ssm:GetParameter"],
+                        # The ARN must be constructed correctly
+                        resources=[
+                            f"arn:{Stack.of(self).partition}:ssm:{region}:{Stack.of(self).account}:parameter{parameter_name}"
+                        ],
+                    ),
+                    # Add KMS policy in case the parameter is encrypted
+                    iam.PolicyStatement(
+                        actions=["kms:Decrypt"],
+                        resources=[
+                            "*"
+                        ],  # Scoping this down is best practice if the key is known
+                    ),
+                ]
+            ),
         )
 
-        # The actual Custom Resource that triggers the Lambda
-        custom_resource = CustomResource(
-            self,
-            "SsmReaderResource",
-            service_token=provider.service_token,
-            properties={"ParameterName": parameter_name, "Region": region},
-        )
-
-        self.value = custom_resource.get_att_string("Value")
+        # 3. Expose the result as the 'value' attribute
+        #    We get the value from the 'Parameter.Value' path in the SDK's response JSON.
+        self.value = aws_custom_resource.get_response_field("Parameter.Value")
