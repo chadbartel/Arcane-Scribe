@@ -7,7 +7,7 @@ from aws_cdk import (
     CustomResource,
     BundlingOptions,
     aws_iam as iam,
-    aws_lambda as _lambda,
+    aws_lambda as lambda_,
     custom_resources as cr,
 )
 from constructs import Construct
@@ -24,6 +24,7 @@ class CrossRegionSsmReader(Construct):
         id: str,
         parameter_name: str,
         region: str,
+        runtime: lambda_.Runtime = lambda_.Runtime.PYTHON_3_12,
     ):
         super().__init__(scope, id)
 
@@ -37,12 +38,13 @@ class CrossRegionSsmReader(Construct):
         with open(
             os.path.join(lambda_code_path, "requirements.txt"), "w"
         ) as f:
-            f.write("boto3\\n")
-            f.write("cfn-response-python\\n")
+            f.write("boto3\n")
+            f.write("cfn-response-python\n")
 
         # Create the handler code file
         with open(os.path.join(lambda_code_path, "index.py"), "w") as f:
-            f.write("""
+            f.write(
+                f"""
 import os
 import boto3
 import logging
@@ -54,7 +56,6 @@ logger.setLevel("INFO")
 def handler(event, context):
     response_data = {{}}
     status = cfnresponse.SUCCESS
-    # Use the a unique value for the physical resource id
     physical_resource_id = f"SsmReader-{{event['LogicalResourceId']}}"
 
     try:
@@ -62,27 +63,22 @@ def handler(event, context):
             region = event['ResourceProperties']['Region']
             param_name = event['ResourceProperties']['ParameterName']
             
-            logger.info(
-                f"Fetching SSM parameter '{{param_name}}' from region '{{region}}'"
-            )
+            logger.info(f"Fetching SSM parameter '{{param_name}}' from region '{{region}}'")
             ssm_client = boto3.client('ssm', region_name=region)
             
-            response = ssm_client.get_parameter(
-                Name=param_name, WithDecryption=True
-            )
+            response = ssm_client.get_parameter(Name=param_name, WithDecryption=True)
             response_data['Value'] = response['Parameter']['Value']
     except Exception as e:
         logger.error(f"Error: {{str(e)}}", exc_info=True)
         status = cfnresponse.FAILED
-        # Keep the error message short to avoid response size limits
         response_data['Error'] = str(e)[:256]
 
-    cfnresponse.send(
-        event, context, status, response_data, physical_resource_id
-    )
-""")
+    cfnresponse.send(event, context, status, response_data, physical_resource_id)
+"""
+            )
 
         current_stack = Stack.of(self)
+        partition = current_stack.partition
 
         # IAM Role for the custom resource Lambda
         lambda_role = iam.Role(
@@ -96,52 +92,55 @@ def handler(event, context):
             ],
         )
 
-        # CORRECTED IAM POLICY
-        ssm_parameter_arn = f"arn:{current_stack.partition}:ssm:{region}:{current_stack.account}:parameter{parameter_name}"
-
+        ssm_parameter_arn = f"arn:{partition}:ssm:{region}:{current_stack.account}:parameter{parameter_name}"
         lambda_role.add_to_policy(
             iam.PolicyStatement(
                 actions=["ssm:GetParameter"], resources=[ssm_parameter_arn]
             )
         )
 
-        kms_key_arn_for_ssm = f"arn:{current_stack.partition}:kms:{region}:{current_stack.account}:key/*"
+        kms_key_arn_for_ssm = (
+            f"arn:{partition}:kms:{region}:{current_stack.account}:key/*"
+        )
         lambda_role.add_to_policy(
             iam.PolicyStatement(
                 actions=["kms:Decrypt"],
                 resources=[kms_key_arn_for_ssm],
+                # --- THIS BLOCK IS CORRECTED ---
+                # Removed the extra curly braces `{}` around the StringEquals block
                 conditions={
-                    {
-                        "StringEquals": {
-                            {"kms:ViaService": f"ssm.{region}.amazonaws.com"}
-                        }
+                    "StringEquals": {
+                        "kms:ViaService": f"ssm.{region}.amazonaws.com"
                     }
                 },
             )
+        )
+
+        # The on_event_handler for the custom resource provider
+        on_event_handler = lambda_.Function(
+            self,
+            "SsmReaderEventHandler",
+            runtime=runtime,
+            handler="index.handler",
+            role=lambda_role,
+            code=lambda_.Code.from_asset(
+                lambda_code_path,
+                bundling=BundlingOptions(
+                    image=runtime.bundling_image,
+                    command=[
+                        "bash",
+                        "-c",
+                        "pip install -r requirements.txt -t /asset-output && cp index.py /asset-output/",
+                    ],
+                ),
+            ),
         )
 
         # The provider framework that bundles and deploys the Lambda
         provider = cr.Provider(
             self,
             "SsmReaderProvider",
-            on_event_handler=_lambda.Function(
-                self,
-                "SsmReaderEventHandler",
-                runtime=lambda_.Runtime.PYTHON_3_12,
-                handler="index.handler",
-                role=lambda_role,
-                code=lambda_.Code.from_asset(
-                    lambda_code_path,
-                    bundling=BundlingOptions(
-                        image=runtime.bundling_image,
-                        command=[
-                            "bash",
-                            "-c",
-                            "pip install -r requirements.txt -t /asset-output && cp index.py /asset-output/",
-                        ],
-                    ),
-                ),
-            ),
+            on_event_handler=on_event_handler,
         )
 
         # The actual Custom Resource that triggers the Lambda
