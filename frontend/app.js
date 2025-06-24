@@ -237,10 +237,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Clear and populate the sources container
         sourcesContainer.innerHTML = "";
-        if (data && data.source_documents && Array.isArray(data.source_documents)) {
+        if (data && data.source_documents_content && Array.isArray(data.source_documents_content)) {
             // Use a Set to only show unique sources
             const uniqueSources = new Map();
-            data.source_documents.forEach(doc => {
+            data.source_documents_content.forEach(doc => {
                 // The source document info is in the 'metadata' object
                 if (doc.metadata) {
                     const sourceName = doc.metadata.source || "Unknown Document";
