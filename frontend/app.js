@@ -82,7 +82,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const password = document.getElementById("password").value;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+            const response = await fetch(`${API_BASE_URL}/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password }),
@@ -105,7 +105,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Function to make authenticated requests
     async function populateSrdDropdown() {
+        // Show a loading state in the dropdown and disable the button
+        srdDropdownButton.disabled = true;
+        srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text">Loading SRDs...</span></li>`;
+
         try {
+            // Get the SRD IDs from the API
             const srd_ids = await makeAuthenticatedRequest("/srd", "GET");
             srdDropdownMenu.innerHTML = ""; 
 
@@ -119,241 +124,129 @@ document.addEventListener("DOMContentLoaded", () => {
                     link.addEventListener("click", (e) => {
                         e.preventDefault();
                         srdDropdownButton.textContent = srd_id;
+                        srdDropdownButton.dataset.selectedSrd = srd_id; // Store value in data attribute
                     });
                     listItem.appendChild(link);
                     srdDropdownMenu.appendChild(listItem);
                 });
             } else {
-                 srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text">No SRDs found.</span></li>`;
+                srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text">No SRDs found.</span></li>`;
             }
         } catch (error) {
+            // Log the error and show a message in the dropdown
             console.error("Failed to populate SRD dropdown:", error);
             srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text text-danger">Error loading SRDs.</span></li>`;
+            throw error; 
         }
     }
-    
+
     // Helper function to build the query payload
     function buildQueryPayload() {
-        const srdId = srdDropdownButton.textContent.trim();
+        // Use the data attribute for a more reliable way to get the selected value
+        const srdId = srdDropdownButton.dataset.selectedSrd;
         const invokeGenerativeLlm = invokeLlmSwitch.checked;
 
+        // Construct the payload object
         const payload = {
             query_text: queryInput.value,
             srd_id: srdId,
             invoke_generative_llm: invokeGenerativeLlm,
             generation_config: {}
         };
-        
-        // Only add generation config if the LLM is being invoked
+
+        // If the LLM is invoked, add generation config parameters
         if (invokeGenerativeLlm) {
-            // Use API's expected camelCase names
             const temp = parseFloat(temperatureSlider.value);
             if (!isNaN(temp)) payload.generation_config.temperature = temp;
-            
+
             const topP = parseFloat(topPSlider.value);
             if (!isNaN(topP)) payload.generation_config.topP = topP;
 
             const maxTokenCount = parseInt(maxTokensInput.value, 10);
-            if (!isNaN(maxTokenCount)) payload.generation_config.maxTokenCount = maxTokenCount;
+            if (!isNaN(maxTokenCount) && maxTokenCount > 0) payload.generation_config.maxTokenCount = maxTokenCount;
 
-            const stopSequences = stopSequencesInput.value
-                .split(',')
-                .map(s => s.trim())
-                .filter(s => s); // Remove empty strings
+            const stopSequences = stopSequencesInput.value.split(',').map(s => s.trim()).filter(s => s);
             if (stopSequences.length > 0) payload.generation_config.stopSequences = stopSequences;
         }
-        
+
         return payload;
     }
 
     // Function to handle the query button click
     async function handleQuery() {
         const query = queryInput.value;
-        const srdId = srdDropdownButton.textContent.trim();
+        const srdId = srdDropdownButton.dataset.selectedSrd; // Use data attribute
 
+        // Check if the query input is empty
         if (!query) {
             alert("Please enter a query.");
             return;
         }
-        if (!srdId || srdId === "Select an SRD") {
+
+        // Check if an SRD is selected
+        if (!srdId) {
             alert("Please select an SRD from the dropdown.");
             return;
         }
 
+        // Clear the response area and show loading state
         responseArea.textContent = "Getting answer...";
-        
         const payload = buildQueryPayload();
-        
-        const response = await makeAuthenticatedRequest("/query", "POST", payload);
 
-        responseArea.textContent = JSON.stringify(response, null, 2);
-    }
-
-    // --- LOGIN LOGIC ---
-    loginForm.addEventListener("submit", async (e) => {
-        e.preventDefault();
-        loginError.textContent = "";
-
-        // Show loading view and hide login form
-        loginView.classList.add("d-none");
-        loggingInView.classList.remove("d-none");
-
-        // Get username and password from form
-        const username = document.getElementById("username").value;
-        const password = document.getElementById("password").value;
-
+        // Make the authenticated request to the API
         try {
-            // Make the login request to the API
-            const response = await fetch(`${API_BASE_URL}/login`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ username, password }),
-            });
-
-            // Parse the response
-            const data = await response.json();
-
-            // Check if the response is successful
-            if (!response.ok) {
-                throw new Error(data.detail || "Login failed");
-            }
-
-            // Store tokens securely. localStorage is simple for now.
-            localStorage.setItem("idToken", data.IdToken);
-            localStorage.setItem("accessToken", data.AccessToken);
-            localStorage.setItem("refreshToken", data.RefreshToken);
-
-            // Switch views - hide loading and show app
-            loggingInView.classList.add("d-none");
-            appView.classList.remove("d-none");
-
+            const response = await makeAuthenticatedRequest("/query", "POST", payload);
+            responseArea.textContent = JSON.stringify(response, null, 2);
         } catch (error) {
-            // Handle errors and display them
-            console.error("Login Error:", error);
-            loginError.textContent = `Error: ${error.message}`;
-            
-            // Hide loading view and show login form again on error
-            loggingInView.classList.add("d-none");
-            loginView.classList.remove("d-none");
-        }
-    });
-
-    // --- NEW: FUNCTION TO POPULATE DROPDOWN ---
-    async function populateSrdDropdown() {
-        try {
-            const srd_ids = await makeAuthenticatedRequest("/srd", "GET");
-            
-            srdDropdownMenu.innerHTML = ""; // Clear existing static items
-
-            if (srd_ids && srd_ids.length > 0) {
-                srd_ids.forEach(srd_id => {
-                    const listItem = document.createElement("li");
-                    const link = document.createElement("a");
-                    link.className = "dropdown-item";
-                    link.href = "#";
-                    link.textContent = srd_id;
-                    
-                    link.addEventListener("click", (e) => {
-                        e.preventDefault();
-                        // Update button text to show selection
-                        srdDropdownButton.textContent = srd_id;
-                    });
-                    
-                    listItem.appendChild(link);
-                    srdDropdownMenu.appendChild(listItem);
-                });
-            } else {
-                 const listItem = document.createElement("li");
-                 listItem.innerHTML = `<span class="dropdown-item-text">No SRDs found.</span>`;
-                 srdDropdownMenu.appendChild(listItem);
-            }
-        } catch (error) {
-            console.error("Failed to populate SRD dropdown:", error);
-            const listItem = document.createElement("li");
-            listItem.innerHTML = `<span class="dropdown-item-text text-danger">Error loading SRDs.</span>`;
-            srdDropdownMenu.appendChild(listItem);
+            // Error is already logged by makeAuthenticatedRequest
+            responseArea.textContent = `Error during query: ${error.message}`;
         }
     }
 
-    // --- RAG QUERY LOGIC ---
-    // Ensure the query button is only enabled when logged in
-    queryButton.addEventListener("click", async () => {
-        const query = queryInput.value;
-        const srdId = srdDropdownButton.textContent.trim(); // Get SRD from button text
-
-        // Validate input
-        if (!query) {
-            alert("Please enter a query.");
-            return;
-        }
-        if (!srdId || srdId === "Select an SRD") {
-            alert("Please select an SRD from the dropdown.");
-            return;
-        }
-
-        // Clear previous response
-        responseArea.textContent = "Getting answer...";
-
-        // Make the authenticated request to the RAG API
-        const response = await makeAuthenticatedRequest("/query", "POST", {
-            query_text: query,
-            srd_id: srdId,
-            invoke_generative_llm: true,
-            generation_config: {}
-        });
-
-        responseArea.textContent = JSON.stringify(response, null, 2);
-    });
-
-    // --- AUTHENTICATED API REQUEST HELPER ---
+    // Function to make authenticated requests to the API
     async function makeAuthenticatedRequest(endpoint, method, body = null) {
-        // Get the ID Token from localStorage
+        // Retrieve the ID token from local storage
         const idToken = localStorage.getItem("idToken");
 
-        // Check if the ID Token exists
+        // Check if the user is authenticated
         if (!idToken) {
-            // Handle not being logged in
-            console.error("No ID Token found. Please log in.");
-            // Here you would redirect to login or show the login form
-            return;
+            const error = new Error("Authentication error. Please log in again.");
+            console.error(error);
+            showView("login-view"); // Force user back to login
+            throw error;
         }
 
-        // Prepare headers for the request
+        // Prepare the request headers and options
         const headers = {
             "Content-Type": "application/json",
             "Authorization": `Bearer ${idToken}`
         };
 
-        // Prepare the request configuration
-        const config = {
-            method: method,
-            headers: headers,
-        };
+        // Set the method and headers for the fetch request
+        const config = { method, headers };
 
-        // If there's a body, stringify it
+        // Stringify the body if it exists
         if (body) {
             config.body = JSON.stringify(body);
         }
 
         try {
-            // Make the authenticated request to the API
+            // Make the fetch request
             const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
-
-            // TODO: Add logic here to check for 401 Unauthorized and use the
-            // RefreshToken to get a new IdToken.
-
-            // If the response is not ok, throw an error
+            // Check if the response is ok (status in the range 200-299)
             if (!response.ok) {
-                // Handle specific error responses
-                const errorData = await response.json();
+                const errorData = await response.json().catch(() => ({ detail: `HTTP error! status: ${response.status}` }));
                 throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
             }
-            // Parse and return the JSON response
-            return await response.json();
+            const contentType = response.headers.get("content-type");
+            // Check if the response is JSON or text
+            if (contentType && contentType.includes("application/json")) {
+                return response.json();
+            }
+            return response.text();
         } catch (error) {
-            // Handle errors from the request
-            console.error("Authenticated request failed:", error);
-            responseArea.textContent = `API Error: ${error.message}`;
+            // Log the error and rethrow it for handling in the calling function
+            console.error(`Authenticated request to ${endpoint} failed:`, error);
             throw error;
         }
     }
