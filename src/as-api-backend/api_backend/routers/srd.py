@@ -71,9 +71,14 @@ def list_owner_documents(
         extra={"srd_objects": srd_objects},
     )
 
+    # Extract SRD IDs from the S3 object keys and ensure uniqueness
+    srd_ids = list(
+        set([obj["Key"].split("/")[1] for obj in srd_objects])
+    ).sort()
+
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=[obj["Key"].split("/")[1] for obj in srd_objects],
+        content=srd_ids,
     )
 
 
