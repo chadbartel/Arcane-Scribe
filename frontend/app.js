@@ -105,38 +105,55 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Function to make authenticated requests
     async function populateSrdDropdown() {
-        // Show a loading state in the dropdown and disable the button
+        console.log("1. Starting to populate dropdown. Disabling button.");
         srdDropdownButton.disabled = true;
         srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text">Loading SRDs...</span></li>`;
 
         try {
-            // Get the SRD IDs from the API
+            console.log("2. Calling makeAuthenticatedRequest for /srd...");
             const srd_ids = await makeAuthenticatedRequest("/srd", "GET");
+            console.log("3. Received API response:", srd_ids);
+
+            // Defensive check: ensure we have an array
+            if (!Array.isArray(srd_ids)) {
+                throw new TypeError("API response for SRD list is not an array.");
+            }
+            
+            console.log("4. Clearing dropdown menu HTML.");
             srdDropdownMenu.innerHTML = ""; 
 
-            if (srd_ids && srd_ids.length > 0) {
-                srd_ids.forEach(srd_id => {
+            if (srd_ids.length > 0) {
+                console.log("5. SRD list has items. Starting forEach loop.");
+                srd_ids.forEach((srd_id, index) => {
+                    console.log(`6. Creating item for: ${srd_id} (index: ${index})`);
                     const listItem = document.createElement("li");
                     const link = document.createElement("a");
                     link.className = "dropdown-item";
                     link.href = "#";
                     link.textContent = srd_id;
+                    
                     link.addEventListener("click", (e) => {
                         e.preventDefault();
                         srdDropdownButton.textContent = srd_id;
-                        srdDropdownButton.dataset.selectedSrd = srd_id; // Store value in data attribute
+                        srdDropdownButton.dataset.selectedSrd = srd_id;
                     });
+                    
                     listItem.appendChild(link);
                     srdDropdownMenu.appendChild(listItem);
                 });
+                console.log("7. Finished forEach loop.");
             } else {
-                srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text">No SRDs found.</span></li>`;
+                 console.log("5b. SRD list is empty.");
+                 srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text">No SRDs found.</span></li>`;
             }
         } catch (error) {
-            // Log the error and show a message in the dropdown
-            console.error("Failed to populate SRD dropdown:", error);
+            console.error("8. [CATCH BLOCK] Failed to populate SRD dropdown:", error);
             srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text text-danger">Error loading SRDs.</span></li>`;
             throw error; 
+        } finally {
+            console.log("9. [FINALLY BLOCK] Re-enabling dropdown button.");
+            // Re-enable the dropdown button whether the call succeeded or failed
+            srdDropdownButton.disabled = false;
         }
     }
 
