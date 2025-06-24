@@ -1,4 +1,5 @@
 # Standard Library
+import os
 from typing import Dict, Any
 
 # Third Party
@@ -19,6 +20,9 @@ from core.utils.config import API_PREFIX
 # Initialize a logger
 logger = Logger()
 
+# Parse the CORS origins from the environment variables
+allowed_origins = os.environ.get("CORS_ALLOWED_ORIGINS", "*").split(",")
+
 # Create a FastAPI application instance
 app = FastAPI(
     title="Arcane Scribe API",
@@ -32,7 +36,7 @@ app = FastAPI(
 # Add CORS Middleware to the FastAPI app
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for CORS
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],  # Allow all HTTP methods
     allow_headers=["*"],  # Allow all headers
