@@ -237,16 +237,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Clear and populate the sources container
         sourcesContainer.innerHTML = "";
+        // Check for 'source_documents_content' and ensure it's an array
         if (data && data.source_documents_content && Array.isArray(data.source_documents_content)) {
-            // Use a Set to only show unique sources
             const uniqueSources = new Map();
-            data.source_documents_content.forEach(doc => {
-                // The source document info is in the 'metadata' object
-                if (doc.metadata) {
-                    const sourceName = doc.metadata.source || "Unknown Document";
-                    const pageNum = doc.metadata.page;
-                    const uniqueKey = `${sourceName}-page-${pageNum}`;
 
+            data.source_documents_content.forEach(doc => {
+                // Access 'source' and 'page' directly from the 'doc' object,
+                // not from a nested 'metadata' object.
+                const sourceName = doc.source || "Unknown Document";
+                const pageNum = doc.page;
+
+                // We check if page is not undefined because page 0 is valid.
+                if (sourceName && typeof pageNum !== 'undefined') {
+                    const uniqueKey = `${sourceName}-page-${pageNum}`;
                     if (!uniqueSources.has(uniqueKey)) {
                         uniqueSources.set(uniqueKey, { sourceName, pageNum });
                     }
@@ -254,19 +257,17 @@ document.addEventListener("DOMContentLoaded", () => {
             });
 
             if (uniqueSources.size > 0) {
-                const sourceList = document.createElement("ul");
-                sourceList.className = "list-inline";
-                
+                const sourceList = document.createElement("div");
+                // Using 'd-flex flex-wrap' to allow badges to wrap to the next line
+                sourceList.className = "d-flex flex-wrap gap-2"; 
+
                 uniqueSources.forEach(sourceInfo => {
-                    const listItem = document.createElement("li");
-                    listItem.className = "list-inline-item";
-                    
                     const badge = document.createElement("span");
-                    badge.className = "badge bg-secondary";
-                    badge.textContent = `${sourceInfo.sourceName} (Page: ${sourceInfo.pageNum})`;
-                    
-                    listItem.appendChild(badge);
-                    sourceList.appendChild(listItem);
+                    // Using Bootstrap's badge component for a cleaner look
+                    badge.className = "badge text-bg-secondary"; 
+                    badge.textContent = `${sourceInfo.sourceName} (p. ${sourceInfo.pageNum + 1})`; // Add 1 to page for human-readable format
+
+                    sourceList.appendChild(badge);
                 });
 
                 sourcesContainer.appendChild(sourceList);
