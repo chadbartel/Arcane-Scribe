@@ -5,11 +5,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const appView = document.getElementById("app-view");
     const loggingInView = document.getElementById("logging-in-view");
     const loginError = document.getElementById("login-error");
-    
+
     const queryButton = document.getElementById("query-button");
     const queryInput = document.getElementById("query-input");
-    const responseArea = document.getElementById("response-area");
-    
+
+    const answerText = document.getElementById("answer-text");
+    const sourcesContainer = document.getElementById("sources-container");
+
     const srdDropdownButton = document.getElementById("srd-dropdown-button");
     const srdDropdownMenu = document.getElementById("srd-dropdown-menu");
 
