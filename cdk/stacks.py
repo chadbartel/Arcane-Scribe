@@ -82,9 +82,12 @@ class ArcaneScribeStack(Stack):
         self.admin_secret_name = self.node.try_get_context(
             "admin_secret_name"
         )
-        self.dev_cors_origins = self.node.try_get_context(
-            "dev_cors_origins"
-        ) if self.stack_suffix else None
+        self.cors_allowed_origins = (
+            self.node.try_get_context(
+                "dev_cors_origins"
+            ) + "," + f"https://{self.full_domain_name}"
+            if self.stack_suffix else f"https://{self.full_domain_name}"
+        )
         # endregion
 
         # region Import CloudFormation Outputs
@@ -269,10 +272,7 @@ class ArcaneScribeStack(Stack):
                 "USER_POOL_CLIENT_ID": (
                     cognito_nested_stack.user_pool_client.user_pool_client_id
                 ),
-                "DEV_CORS_ORIGINS": (
-                    self.dev_cors_origins if self.dev_cors_origins else ""
-                ),
-                "PROD_CORS_ORIGINS": f"https://{self.full_domain_name}",
+                "CORS_ALLOWED_ORIGINS": self.cors_allowed_origins,
             },
             memory_size=1024,
             timeout=Duration.seconds(30),
