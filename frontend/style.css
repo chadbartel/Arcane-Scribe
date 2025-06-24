@@ -46,3 +46,8 @@ html, body {
         content: '...';
     }
 }
+
+/* This will preserve line breaks in the answer text */
+#answer-text {
+    white-space: pre-wrap;
+}
