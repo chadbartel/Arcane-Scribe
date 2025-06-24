@@ -5,13 +5,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const appView = document.getElementById("app-view");
     const loggingInView = document.getElementById("logging-in-view");
     const loginError = document.getElementById("login-error");
+    
     const queryButton = document.getElementById("query-button");
     const queryInput = document.getElementById("query-input");
     const responseArea = document.getElementById("response-area");
+    
     const srdDropdownButton = document.getElementById("srd-dropdown-button");
     const srdDropdownMenu = document.getElementById("srd-dropdown-menu");
 
-    // --- Get references to the new model setting controls ---
     const invokeLlmSwitch = document.getElementById("invoke-llm-switch");
     const genConfigOptions = document.getElementById("generation-config-options");
     const temperatureSlider = document.getElementById("temperature-slider");
@@ -27,8 +28,26 @@ document.addEventListener("DOMContentLoaded", () => {
     const DEV_API_URL = "https://arcane-scribe-dev.thatsmidnight.com";
     const API_BASE_URL = isLocal ? `${DEV_API_URL}${apiSuffix}` : apiSuffix;
 
+    // --- STATE MANAGEMENT ---
+    const VIEWS = ["login-view", "logging-in-view", "app-view"];
+
+    /**
+     * Hides all views and shows only the one specified by ID.
+     * @param {string} viewId The ID of the view to show.
+     */
+    function showView(viewId) {
+        VIEWS.forEach(id => {
+            const view = document.getElementById(id);
+            if (id === viewId) {
+                view.classList.remove("d-none");
+            } else {
+                view.classList.add("d-none");
+            }
+        });
+    }
+
     // --- EVENT LISTENERS ---
-    // Populate the SRD dropdown on page load
+    // Add event listeners for login and query actions
     loginForm.addEventListener("submit", handleLogin);
     queryButton.addEventListener("click", handleQuery);
 
