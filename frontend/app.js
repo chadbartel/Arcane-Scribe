@@ -31,10 +31,10 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- STATE MANAGEMENT ---
     const VIEWS = ["login-view", "logging-in-view", "app-view"];
 
-    /**
+    /*
      * Hides all views and shows only the one specified by ID.
      * @param {string} viewId The ID of the view to show.
-     */
+    */
     function showView(viewId) {
         VIEWS.forEach(id => {
             const view = document.getElementById(id);
