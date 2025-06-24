@@ -43,47 +43,51 @@
                 </div>
                 <textarea id="query-input" class="form-control mt-2" rows="3" placeholder="Ask a question about the selected SRD..."></textarea>
             </div>
-            
-            <div class="mb-3">
-                <p>
-                    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#modelSettings" aria-expanded="false" aria-controls="modelSettings">
-                        Model Settings <i class="bi bi-sliders"></i>
-                    </button>
-                </p>
-                <div class="collapse" id="modelSettings">
-                    <div class="card card-body">
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" role="switch" id="invoke-llm-switch" checked>
-                            <label class="form-check-label" for="invoke-llm-switch">Invoke Generative LLM</label>
-                        </div>
 
-                        <div id="generation-config-options">
+            <div class="mb-3">
+            <p>
+                <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse" data-bs-target="#modelSettings" aria-expanded="false" aria-controls="modelSettings">
+                    Model Settings <i class="bi bi-sliders"></i>
+                </button>
+            </p>
+            <div class="collapse" id="modelSettings">
+                <div class="card card-body">
+                    <div class="form-check form-switch mb-3">
+                        <input class="form-check-input" type="checkbox" role="switch" id="invoke-llm-switch" checked>
+                        <label class="form-check-label" for="invoke-llm-switch">Invoke Generative LLM</label>
+                    </div>
+
+                    <div id="generation-config-options">
+                        <div class="mb-3">
+                            <label for="temperature-slider" class="form-label">Temperature: <span id="temperature-value">0.1</span></label>
+                            <input type="range" class="form-range" min="0" max="1" step="0.1" value="0.1" id="temperature-slider">
+                        </div>
+                        <div class="mb-3">
+                            <label for="top-p-slider" class="form-label">Top P: <span id="top-p-value">1.0</span></label>
+                            <input type="range" class="form-range" min="0" max="1" step="0.05" value="1.0" id="top-p-slider">
+                        </div>
                             <div class="mb-3">
-                                <label for="temperature-slider" class="form-label">Temperature: <span id="temperature-value">0.1</span></label>
-                                <input type="range" class="form-range" min="0" max="1" step="0.1" value="0.1" id="temperature-slider">
-                            </div>
-                            <div class="mb-3">
-                                <label for="top-p-slider" class="form-label">Top P: <span id="top-p-value">1.0</span></label>
-                                <input type="range" class="form-range" min="0" max="1" step="0.05" value="1.0" id="top-p-slider">
-                            </div>
-                             <div class="mb-3">
-                                <label for="max-tokens-input" class="form-label">Max Tokens</label>
-                                <input type="number" class="form-control" id="max-tokens-input" placeholder="e.g., 1024" min="1">
-                            </div>
-                            <div class="mb-3">
-                                <label for="stop-sequences-input" class="form-label">Stop Sequences</label>
-                                <input type="text" class="form-control" id="stop-sequences-input" placeholder="e.g., Human:, Assistant:">
-                                <div class="form-text">Enter comma-separated values.</div>
-                            </div>
+                            <label for="max-tokens-input" class="form-label">Max Tokens</label>
+                            <input type="number" class="form-control" id="max-tokens-input" placeholder="e.g., 1024" min="1">
+                        </div>
+                        <div class="mb-3">
+                            <label for="stop-sequences-input" class="form-label">Stop Sequences</label>
+                            <input type="text" class="form-control" id="stop-sequences-input" placeholder="e.g., Human:, Assistant:">
+                            <div class="form-text">Enter comma-separated values.</div>
                         </div>
                     </div>
                 </div>
             </div>
-            <button id="query-button" class="btn btn-success">Get Answer</button>
-            <hr>
-            <h4>Answer:</h4>
-            <div id="response-area" class="p-3 bg-light rounded">
-                </div>
+        </div>
+        <button id="query-button" class="btn btn-success">Get Answer</button>
+        <hr>
+        <h4>Answer:</h4>
+        <div id="answer-text" class="p-3 bg-light rounded">
+            </div>
+
+        <h5 class="mt-4">Sources:</h5>
+        <div id="sources-container">
+            </div>
         </div>
     </main>
 
