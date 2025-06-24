@@ -29,7 +29,6 @@ from cdk.custom_constructs import (
     CustomLambdaFromDockerImage,
     CustomS3Bucket,
     CustomRestApi,
-    CustomTokenAuthorizer,
     CustomCdn,
     CustomBucketDeployment,
     CustomOai,
