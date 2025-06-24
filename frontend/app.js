@@ -357,4 +357,7 @@ document.addEventListener("DOMContentLoaded", () => {
             throw error;
         }
     }
+
+    // Initial view state
+    showView("login-view");
 });
