@@ -5,17 +5,170 @@ document.addEventListener("DOMContentLoaded", () => {
     const appView = document.getElementById("app-view");
     const loggingInView = document.getElementById("logging-in-view");
     const loginError = document.getElementById("login-error");
+    const queryButton = document.getElementById("query-button");
+    const queryInput = document.getElementById("query-input");
+    const responseArea = document.getElementById("response-area");
+    const srdDropdownButton = document.getElementById("srd-dropdown-button");
+    const srdDropdownMenu = document.getElementById("srd-dropdown-menu");
+
+    // --- Get references to the new model setting controls ---
+    const invokeLlmSwitch = document.getElementById("invoke-llm-switch");
+    const genConfigOptions = document.getElementById("generation-config-options");
+    const temperatureSlider = document.getElementById("temperature-slider");
+    const temperatureValue = document.getElementById("temperature-value");
+    const topPSlider = document.getElementById("top-p-slider");
+    const topPValue = document.getElementById("top-p-value");
+    const maxTokensInput = document.getElementById("max-tokens-input");
+    const stopSequencesInput = document.getElementById("stop-sequences-input");
+
+    // --- API Configuration ---
     const apiSuffix = "/api/v1";
-
-    // Check if the page is being served from localhost
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname === "arcane-scribe-dev.thatsmidnight.com";
-
-    // Local and prod API URLs
     const DEV_API_URL = "https://arcane-scribe-dev.thatsmidnight.com";
-    const PROD_API_URL = "https://arcane-scribe.thatsmidnight.com";
+    const API_BASE_URL = isLocal ? `${DEV_API_URL}${apiSuffix}` : apiSuffix;
 
-    // Determine the API base URL based on the environment
-    const API_BASE_URL = isLocal ? DEV_API_URL + apiSuffix : PROD_API_URL + apiSuffix;
+    // --- EVENT LISTENERS ---
+    // Populate the SRD dropdown on page load
+    loginForm.addEventListener("submit", handleLogin);
+    queryButton.addEventListener("click", handleQuery);
+
+    // Add event listeners for the model controls
+    invokeLlmSwitch.addEventListener("change", () => {
+        // Disable generation config options if the LLM is not invoked
+        genConfigOptions.style.opacity = invokeLlmSwitch.checked ? "1" : "0.5";
+        genConfigOptions.querySelectorAll("input").forEach(input => {
+            input.disabled = !invokeLlmSwitch.checked;
+        });
+    });
+
+    // Initialize temperature slider
+    temperatureSlider.addEventListener("input", () => {
+        temperatureValue.textContent = temperatureSlider.value;
+    });
+
+    // Initialize top-p slider
+    topPSlider.addEventListener("input", () => {
+        topPValue.textContent = topPSlider.value;
+    });
+
+    // --- FUNCTIONS ---
+    // Function to handle login
+    async function handleLogin(e) {
+        e.preventDefault();
+        loginError.textContent = "";
+        loginView.classList.add("d-none");
+        loggingInView.classList.remove("d-none");
+
+        const username = document.getElementById("username").value;
+        const password = document.getElementById("password").value;
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/login`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ username, password }),
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.detail || "Login failed");
+
+            localStorage.setItem("idToken", data.IdToken);
+            await populateSrdDropdown();
+
+            loggingInView.classList.add("d-none");
+            appView.classList.remove("d-none");
+        } catch (error) {
+            console.error("Login Error:", error);
+            loginError.textContent = `Error: ${error.message}`;
+            loggingInView.classList.add("d-none");
+            loginView.classList.remove("d-none");
+        }
+    }
+
+    // Function to make authenticated requests
+    async function populateSrdDropdown() {
+        try {
+            const srd_ids = await makeAuthenticatedRequest("/srd", "GET");
+            srdDropdownMenu.innerHTML = ""; 
+
+            if (srd_ids && srd_ids.length > 0) {
+                srd_ids.forEach(srd_id => {
+                    const listItem = document.createElement("li");
+                    const link = document.createElement("a");
+                    link.className = "dropdown-item";
+                    link.href = "#";
+                    link.textContent = srd_id;
+                    link.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        srdDropdownButton.textContent = srd_id;
+                    });
+                    listItem.appendChild(link);
+                    srdDropdownMenu.appendChild(listItem);
+                });
+            } else {
+                 srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text">No SRDs found.</span></li>`;
+            }
+        } catch (error) {
+            console.error("Failed to populate SRD dropdown:", error);
+            srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text text-danger">Error loading SRDs.</span></li>`;
+        }
+    }
+    
+    // Helper function to build the query payload
+    function buildQueryPayload() {
+        const srdId = srdDropdownButton.textContent.trim();
+        const invokeGenerativeLlm = invokeLlmSwitch.checked;
+
+        const payload = {
+            query_text: queryInput.value,
+            srd_id: srdId,
+            invoke_generative_llm: invokeGenerativeLlm,
+            generation_config: {}
+        };
+        
+        // Only add generation config if the LLM is being invoked
+        if (invokeGenerativeLlm) {
+            // Use API's expected camelCase names
+            const temp = parseFloat(temperatureSlider.value);
+            if (!isNaN(temp)) payload.generation_config.temperature = temp;
+            
+            const topP = parseFloat(topPSlider.value);
+            if (!isNaN(topP)) payload.generation_config.topP = topP;
+
+            const maxTokenCount = parseInt(maxTokensInput.value, 10);
+            if (!isNaN(maxTokenCount)) payload.generation_config.maxTokenCount = maxTokenCount;
+
+            const stopSequences = stopSequencesInput.value
+                .split(',')
+                .map(s => s.trim())
+                .filter(s => s); // Remove empty strings
+            if (stopSequences.length > 0) payload.generation_config.stopSequences = stopSequences;
+        }
+        
+        return payload;
+    }
+
+    // Function to handle the query button click
+    async function handleQuery() {
+        const query = queryInput.value;
+        const srdId = srdDropdownButton.textContent.trim();
+
+        if (!query) {
+            alert("Please enter a query.");
+            return;
+        }
+        if (!srdId || srdId === "Select an SRD") {
+            alert("Please select an SRD from the dropdown.");
+            return;
+        }
+
+        responseArea.textContent = "Getting answer...";
+        
+        const payload = buildQueryPayload();
+        
+        const response = await makeAuthenticatedRequest("/query", "POST", payload);
+
+        responseArea.textContent = JSON.stringify(response, null, 2);
+    }
 
     // --- LOGIN LOGIC ---
     loginForm.addEventListener("submit", async (e) => {
@@ -66,29 +219,70 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     });
 
-    // --- RAG QUERY LOGIC ---
-    const queryButton = document.getElementById("query-button");
-    const queryInput = document.getElementById("query-input");
-    const srdIdInput = document.getElementById("srd-id-input");
-    const responseArea = document.getElementById("response-area");
+    // --- NEW: FUNCTION TO POPULATE DROPDOWN ---
+    async function populateSrdDropdown() {
+        try {
+            const srd_ids = await makeAuthenticatedRequest("/srd", "GET");
+            
+            srdDropdownMenu.innerHTML = ""; // Clear existing static items
 
+            if (srd_ids && srd_ids.length > 0) {
+                srd_ids.forEach(srd_id => {
+                    const listItem = document.createElement("li");
+                    const link = document.createElement("a");
+                    link.className = "dropdown-item";
+                    link.href = "#";
+                    link.textContent = srd_id;
+                    
+                    link.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        // Update button text to show selection
+                        srdDropdownButton.textContent = srd_id;
+                    });
+                    
+                    listItem.appendChild(link);
+                    srdDropdownMenu.appendChild(listItem);
+                });
+            } else {
+                 const listItem = document.createElement("li");
+                 listItem.innerHTML = `<span class="dropdown-item-text">No SRDs found.</span>`;
+                 srdDropdownMenu.appendChild(listItem);
+            }
+        } catch (error) {
+            console.error("Failed to populate SRD dropdown:", error);
+            const listItem = document.createElement("li");
+            listItem.innerHTML = `<span class="dropdown-item-text text-danger">Error loading SRDs.</span>`;
+            srdDropdownMenu.appendChild(listItem);
+        }
+    }
+
+    // --- RAG QUERY LOGIC ---
     // Ensure the query button is only enabled when logged in
     queryButton.addEventListener("click", async () => {
         const query = queryInput.value;
-        const srdId = srdIdInput.value;
-        if (!query) return;
-        if (!srdId) return;
+        const srdId = srdDropdownButton.textContent.trim(); // Get SRD from button text
+
+        // Validate input
+        if (!query) {
+            alert("Please enter a query.");
+            return;
+        }
+        if (!srdId || srdId === "Select an SRD") {
+            alert("Please select an SRD from the dropdown.");
+            return;
+        }
 
         // Clear previous response
         responseArea.textContent = "Getting answer...";
 
-        // This function would make the authenticated API call
+        // Make the authenticated request to the RAG API
         const response = await makeAuthenticatedRequest("/query", "POST", {
             query_text: query,
-            srd_id: srdId
+            srd_id: srdId,
+            invoke_generative_llm: true,
+            generation_config: {}
         });
 
-        // Display the response in the response area
         responseArea.textContent = JSON.stringify(response, null, 2);
     });
 
@@ -141,6 +335,7 @@ document.addEventListener("DOMContentLoaded", () => {
             // Handle errors from the request
             console.error("Authenticated request failed:", error);
             responseArea.textContent = `API Error: ${error.message}`;
+            throw error;
         }
     }
 });
