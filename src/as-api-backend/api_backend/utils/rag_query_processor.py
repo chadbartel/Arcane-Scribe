@@ -464,6 +464,7 @@ def get_answer_from_rag(
             "answer": formatted_answer,
             "source": "retrieval_only",
             "source_documents_retrieved": len(docs),
+            "source_documents_content": format_docs(docs),
         }
 
     # Initialize LLM instance with dynamic config for this request
