@@ -5,9 +5,9 @@ html, body {
 
 /* General styles */
 .form-signin {
-    max-width: 330px;
-    padding: 1rem;
     margin: auto;
+    max-width: 400px;
+    padding: 15px;
 }
 
 /* Loading animation styles */
