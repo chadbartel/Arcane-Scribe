@@ -391,6 +391,9 @@ def get_answer_from_rag(
                 lambda_logger.info(f"Cache hit for query_hash: {query_hash}")
                 return {
                     "answer": response["answer"],
+                    "source_documents_content": response.get(
+                        "source_documents_content", []
+                    ),
                     "source": "cache",
                 }
         except ClientError as e:
@@ -538,7 +541,7 @@ Helpful Answer:"""
                         "owner_id": owner_id,
                         "srd_id": srd_id,
                         "query_text": query_text,
-                        "source_documents": source_docs_content,
+                        "source_documents_content": source_docs_content,
                         "timestamp": str(time.time()),
                         "ttl": str(ttl_value),
                         "generation_config_used": json.dumps(
