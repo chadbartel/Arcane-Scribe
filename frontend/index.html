@@ -27,10 +27,22 @@
             </form>
         </div>
 
+        <div id="logging-in-view" class="loader-container d-none">
+            <div class="loading-text">Loading<span class="dots"></span></div>
+        </div>
+
         <div id="app-view" class="container d-none">
             <h2 class="mb-4">Query your SRD</h2>
             <div class="mb-3">
-                <textarea id="srd-id-input" class="form-control" rows="1" placeholder="Enter the SRD ID"></textarea>
+                <div class="btn-group">
+                <button class="btn btn-secondary dropdown-toggle" type="button" id="defaultDropdown" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                    Select an SRD ID
+                </button>
+                <ul class="dropdown-menu" aria-labelledby="defaultDropdown">
+                    <li><a class="dropdown-item" href="#">dungeonworld</a></li>
+                    <li><a class="dropdown-item" href="#">toon</a></li>
+                </ul>
+                </div>
                 <textarea id="query-input" class="form-control" rows="3" placeholder="Ask a question about your documents..."></textarea>
             </div>
             <button id="query-button" class="btn btn-success">Get Answer</button>
@@ -38,10 +50,6 @@
             <h4>Answer:</h4>
             <div id="response-area" class="p-3 bg-light rounded">
                 </div>
-        </div>
-
-        <div id="logging-in-view" class="loader-container d-none">
-            <div class="loading-text">Loading<span class="dots"></span></div>
         </div>
     </main>
 
