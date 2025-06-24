@@ -3,9 +3,17 @@ document.addEventListener("DOMContentLoaded", () => {
     const loginView = document.getElementById("login-view");
     const appView = document.getElementById("app-view");
     const loginError = document.getElementById("login-error");
+    const apiSuffix = "/api/v1";
 
-    // Replace with your actual API Gateway URL
-    const API_BASE_URL = "https://arcane-scribe-dev.thatsmidnight.com/api/v1"; 
+    // Check if the page is being served from localhost
+    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname === "arcane-scribe-dev.thatsmidnight.com";
+
+    // Local and prod API URLs
+    const DEV_API_URL = "https://arcane-scribe-dev.thatsmidnight.com";
+    const PROD_API_URL = "https://arcane-scribe.thatsmidnight.com";
+
+    // Determine the API base URL based on the environment
+    const API_BASE_URL = isLocal ? DEV_API_URL + apiSuffix : PROD_API_URL + apiSuffix;
 
     // --- LOGIN LOGIC ---
     loginForm.addEventListener("submit", async (e) => {
