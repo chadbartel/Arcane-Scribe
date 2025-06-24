@@ -66,19 +66,18 @@ def list_owner_documents(
             content={"error": "No SRD documents found"},
         )
 
+    # Extract SRD IDs from the S3 object keys and ensure uniqueness
+    unique_srd_ids = set(obj["Key"].split("/")[1] for obj in srd_objects)
+    sorted_srd_ids = sorted(list(unique_srd_ids))
+
     logger.info(
         "SRD documents retrieved successfully",
-        extra={"srd_objects": srd_objects},
+        extra={"srd_objects": sorted_srd_ids},
     )
-
-    # Extract SRD IDs from the S3 object keys and ensure uniqueness
-    srd_ids = list(
-        set([obj["Key"].split("/")[1] for obj in srd_objects])
-    ).sort()
 
     return JSONResponse(
         status_code=status.HTTP_200_OK,
-        content=srd_ids,
+        content=sorted_srd_ids,
     )
 
 
