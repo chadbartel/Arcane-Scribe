@@ -192,31 +192,83 @@ document.addEventListener("DOMContentLoaded", () => {
     // Function to handle the query button click
     async function handleQuery() {
         const query = queryInput.value;
-        const srdId = srdDropdownButton.dataset.selectedSrd; // Use data attribute
+        const srdId = srdDropdownButton.dataset.selectedSrd;
 
-        // Check if the query input is empty
-        if (!query) {
-            alert("Please enter a query.");
+        // Validate input
+        if (!query || !srdId || srdId === "Select an SRD") {
+            alert("Please select an SRD and enter a query.");
             return;
         }
 
-        // Check if an SRD is selected
-        if (!srdId) {
-            alert("Please select an SRD from the dropdown.");
-            return;
-        }
+        // Clear previous results and show loading state
+        answerText.textContent = "Getting answer...";
+        sourcesContainer.innerHTML = ""; // Clear old sources
+        queryButton.disabled = true;
 
-        // Clear the response area and show loading state
-        responseArea.textContent = "Getting answer...";
+        // Build the query payload
         const payload = buildQueryPayload();
 
-        // Make the authenticated request to the API
+        // Get the query response
         try {
-            const response = await makeAuthenticatedRequest("/query", "POST", payload);
-            responseArea.textContent = JSON.stringify(response, null, 2);
+            const responseData = await makeAuthenticatedRequest("/query", "POST", payload);
+            displayRagResponse(responseData); // Call the new display function
         } catch (error) {
-            // Error is already logged by makeAuthenticatedRequest
-            responseArea.textContent = `Error during query: ${error.message}`;
+            answerText.textContent = `Error during query: ${error.message}`;
+        } finally {
+            queryButton.disabled = false; // Re-enable button
+        }
+    }
+
+    // Function to parse and display the RAG response
+    function displayRagResponse(data) {
+        // Clear loading message
+        answerText.textContent = "";
+
+        // Check if the response contains an answer or an error
+        if (data && data.answer) {
+            answerText.textContent = data.answer;
+        } else if (data && data.error) {
+            answerText.textContent = `An error occurred: ${data.error}`;
+        } else {
+            answerText.textContent = "Received an unexpected response from the API.";
+        }
+
+        // Clear and populate the sources container
+        sourcesContainer.innerHTML = "";
+        if (data && data.source_documents && Array.isArray(data.source_documents)) {
+            // Use a Set to only show unique sources
+            const uniqueSources = new Map();
+            data.source_documents.forEach(doc => {
+                // The source document info is in the 'metadata' object
+                if (doc.metadata) {
+                    const sourceName = doc.metadata.source || "Unknown Document";
+                    const pageNum = doc.metadata.page;
+                    const uniqueKey = `${sourceName}-page-${pageNum}`;
+
+                    if (!uniqueSources.has(uniqueKey)) {
+                        uniqueSources.set(uniqueKey, { sourceName, pageNum });
+                    }
+                }
+            });
+
+            if (uniqueSources.size > 0) {
+                const sourceList = document.createElement("ul");
+                sourceList.className = "list-inline";
+                
+                uniqueSources.forEach(sourceInfo => {
+                    const listItem = document.createElement("li");
+                    listItem.className = "list-inline-item";
+                    
+                    const badge = document.createElement("span");
+                    badge.className = "badge bg-secondary";
+                    badge.textContent = `${sourceInfo.sourceName} (Page: ${sourceInfo.pageNum})`;
+                    
+                    listItem.appendChild(badge);
+                    sourceList.appendChild(listItem);
+                });
+
+                sourcesContainer.appendChild(sourceList);
+            }
         }
     }
 
