@@ -2,6 +2,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const loginForm = document.getElementById("login-form");
     const loginView = document.getElementById("login-view");
     const appView = document.getElementById("app-view");
+    const loggingInView = document.getElementById("logging-in-view");
     const loginError = document.getElementById("login-error");
     const apiSuffix = "/api/v1";
 
@@ -19,6 +20,10 @@ document.addEventListener("DOMContentLoaded", () => {
     loginForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         loginError.textContent = "";
+
+        // Show loading view and hide login form
+        loginView.classList.add("d-none");
+        loggingInView.classList.remove("d-none");
 
         const username = document.getElementById("username").value;
         const password = document.getElementById("password").value;
@@ -41,13 +46,17 @@ document.addEventListener("DOMContentLoaded", () => {
             localStorage.setItem("accessToken", data.AccessToken);
             localStorage.setItem("refreshToken", data.RefreshToken);
 
-            // Switch views
-            loginView.classList.add("d-none");
+            // Switch views - hide loading and show app
+            loggingInView.classList.add("d-none");
             appView.classList.remove("d-none");
 
         } catch (error) {
             console.error("Login Error:", error);
             loginError.textContent = `Error: ${error.message}`;
+            
+            // Hide loading view and show login form again on error
+            loggingInView.classList.add("d-none");
+            loginView.classList.remove("d-none");
         }
     });
 
