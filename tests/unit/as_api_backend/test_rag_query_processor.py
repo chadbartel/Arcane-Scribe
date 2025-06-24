@@ -659,6 +659,7 @@ class TestLoadAndMergeFaissIndicesForSrd:
         mock_dynamodb = MagicMock()
         cached_response = {
             "answer": "cached answer",
+            "source_documents_content": [],
             "ttl": str(current_time + 100),  # Valid cache
         }
         mock_dynamodb.get_item.return_value = cached_response
@@ -680,7 +681,11 @@ class TestLoadAndMergeFaissIndicesForSrd:
         )
 
         # Assert
-        assert result == {"answer": "cached answer", "source": "cache"}
+        assert result == {
+            "answer": "cached answer",
+            "source_documents_content": [],
+            "source": "cache",
+        }
         mock_dynamodb.get_item.assert_called_once_with(
             key={"query_hash": expected_hash}
         )
