@@ -103,7 +103,7 @@ def admin_create_user(
                     "username": user_info.get("Username"),
                     "user_create_date": str(user_info.get("UserCreateDate")),
                 },
-            }
+            },
         )
     except cognito_client.client.exceptions.UsernameExistsException:
         logger.warning(
