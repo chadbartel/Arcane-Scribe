@@ -2,7 +2,7 @@
 from typing import Optional
 
 # Third Party
-from pydantic import BaseModel, Field, ConfigDict, EmailStr
+from pydantic import BaseModel, Field, ConfigDict
 
 # Local Modules
 from core.utils import CognitoGroup
@@ -82,7 +82,7 @@ class SignUpRequest(BaseModel):
         max_length=50,
         description="The username for the new user.",
     )
-    email: EmailStr = Field(
+    email: str = Field(
         ..., description="The email address for the new user."
     )
     temporary_password: str = Field(
