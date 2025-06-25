@@ -48,3 +48,15 @@ class DocumentProcessingStatus(str, Enum):
     processing = "processing"
     completed = "completed"
     failed = "failed"
+
+
+class CognitoGroup(str, Enum):
+    """Enumeration of Cognito user groups.
+
+    Attributes:
+        admin: Admin group with elevated privileges.
+        user: Regular user group with standard permissions.
+    """
+
+    admins = "admins"
+    users = "users"
