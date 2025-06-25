@@ -15,6 +15,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const srdDropdownButton = document.getElementById("srd-dropdown-button");
     const srdDropdownMenu = document.getElementById("srd-dropdown-menu");
 
+    const numDocsInput = document.getElementById("num-docs-input");
     const invokeLlmSwitch = document.getElementById("invoke-llm-switch");
     const genConfigOptions = document.getElementById("generation-config-options");
     const temperatureSlider = document.getElementById("temperature-slider");
@@ -172,6 +173,14 @@ document.addEventListener("DOMContentLoaded", () => {
             invoke_generative_llm: invokeGenerativeLlm,
             generation_config: {}
         };
+
+        // Get the value from the new input field
+        const numDocs = parseInt(numDocsInput.value, 10);
+
+        // Add it to the payload if it's a valid number
+        if (!isNaN(numDocs) && numDocs > 0) {
+            payload.number_of_documents = numDocs;
+        }
 
         // If the LLM is invoked, add generation config parameters
         if (invokeGenerativeLlm) {
