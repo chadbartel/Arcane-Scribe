@@ -60,6 +60,16 @@ class CognitoStack(NestedStack):
             precedence=1,  # Ensure this group has precedence over others
         )
 
+        # 4b. Create the 'Users' group in the User Pool
+        self.users_group = cognito.CfnUserPoolGroup(
+            self,
+            "UsersGroup",
+            group_name=f"users{self.stack_suffix}",
+            user_pool_id=self.user_pool.user_pool_id,
+            description="Group for Arcane Scribe users",
+            precedence=2,  # Ensure this group has lower precedence than 'Admins'
+        )
+
         # 5. Add the admin user to the 'Admins' group
         _add_admin_to_group = cognito.CfnUserPoolUserToGroupAttachment(
             self,
