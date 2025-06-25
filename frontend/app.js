@@ -87,8 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function handleLogin(e) {
         e.preventDefault();
         loginError.textContent = "";
-        loginView.classList.add("d-none");
-        loggingInView.classList.remove("d-none");
+        showView("logging-in-view");
 
         const username = document.getElementById("username").value;
         const password = document.getElementById("password").value;
@@ -116,16 +115,11 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 throw new Error("An unexpected error occurred during login.");
             }
-            localStorage.setItem("idToken", data.IdToken);
-            await populateSrdDropdown();
 
-            loggingInView.classList.add("d-none");
-            appView.classList.remove("d-none");
         } catch (error) {
             console.error("Login Error:", error);
             loginError.textContent = `Error: ${error.message}`;
-            loggingInView.classList.add("d-none");
-            loginView.classList.remove("d-none");
+            showView("login-view"); // On any failure, return to login view
         }
     }
 
@@ -156,7 +150,7 @@ document.addEventListener("DOMContentLoaded", () => {
             });
             const data = await response.json();
             if (!response.ok) { throw new Error(data.detail || "Failed to set new password."); }
-            
+
             // Success! Store tokens and proceed to app.
             localStorage.setItem("idToken", data.IdToken);
             await populateSrdDropdown();
