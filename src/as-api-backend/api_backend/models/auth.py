@@ -98,3 +98,21 @@ class SignUpRequest(BaseModel):
             "the user will be assigned to the default 'users' group."
         ),
     )
+
+
+class RespondToChallengeRequest(BaseModel):
+    """
+    Request model for responding to a Cognito authentication challenge.
+
+    Attributes:
+        username: The user's username.
+        session: The session string from the Cognito challenge.
+        new_password: The user's chosen new password, which must be at least 16 characters long.
+    """
+    username: str = Field(..., description="The user's username.")
+    session: str = Field(
+        ..., description="The session string from the Cognito challenge."
+    )
+    new_password: str = Field(
+        ..., min_length=16, description="The user's chosen new password."
+    )
