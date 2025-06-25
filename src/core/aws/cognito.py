@@ -207,8 +207,13 @@ class CognitoIdpClient:
             logger.error(f"Error listing groups for user: {e}")
             raise e
 
-    def get_current_user(self) -> Dict[str, Any]:
+    def get_current_user(self, access_token: str) -> Dict[str, Any]:
         """Retrieves the current authenticated user's information.
+
+        Parameters
+        ----------
+        access_token : str
+            The access token of the authenticated user.
 
         Returns
         -------
@@ -223,7 +228,7 @@ class CognitoIdpClient:
         """
         try:
             logger.info("Retrieving current user information")
-            response = self.client.get_user()
+            response = self.client.get_user(AccessToken=access_token)
 
             # Parse email attribute from user attributes
             email = next(
