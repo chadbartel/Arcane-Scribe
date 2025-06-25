@@ -114,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 localStorage.setItem("refreshToken", data.RefreshToken);
                 await populateSrdDropdown();
                 showView("app-view");
-            } else if (data.challenge_name === "NEW_PASSWORD_REQUIRED") {
+            } else if (data.ChallengeName === "NEW_PASSWORD_REQUIRED") {
                 // CHALLENGE: If the challenge is NEW_PASSWORD_REQUIRED, show the new password view
                 loginSession = data.Session;
                 challengeUsername = data.username;
