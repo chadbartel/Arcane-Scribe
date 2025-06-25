@@ -111,6 +111,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (data.IdToken) {
                 // SUCCESS: Store the ID token in local storage
                 localStorage.setItem("idToken", data.IdToken);
+                localStorage.setItem("refreshToken", data.RefreshToken);
                 await populateSrdDropdown();
                 showView("app-view");
             } else if (data.challenge_name === "NEW_PASSWORD_REQUIRED") {
