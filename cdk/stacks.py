@@ -303,6 +303,7 @@ class ArcaneScribeStack(Stack):
                     "cognito-idp:ListUsers",
                     "cognito-idp:ListUsersInGroup",
                     "cognito-idp:AdminAddUserToGroup",
+                    "cognito-idp:AdminRespondToAuthChallenge",
                 ],
                 resources=[cognito_nested_stack.user_pool.user_pool_arn],
             ).statement
