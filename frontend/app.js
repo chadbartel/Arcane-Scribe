@@ -93,30 +93,38 @@ document.addEventListener("DOMContentLoaded", () => {
         const password = document.getElementById("password").value;
 
         try {
+            // Make the API call to log in
             const response = await fetch(`${API_BASE_URL}/auth/login`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password }),
             });
 
+            // Check if the response is OK and parse the JSON
             const data = await response.json();
-            if (!response.ok) throw new Error(data.detail || "Login failed");
+            if (!response.ok) {
+                const errorMessage = data.detail || `Login failed with status: ${response.status}`;
+                throw new Error(errorMessage);
+            }
 
+            // Check the response for either tokens or a challenge
             if (data.IdToken) {
-                // Store the ID token in local storage
+                // SUCCESS: Store the ID token in local storage
                 localStorage.setItem("idToken", data.IdToken);
                 await populateSrdDropdown();
                 showView("app-view");
             } else if (data.challenge_name === "NEW_PASSWORD_REQUIRED") {
-                // If the challenge is NEW_PASSWORD_REQUIRED, show the new password view
+                // CHALLENGE: If the challenge is NEW_PASSWORD_REQUIRED, show the new password view
                 loginSession = data.session;
                 challengeUsername = data.username;
                 showView("new-password-view");
             } else {
+                // UNEXPECTED: The response was OK but didn't contain tokens or a challenge.
                 throw new Error("An unexpected error occurred during login.");
             }
 
         } catch (error) {
+            // Handle errors gracefully
             console.error("Login Error:", error);
             loginError.textContent = `Error: ${error.message}`;
             showView("login-view"); // On any failure, return to login view
@@ -131,14 +139,17 @@ document.addEventListener("DOMContentLoaded", () => {
         const newPassword = document.getElementById("new-password").value;
         const confirmPassword = document.getElementById("confirm-password").value;
 
+        // Validate new password and confirmation
         if (newPassword !== confirmPassword) {
             newPasswordError.textContent = "Passwords do not match.";
             return;
         }
 
-        showView("logging-in-view"); // Show spinner
+        // Show spinner
+        showView("logging-in-view");
 
         try {
+            // Make the API call to respond to the new password challenge
             const response = await fetch(`${API_BASE_URL}/auth/respond-to-challenge`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
@@ -148,6 +159,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     new_password: newPassword,
                 }),
             });
+
+            // Check if the response is OK and parse the JSON
             const data = await response.json();
             if (!response.ok) { throw new Error(data.detail || "Failed to set new password."); }
 
@@ -157,6 +170,7 @@ document.addEventListener("DOMContentLoaded", () => {
             showView("app-view");
 
         } catch (error) {
+            // Handle errors gracefully
             console.error("New Password Error:", error);
             newPasswordError.textContent = `Error: ${error.message}`;
             showView("new-password-view"); // Show password form again on error
