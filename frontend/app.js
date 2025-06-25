@@ -198,6 +198,10 @@ document.addEventListener("DOMContentLoaded", () => {
             srdDropdownMenu.innerHTML = "";
 
             if (srd_ids.length > 0) {
+                // Set the default selected SRD to the first one in the list
+                srdDropdownButton.textContent = srd_ids[0];
+                srdDropdownButton.dataset.selectedSrd = srd_ids[0];
+
                 console.log("5. SRD list has items. Starting forEach loop.");
                 srd_ids.forEach((srd_id, index) => {
                     console.log(`6. Creating item for: ${srd_id} (index: ${index})`);
