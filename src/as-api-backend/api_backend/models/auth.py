@@ -2,7 +2,7 @@
 from typing import Optional
 
 # Third Party
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
 
 class User(BaseModel):
@@ -57,4 +57,36 @@ class TokenResponse(BaseModel):
         "Bearer",
         alias="TokenType",
         description="The type of token issued, usually 'Bearer'",
+    )
+
+
+class SignUpRequest(BaseModel):
+    """
+    Pydantic model for the admin-only user creation request body.
+
+    Attributes:
+        username: The username for the new user.
+        email: The email address for the new user.
+        temporary_password: A temporary password for the new user. The user will be required to change this on first login.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    username: str = Field(
+        ...,
+        min_length=3,
+        max_length=50,
+        description="The username for the new user."
+    )
+    email: EmailStr = Field(
+        ...,
+        description="The email address for the new user."
+    )
+    temporary_password: str = Field(
+        ...,
+        min_length=8,
+        description=(
+            "A temporary password for the new user. The user will be required "
+            "to change this on first login."
+        )
     )
