@@ -8,6 +8,8 @@ import boto3
 from botocore.exceptions import ClientError
 from aws_lambda_powertools import Logger
 
+from core.utils import CognitoGroup
+
 # Initialize logger
 logger = Logger(service="cognito-idp-client-wrapper")
 
@@ -255,4 +257,38 @@ class CognitoIdpClient:
             return user_info
         except ClientError as e:
             logger.error(f"Error retrieving current user: {e}")
+            raise e
+
+    def admin_add_user_to_group(
+        self, user_pool_id: str, username: str, group_name: CognitoGroup
+    ) -> None:
+        """Adds a user to a group in a Cognito user pool.
+
+        Parameters
+        ----------
+        user_pool_id : str
+            The ID of the Cognito user pool.
+        username : str
+            The username of the user to add to the group.
+        group_name : CognitoGroup
+            The name of the group to which the user will be added.
+
+        Raises
+        ------
+        ClientError
+            If there is an error adding the user to the group.
+        """
+        try:
+            logger.info(
+                f"Adding user '{username}' to group '{group_name}' in pool {user_pool_id}"
+            )
+            self.client.admin_add_user_to_group(
+                UserPoolId=user_pool_id,
+                Username=username,
+                GroupName=group_name.value,
+            )
+        except ClientError as e:
+            logger.error(
+                f"Error adding user '{username}' to group '{group_name}': {e}"
+            )
             raise e
