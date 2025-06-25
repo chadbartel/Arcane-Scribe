@@ -276,7 +276,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 uniqueSources.forEach(sourceInfo => {
                     const badge = document.createElement("span");
                     // Using Bootstrap's badge component for a cleaner look
-                    badge.className = "badge text-bg-secondary"; 
+                    badge.className = "badge text-bg-secondary";
                     badge.textContent = `${sourceInfo.sourceName} (p. ${sourceInfo.pageNum + 1})`; // Add 1 to page for human-readable format
 
                     sourceList.appendChild(badge);
