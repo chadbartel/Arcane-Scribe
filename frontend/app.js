@@ -116,7 +116,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 showView("app-view");
             } else if (data.challenge_name === "NEW_PASSWORD_REQUIRED") {
                 // CHALLENGE: If the challenge is NEW_PASSWORD_REQUIRED, show the new password view
-                loginSession = data.session;
+                loginSession = data.Session;
                 challengeUsername = data.username;
                 showView("new-password-view");
             } else {
