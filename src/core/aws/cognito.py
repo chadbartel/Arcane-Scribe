@@ -261,7 +261,7 @@ class CognitoIdpClient:
             raise e
 
     def admin_add_user_to_group(
-        self, user_pool_id: str, username: str, group_name: CognitoGroup
+        self, user_pool_id: str, username: str, group_name: str
     ) -> None:
         """Adds a user to a group in a Cognito user pool.
 
@@ -271,7 +271,7 @@ class CognitoIdpClient:
             The ID of the Cognito user pool.
         username : str
             The username of the user to add to the group.
-        group_name : CognitoGroup
+        group_name : str
             The name of the group to which the user will be added.
 
         Raises
@@ -286,7 +286,7 @@ class CognitoIdpClient:
             self.client.admin_add_user_to_group(
                 UserPoolId=user_pool_id,
                 Username=username,
-                GroupName=group_name.value,
+                GroupName=group_name,
             )
         except ClientError as e:
             logger.error(
