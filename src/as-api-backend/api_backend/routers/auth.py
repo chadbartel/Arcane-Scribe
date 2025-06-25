@@ -1,12 +1,19 @@
 # Third Party
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.responses import JSONResponse
+from botocore.exceptions import ClientError
 from aws_lambda_powertools import Logger
 
 # Local Modules
 from core.aws import CognitoIdpClient
 from core.utils.config import USER_POOL_ID, USER_POOL_CLIENT_ID
-from api_backend.models import LoginRequest, TokenResponse, SignUpRequest, User
+from api_backend.models import (
+    LoginRequest,
+    TokenResponse,
+    SignUpRequest,
+    User,
+    RespondToChallengeRequest,
+)
 from api_backend.dependencies import require_admin_user
 
 # Initialize logger
@@ -49,6 +56,45 @@ def login_for_access_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Incorrect username or password: {e}",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+@router.post("/respond-to-challenge", response_model=TokenResponse)
+def respond_to_challenge(
+    challenge_response: RespondToChallengeRequest,
+    cognito_client: CognitoIdpClient = Depends(),
+) -> JSONResponse:
+    """Responds to a Cognito authentication challenge, such as a new password
+    required challenge.
+
+    **Parameters:**
+    - `challenge_response`: An instance of `RespondToChallengeRequest` containing
+    the username, session, and new password.
+
+    **Returns:**
+    - A JSON response containing access tokens if the challenge is successfully
+    responded to.
+
+    **Raises:**
+    - `HTTPException`: If the challenge response fails, an HTTP 400 Bad Request error
+    is raised with details about the failure.
+    """
+    try:
+        tokens = cognito_client.admin_respond_to_auth_challenge(
+            user_pool_id=USER_POOL_ID,
+            client_id=USER_POOL_CLIENT_ID,
+            username=challenge_response.username,
+            session=challenge_response.session,
+            new_password=challenge_response.new_password,
+        )
+        return JSONResponse(status_code=status.HTTP_200_OK, content=tokens)
+    except ClientError as e:
+        logger.error(
+            f"Challenge response failed for user {challenge_response.username}: {e}"
+        )
+        # Provide more specific feedback if possible
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail=str(e)
         )
 
 
