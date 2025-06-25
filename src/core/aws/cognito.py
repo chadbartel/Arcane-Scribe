@@ -79,7 +79,7 @@ class CognitoIdpClient:
                 f"Initiating auth for user {username} in user pool {user_pool_id}"
             )
             response = self.client.admin_initiate_auth(**parameters)
-            return response.get("AuthenticationResult", {})
+            return response
         except ClientError as e:
             logger.error(f"Error initiating auth for user '{username}': {e}")
             raise e
