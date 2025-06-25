@@ -121,9 +121,9 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!Array.isArray(srd_ids)) {
                 throw new TypeError("API response for SRD list is not an array.");
             }
-            
+
             console.log("4. Clearing dropdown menu HTML.");
-            srdDropdownMenu.innerHTML = ""; 
+            srdDropdownMenu.innerHTML = "";
 
             if (srd_ids.length > 0) {
                 console.log("5. SRD list has items. Starting forEach loop.");
@@ -134,25 +134,25 @@ document.addEventListener("DOMContentLoaded", () => {
                     link.className = "dropdown-item";
                     link.href = "#";
                     link.textContent = srd_id;
-                    
+
                     link.addEventListener("click", (e) => {
                         e.preventDefault();
                         srdDropdownButton.textContent = srd_id;
                         srdDropdownButton.dataset.selectedSrd = srd_id;
                     });
-                    
+
                     listItem.appendChild(link);
                     srdDropdownMenu.appendChild(listItem);
                 });
                 console.log("7. Finished forEach loop.");
             } else {
-                 console.log("5b. SRD list is empty.");
-                 srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text">No SRDs found.</span></li>`;
+                console.log("5b. SRD list is empty.");
+                srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text">No SRDs found.</span></li>`;
             }
         } catch (error) {
             console.error("8. [CATCH BLOCK] Failed to populate SRD dropdown:", error);
             srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text text-danger">Error loading SRDs.</span></li>`;
-            throw error; 
+            throw error;
         } finally {
             console.log("9. [FINALLY BLOCK] Re-enabling dropdown button.");
             // Re-enable the dropdown button whether the call succeeded or failed
@@ -256,7 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 if (doc.metadata) {
                     // Get the raw, encoded source name from the metadata
                     const encodedSourceName = doc.metadata.source || "Unknown Document";
-                    
+
                     // Decode the URI component to make it human-readable
                     const sourceName = decodeURIComponent(encodedSourceName.split('/').pop());
 
@@ -274,12 +274,12 @@ document.addEventListener("DOMContentLoaded", () => {
             if (uniqueSources.size > 0) {
                 const sourceList = document.createElement("div");
                 // Using 'd-flex flex-wrap' to allow badges to wrap to the next line
-                sourceList.className = "d-flex flex-wrap gap-2"; 
+                sourceList.className = "d-flex flex-wrap gap-2";
 
                 uniqueSources.forEach(sourceInfo => {
                     const badge = document.createElement("span");
                     // Using Bootstrap's badge component for a cleaner look
-                    badge.className = "badge text-bg-secondary"; 
+                    badge.className = "badge text-bg-secondary";
                     // Add 1 to page for human-readable format
                     badge.textContent = `${sourceInfo.sourceName} (p. ${sourceInfo.pageNum + 1})`;
 
