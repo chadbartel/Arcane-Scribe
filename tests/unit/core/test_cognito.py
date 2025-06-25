@@ -118,7 +118,9 @@ class TestCognitoIdpClient:
                 "PASSWORD": self.password,
             },
         )
-        assert result == auth_result
+        # The method returns the full response, including AuthenticationResult wrapper
+        expected_response = {"AuthenticationResult": auth_result}
+        assert result == expected_response
         mock_logger.info.assert_called_once_with(
             f"Initiating auth for user {self.username} in user pool {self.user_pool_id}"
         )
@@ -157,7 +159,9 @@ class TestCognitoIdpClient:
             },
             ClientMetadata=client_metadata,
         )
-        assert result == auth_result
+        # The method returns the full response, including AuthenticationResult wrapper
+        expected_response = {"AuthenticationResult": auth_result}
+        assert result == expected_response
 
     @patch("core.aws.cognito.boto3.client")
     @patch("core.aws.cognito.logger")
@@ -192,7 +196,9 @@ class TestCognitoIdpClient:
                 "PASSWORD": self.password,
             },
         )
-        assert result == auth_result
+        # The method returns the full response, including AuthenticationResult wrapper
+        expected_response = {"AuthenticationResult": auth_result}
+        assert result == expected_response
 
     @patch("core.aws.cognito.boto3.client")
     @patch("core.aws.cognito.logger")
@@ -781,7 +787,9 @@ class TestCognitoIdpClient:
                 "PASSWORD": self.password,
             },
         )
-        assert result == auth_result
+        # The method returns the full response, including AuthenticationResult wrapper
+        expected_response = {"AuthenticationResult": auth_result}
+        assert result == expected_response
 
     @pytest.mark.parametrize(
         "error_code,error_message,operation",
@@ -950,7 +958,9 @@ class TestCognitoIdpClient:
             password=self.password,
         )
 
-        assert result == {}
+        # The method returns the full response, including challenge information
+        expected_response = {"ChallengeName": "NEW_PASSWORD_REQUIRED"}
+        assert result == expected_response
 
     @pytest.mark.parametrize(
         "client_metadata",
@@ -1001,4 +1011,164 @@ class TestCognitoIdpClient:
         mock_client.admin_initiate_auth.assert_called_once_with(
             **expected_args
         )
+        # The method returns the full response, including AuthenticationResult wrapper
+        expected_response = {"AuthenticationResult": auth_result}
+        assert result == expected_response
+
+    @patch("core.aws.cognito.boto3.client")
+    @patch("core.aws.cognito.logger")
+    def test_admin_initiate_auth_new_password_required_challenge(
+        self, mock_logger, mock_boto3_client
+    ):
+        """Test authentication that returns NEW_PASSWORD_REQUIRED challenge."""
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+
+        # Mock response with NEW_PASSWORD_REQUIRED challenge
+        challenge_response = {
+            "ChallengeName": "NEW_PASSWORD_REQUIRED",
+            "Session": "mock-session-token-12345",
+            "ChallengeParameters": {
+                "USER_ID_FOR_SRP": "testuser",
+                "requiredAttributes": "[]",
+                "userAttributes": '{"email":"test@example.com"}'
+            }
+        }
+        mock_client.admin_initiate_auth.return_value = challenge_response
+
+        cognito_client = CognitoIdpClient()
+        result = cognito_client.admin_initiate_auth(
+            user_pool_id=self.user_pool_id,
+            client_id=self.client_id,
+            username=self.username,
+            password=self.password,
+        )
+
+        mock_client.admin_initiate_auth.assert_called_once_with(
+            UserPoolId=self.user_pool_id,
+            ClientId=self.client_id,
+            AuthFlow="ADMIN_NO_SRP_AUTH",
+            AuthParameters={
+                "USERNAME": self.username,
+                "PASSWORD": self.password,
+            },
+        )
+        # The method returns the full challenge response
+        assert result == challenge_response
+        assert result["ChallengeName"] == "NEW_PASSWORD_REQUIRED"
+        assert result["Session"] == "mock-session-token-12345"
+        assert "ChallengeParameters" in result
+        mock_logger.info.assert_called_once_with(
+            f"Initiating auth for user {self.username} in user pool {self.user_pool_id}"
+        )
+
+    @patch("core.aws.cognito.boto3.client")
+    @patch("core.aws.cognito.logger")
+    def test_admin_respond_to_auth_challenge_success(
+        self, mock_logger, mock_boto3_client
+    ):
+        """Test successful response to authentication challenge."""
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+
+        auth_result = {
+            "AccessToken": "new-access-token",
+            "IdToken": "new-id-token",
+            "RefreshToken": "new-refresh-token",
+            "TokenType": "Bearer",
+            "ExpiresIn": 3600,
+        }
+        mock_client.admin_respond_to_auth_challenge.return_value = {
+            "AuthenticationResult": auth_result
+        }
+
+        session = "mock-session-token-12345"
+        new_password = "NewPassword123!"
+
+        cognito_client = CognitoIdpClient()
+        result = cognito_client.admin_respond_to_auth_challenge(
+            user_pool_id=self.user_pool_id,
+            client_id=self.client_id,
+            username=self.username,
+            session=session,
+            new_password=new_password,
+        )
+
+        mock_client.admin_respond_to_auth_challenge.assert_called_once_with(
+            UserPoolId=self.user_pool_id,
+            ClientId=self.client_id,
+            ChallengeName="NEW_PASSWORD_REQUIRED",
+            Session=session,
+            ChallengeResponses={
+                "USERNAME": self.username,
+                "NEW_PASSWORD": new_password,
+            },
+        )
+        # The method returns just the AuthenticationResult content
         assert result == auth_result
+        mock_logger.info.assert_called_once_with(
+            f"Responding to auth challenge for user {self.username} in pool {self.user_pool_id}"
+        )
+
+    @patch("core.aws.cognito.boto3.client")
+    @patch("core.aws.cognito.logger")
+    def test_admin_respond_to_auth_challenge_client_error(
+        self, mock_logger, mock_boto3_client
+    ):
+        """Test authentication challenge response failure due to client error."""
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+
+        error = ClientError(
+            {
+                "Error": {
+                    "Code": "InvalidPasswordException",
+                    "Message": "Password does not meet requirements",
+                }
+            },
+            "AdminRespondToAuthChallenge",
+        )
+        mock_client.admin_respond_to_auth_challenge.side_effect = error
+
+        session = "mock-session-token-12345"
+        new_password = "weak"
+
+        cognito_client = CognitoIdpClient()
+
+        with pytest.raises(ClientError):
+            cognito_client.admin_respond_to_auth_challenge(
+                user_pool_id=self.user_pool_id,
+                client_id=self.client_id,
+                username=self.username,
+                session=session,
+                new_password=new_password,
+            )
+
+        mock_logger.error.assert_called_once_with(
+            f"Error responding to auth challenge: {error}"
+        )
+
+    @patch("core.aws.cognito.boto3.client")
+    @patch("core.aws.cognito.logger")
+    def test_admin_respond_to_auth_challenge_empty_response(
+        self, mock_logger, mock_boto3_client
+    ):
+        """Test authentication challenge response with empty AuthenticationResult."""
+        mock_client = MagicMock()
+        mock_boto3_client.return_value = mock_client
+
+        mock_client.admin_respond_to_auth_challenge.return_value = {}
+
+        session = "mock-session-token-12345"
+        new_password = "NewPassword123!"
+
+        cognito_client = CognitoIdpClient()
+        result = cognito_client.admin_respond_to_auth_challenge(
+            user_pool_id=self.user_pool_id,
+            client_id=self.client_id,
+            username=self.username,
+            session=session,
+            new_password=new_password,
+        )
+
+        assert result == {}
