@@ -5,7 +5,6 @@ from aws_lambda_powertools import Logger
 
 # Local Modules
 from core.aws import CognitoIdpClient
-from core.utils import CognitoGroup
 from core.utils.config import USER_POOL_ID, USER_POOL_CLIENT_ID
 from api_backend.models import LoginRequest, TokenResponse, SignUpRequest, User
 from api_backend.dependencies import require_admin_user
