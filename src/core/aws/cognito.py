@@ -290,3 +290,56 @@ class CognitoIdpClient:
                 f"Error adding user '{username}' to group '{group_name}': {e}"
             )
             raise e
+
+    def admin_respond_to_auth_challenge(
+        self,
+        user_pool_id: str,
+        client_id: str,
+        username: str,
+        session: str,
+        new_password: str,
+    ) -> Dict[str, Any]:
+        """Responds to an authentication challenge for a user in a Cognito user pool.
+
+        Parameters
+        ----------
+        user_pool_id : str
+            The ID of the Cognito user pool.
+        client_id : str
+            The client ID of the Cognito app client.
+        username : str
+            The username of the user responding to the challenge.
+        session : str
+            The session identifier for the authentication challenge.
+        new_password : str
+            The new password to set for the user.
+
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary containing the authentication result, which may include
+            access tokens, ID tokens, and refresh tokens.
+
+        Raises
+        ------
+        ClientError
+            If there is an error responding to the authentication challenge.
+        """
+        try:
+            logger.info(
+                f"Responding to auth challenge for user {username} in pool {user_pool_id}"
+            )
+            response = self.client.admin_respond_to_auth_challenge(
+                UserPoolId=user_pool_id,
+                ClientId=client_id,
+                ChallengeName="NEW_PASSWORD_REQUIRED",
+                Session=session,
+                ChallengeResponses={
+                    "USERNAME": username,
+                    "NEW_PASSWORD": new_password,
+                },
+            )
+            return response.get("AuthenticationResult", {})
+        except ClientError as e:
+            logger.error(f"Error responding to auth challenge: {e}")
+            raise e
