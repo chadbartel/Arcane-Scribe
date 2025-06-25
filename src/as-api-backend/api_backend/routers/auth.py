@@ -34,22 +34,43 @@ def login_for_access_token(
     - `login_request`: An instance of `LoginRequest` containing the user's credentials.
 
     **Returns:**
-    - A JSON response containing access tokens if authentication is successful.
+    - A JSON response containing access tokens if the login is successful.
+    - If the user requires a new password, it returns a challenge response.
 
     **Raises:**
     - `HTTPException`: If authentication fails, an HTTP 401 Unauthorized error
     is raised.
     """
     try:
+        # Attempt to log in the user using Cognito
         logger.info(f"Attempting to log in user: {login_request.username}")
-        tokens = cognito_client.admin_initiate_auth(
+        response = cognito_client.admin_initiate_auth(
             user_pool_id=USER_POOL_ID,
             client_id=USER_POOL_CLIENT_ID,
             username=login_request.username,
             password=login_request.password,
         )
+
+        # Check if the response contains a Cognito auth challenge
+        if response.get("ChallengeName") == "NEW_PASSWORD_REQUIRED":
+            logger.info(f"User {login_request.username} requires a new password.")
+
+            # Return challenge details to the client
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content={
+                    "ChallengeName": "NEW_PASSWORD_REQUIRED",
+                    "Session": response.get("Session"),
+                    "username": login_request.username,
+                }
+            )
+
+        # If no challenge, return the authentication result
         logger.info(f"User {login_request.username} logged in successfully.")
-        return JSONResponse(status_code=status.HTTP_200_OK, content=tokens)
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=response.get("AuthenticationResult"),
+        )
     except Exception as e:
         logger.error(f"Login failed for user {login_request.username}: {e}")
         raise HTTPException(
