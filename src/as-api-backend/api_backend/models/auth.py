@@ -109,6 +109,9 @@ class RespondToChallengeRequest(BaseModel):
         session: The session string from the Cognito challenge.
         new_password: The user's chosen new password, which must be at least 16 characters long.
     """
+
+    model_config = ConfigDict(populate_by_name=True)
+
     username: str = Field(..., description="The user's username.")
     session: str = Field(
         ..., description="The session string from the Cognito challenge."
