@@ -602,7 +602,7 @@ class TestRequireAdminUser:
         user = User(
             username="admin",
             email="admin@example.com",
-            groups=["users", "Admins", "moderators"],
+            groups=["users", "admins", "moderators"],
         )
 
         # Act
@@ -645,7 +645,7 @@ class TestRequireAdminUser:
         user = User(
             username="user",
             email="user@example.com",
-            groups=["users", "admins", "moderators"],  # lowercase "admins"
+            groups=["users", "Admins", "moderators"],  # uppercase "Admins"
         )
 
         # Act & Assert
@@ -673,7 +673,7 @@ class TestDependenciesIntegration:
                         "claims": {
                             "cognito:username": "admin",
                             "email": "admin@example.com",
-                            "cognito:groups": ["Admins"],
+                            "cognito:groups": ["admins"],
                         }
                     },
                 }
@@ -688,5 +688,5 @@ class TestDependenciesIntegration:
         # Assert
         assert user == admin_user
         assert admin_user.username == "admin"
-        assert "Admins" in admin_user.groups
+        assert "admins" in admin_user.groups
         mock_get_allowed_ip.assert_called_once()
