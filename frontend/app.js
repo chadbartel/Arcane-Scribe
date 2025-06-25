@@ -333,7 +333,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 const pageNum = doc.page;
 
                 // Decode the URI component to make it human-readable
-                const sourceName = decodeURIComponent(encodedSourceName.split('/').pop());
+                const sourceName = decodeURIComponent(encodedSourceName.replace(/\+/g, '%20').split('/').pop());
 
                 // We check if page is not undefined because page 0 is valid.
                 if (sourceName && typeof pageNum !== 'undefined') {
