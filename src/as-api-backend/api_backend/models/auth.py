@@ -4,6 +4,9 @@ from typing import Optional
 # Third Party
 from pydantic import BaseModel, Field, ConfigDict, EmailStr
 
+# Local Modules
+from core.utils import CognitoGroup
+
 
 class User(BaseModel):
     """User model representing a user in the system.
@@ -68,6 +71,7 @@ class SignUpRequest(BaseModel):
         username: The username for the new user.
         email: The email address for the new user.
         temporary_password: A temporary password for the new user. The user will be required to change this on first login.
+        user_group: Optional user group to assign the new user to. If not provided, the user will be assigned to the default 'users' group.
     """
 
     model_config = ConfigDict(populate_by_name=True)
@@ -76,11 +80,10 @@ class SignUpRequest(BaseModel):
         ...,
         min_length=3,
         max_length=50,
-        description="The username for the new user."
+        description="The username for the new user.",
     )
     email: EmailStr = Field(
-        ...,
-        description="The email address for the new user."
+        ..., description="The email address for the new user."
     )
     temporary_password: str = Field(
         ...,
@@ -88,5 +91,12 @@ class SignUpRequest(BaseModel):
         description=(
             "A temporary password for the new user. The user will be required "
             "to change this on first login."
-        )
+        ),
+    )
+    user_group: Optional[CognitoGroup] = Field(
+        CognitoGroup.users,
+        description=(
+            "Optional user group to assign the new user to. If not provided, "
+            "the user will be assigned to the default 'users' group."
+        ),
     )
