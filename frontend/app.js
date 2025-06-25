@@ -253,8 +253,11 @@ document.addEventListener("DOMContentLoaded", () => {
             data.source_documents_content.forEach(doc => {
                 // Access 'source' and 'page' directly from the 'doc' object,
                 // not from a nested 'metadata' object.
-                const sourceName = doc.source || "Unknown Document";
+                const encodedSourceName = doc.source || "Unknown Document";
                 const pageNum = doc.page;
+
+                // Decode the URI component to make it human-readable
+                const sourceName = decodeURIComponent(encodedSourceName.split('/').pop());
 
                 // We check if page is not undefined because page 0 is valid.
                 if (sourceName && typeof pageNum !== 'undefined') {
