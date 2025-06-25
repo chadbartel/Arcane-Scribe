@@ -40,26 +40,46 @@ class TokenResponse(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    access_token: str = Field(
-        ..., alias="AccessToken", description="Access token issued to the user"
+    # Fields for a successful login
+    access_token: Optional[str] = Field(
+        None, alias="AccessToken", description="Access token issued to the user"
     )
-    expires_in: int = Field(
-        ...,
+    expires_in: Optional[str] = Field(
+        None,
         alias="ExpiresIn",
         description="Duration in seconds for which the access token is valid",
     )
-    id_token: str = Field(
-        ..., alias="IdToken", description="ID token issued to the user"
+    id_token: Optional[str] = Field(
+        None, alias="IdToken", description="ID token issued to the user"
     )
     refresh_token: Optional[str] = Field(
         None,
         alias="RefreshToken",
         description="Optional refresh token for obtaining new access tokens",
     )
-    token_type: str = Field(
+    token_type: Optional[str] = Field(
         "Bearer",
         alias="TokenType",
         description="The type of token issued, usually 'Bearer'",
+    )
+
+    # Fields for a new password challenge
+    challenge_name: Optional[str] = Field(
+        None,
+        alias="ChallengeName",
+        description="Name of the challenge, e.g., 'NEW_PASSWORD_REQUIRED'",
+    )
+    session: Optional[str] = Field(
+        None,
+        alias="Session",
+        description="Session string for the challenge, used to respond to it",
+    )
+
+    # Pass username back to the client during a challenge
+    username: Optional[str] = Field(
+        None,
+        alias="Username",
+        description="Username of the user, returned during a challenge",
     )
 
 
