@@ -25,7 +25,7 @@ class User(BaseModel):
 
 class TokenResponse(BaseModel):
     """
-    Pydantic model for the response from the /login endpoint.
+    Pydantic model for the response from the /auth/login endpoint.
 
     Attributes:
         AccessToken: The access token issued to the user.

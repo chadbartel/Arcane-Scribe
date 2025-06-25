@@ -29,21 +29,21 @@ def mock_cognito_client():
 def login_router_with_mocks(mock_cognito_client):
     """Create login router with mocked dependencies."""
     with patch(
-        "api_backend.routers.login.CognitoIdpClient"
+        "api_backend.routers.auth.CognitoIdpClient"
     ) as mock_cognito_class:
         # Mock the dependency injection to return our mock client
         mock_cognito_class.return_value = mock_cognito_client
 
         # Mock the config values
-        with patch("api_backend.routers.login.USER_POOL_ID", "test_pool_id"):
+        with patch("api_backend.routers.auth.USER_POOL_ID", "test_pool_id"):
             with patch(
-                "api_backend.routers.login.USER_POOL_CLIENT_ID",
+                "api_backend.routers.auth.USER_POOL_CLIENT_ID",
                 "test_client_id",
             ):
                 # Local Modules
-                from api_backend.routers import login
+                from api_backend.routers import auth
 
-                yield login, mock_cognito_client
+                yield auth, mock_cognito_client
 
 
 class TestLoginForAccessToken:
@@ -384,7 +384,7 @@ class TestRouterIntegration:
 
         # Check that router has the expected route
         route_paths = [route.path for route in router.routes]
-        assert "/login" in route_paths
+        assert "/auth/login" in route_paths
 
     def test_router_methods(self, login_router_with_mocks):
         """Test that route has correct HTTP method."""
@@ -393,17 +393,17 @@ class TestRouterIntegration:
 
         # Find the route and check method
         for route in router.routes:
-            if route.path == "/login":
+            if route.path == "/auth/login":
                 assert "POST" in route.methods
                 break
         else:
-            pytest.fail("Route /login not found")
+            pytest.fail("Route /auth/login not found")
 
     def test_router_prefix(self, login_router_with_mocks):
         """Test that router has correct prefix."""
         login_router, _ = login_router_with_mocks
         router = login_router.router
-        assert router.prefix == "/login"
+        assert router.prefix == "/auth"
 
     def test_router_tags(self, login_router_with_mocks):
         """Test that router has correct tags."""

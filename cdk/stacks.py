@@ -406,8 +406,9 @@ class ArcaneScribeStack(Stack):
                 authorization_type=apigw.AuthorizationType.NONE,
             )
 
-        # Add a /login resource for user login
-        login_resource = api_base_resource.add_resource("login")
+        # Add a /auth/login resource for user login
+        auth_resource = api_base_resource.add_resource("auth")
+        login_resource = auth_resource.add_resource("login")
         login_resource.add_method(
             "POST",
             integration=lambda_integration,
