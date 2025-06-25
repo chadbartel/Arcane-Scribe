@@ -25,6 +25,10 @@ document.addEventListener("DOMContentLoaded", () => {
     const maxTokensInput = document.getElementById("max-tokens-input");
     const stopSequencesInput = document.getElementById("stop-sequences-input");
 
+    // const newPasswordView = document.getElementById("new-password-view");
+    const newPasswordForm = document.getElementById("new-password-form");
+    const newPasswordError = document.getElementById("new-password-error");
+
     // --- API Configuration ---
     const apiSuffix = "/api/v1";
     const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname === "arcane-scribe-dev.thatsmidnight.com";
@@ -32,7 +36,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const API_BASE_URL = isLocal ? `${DEV_API_URL}${apiSuffix}` : apiSuffix;
 
     // --- STATE MANAGEMENT ---
-    const VIEWS = ["login-view", "logging-in-view", "app-view"];
+    const VIEWS = ["login-view", "logging-in-view", "app-view", "new-password-view"];
 
     /*
      * Hides all views and shows only the one specified by ID.
@@ -53,6 +57,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // Add event listeners for login and query actions
     loginForm.addEventListener("submit", handleLogin);
     queryButton.addEventListener("click", handleQuery);
+    newPasswordForm.addEventListener("submit", handleNewPasswordSubmit);
 
     // Add event listeners for the model controls
     invokeLlmSwitch.addEventListener("change", () => {
@@ -73,6 +78,10 @@ document.addEventListener("DOMContentLoaded", () => {
         topPValue.textContent = topPSlider.value;
     });
 
+    // --- Global vars to hold challenge state ---
+    let loginSession = null;
+    let challengeUsername = null;
+
     // --- FUNCTIONS ---
     // Function to handle login
     async function handleLogin(e) {
@@ -90,9 +99,23 @@ document.addEventListener("DOMContentLoaded", () => {
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ username, password }),
             });
+
             const data = await response.json();
             if (!response.ok) throw new Error(data.detail || "Login failed");
 
+            if (data.IdToken) {
+                // Store the ID token in local storage
+                localStorage.setItem("idToken", data.IdToken);
+                await populateSrdDropdown();
+                showView("app-view");
+            } else if (data.challenge_name === "NEW_PASSWORD_REQUIRED") {
+                // If the challenge is NEW_PASSWORD_REQUIRED, show the new password view
+                loginSession = data.session;
+                challengeUsername = data.username;
+                showView("new-password-view");
+            } else {
+                throw new Error("An unexpected error occurred during login.");
+            }
             localStorage.setItem("idToken", data.IdToken);
             await populateSrdDropdown();
 
@@ -103,6 +126,46 @@ document.addEventListener("DOMContentLoaded", () => {
             loginError.textContent = `Error: ${error.message}`;
             loggingInView.classList.add("d-none");
             loginView.classList.remove("d-none");
+        }
+    }
+
+    // Function to handle new password submission
+    async function handleNewPasswordSubmit(e) {
+        e.preventDefault();
+        newPasswordError.textContent = "";
+
+        const newPassword = document.getElementById("new-password").value;
+        const confirmPassword = document.getElementById("confirm-password").value;
+
+        if (newPassword !== confirmPassword) {
+            newPasswordError.textContent = "Passwords do not match.";
+            return;
+        }
+
+        showView("logging-in-view"); // Show spinner
+
+        try {
+            const response = await fetch(`${API_BASE_URL}/auth/respond-to-challenge`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    username: challengeUsername,
+                    session: loginSession,
+                    new_password: newPassword,
+                }),
+            });
+            const data = await response.json();
+            if (!response.ok) { throw new Error(data.detail || "Failed to set new password."); }
+            
+            // Success! Store tokens and proceed to app.
+            localStorage.setItem("idToken", data.IdToken);
+            await populateSrdDropdown();
+            showView("app-view");
+
+        } catch (error) {
+            console.error("New Password Error:", error);
+            newPasswordError.textContent = `Error: ${error.message}`;
+            showView("new-password-view"); // Show password form again on error
         }
     }
 
