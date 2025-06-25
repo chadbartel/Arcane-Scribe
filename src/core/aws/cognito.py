@@ -206,3 +206,48 @@ class CognitoIdpClient:
         except ClientError as e:
             logger.error(f"Error listing groups for user: {e}")
             raise e
+
+    def get_current_user(self) -> Dict[str, Any]:
+        """Retrieves the current authenticated user's information.
+
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary containing the user's information, such as username,
+            email, and groups.
+
+        Raises
+        ------
+        ClientError
+            If there is an error retrieving the current user's information.
+        """
+        try:
+            logger.info("Retrieving current user information")
+            response = self.client.get_user()
+
+            # Parse email attribute from user attributes
+            email = next(
+                (
+                    attr["Value"]
+                    for attr in response.get("UserAttributes", [])
+                    if attr["Name"] == "email"
+                ),
+                "",
+            )
+
+            # Get the groups for the user
+            groups = self.admin_list_groups_for_user(
+                user_pool_id=response["UserPoolId"],
+                username=response["Username"],
+            )
+
+            # Construct the user info dictionary
+            user_info = {
+                "username": response.get("Username"),
+                "groups": groups,
+                "email": email,
+            }
+            return user_info
+        except ClientError as e:
+            logger.error(f"Error retrieving current user: {e}")
+            raise e
