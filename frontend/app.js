@@ -246,19 +246,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Clear and populate the sources container
         sourcesContainer.innerHTML = "";
+
         // Check for 'source_documents_content' and ensure it's an array
         if (data && data.source_documents_content && Array.isArray(data.source_documents_content)) {
             const uniqueSources = new Map();
 
             data.source_documents_content.forEach(doc => {
-                // Access 'source' and 'page' directly from the 'doc' object,
-                // not from a nested 'metadata' object.
-                const sourceName = doc.source || "Unknown Document";
-                const pageNum = doc.page;
+                // The source document info is in the 'metadata' object from LangChain
+                if (doc.metadata) {
+                    // Get the raw, encoded source name from the metadata
+                    const encodedSourceName = doc.metadata.source || "Unknown Document";
+                    
+                    // Decode the URI component to make it human-readable
+                    const sourceName = decodeURIComponent(encodedSourceName.split('/').pop());
 
-                // We check if page is not undefined because page 0 is valid.
-                if (sourceName && typeof pageNum !== 'undefined') {
+                    // Set the page number from the metadata
+                    const pageNum = doc.metadata.page;
                     const uniqueKey = `${sourceName}-page-${pageNum}`;
+
+                    // Create a unique key based on source name and page number
                     if (!uniqueSources.has(uniqueKey)) {
                         uniqueSources.set(uniqueKey, { sourceName, pageNum });
                     }
@@ -274,7 +280,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     const badge = document.createElement("span");
                     // Using Bootstrap's badge component for a cleaner look
                     badge.className = "badge text-bg-secondary"; 
-                    badge.textContent = `${sourceInfo.sourceName} (p. ${sourceInfo.pageNum + 1})`; // Add 1 to page for human-readable format
+                    // Add 1 to page for human-readable format
+                    badge.textContent = `${sourceInfo.sourceName} (p. ${sourceInfo.pageNum + 1})`;
 
                     sourceList.appendChild(badge);
                 });
