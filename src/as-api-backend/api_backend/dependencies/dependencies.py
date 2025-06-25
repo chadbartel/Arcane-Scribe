@@ -8,6 +8,7 @@ from aws_lambda_powertools import Logger
 
 # Local Modules
 from core.aws import SsmClient
+from core.utils import CognitoGroup
 from core.utils.config import HOME_IP_SSM_PARAMETER_NAME
 from api_backend.models import User
 
@@ -171,7 +172,7 @@ def require_admin_user(current_user: User = Depends(get_current_user)) -> User:
         raised.
         - 403 Forbidden if the user does not belong to the "Admins" group.
     """
-    if "Admins" not in current_user.groups:
+    if CognitoGroup.admins.value not in current_user.groups:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User does not have admin privileges.",
