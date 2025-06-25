@@ -54,7 +54,7 @@ class CognitoStack(NestedStack):
         self.admins_group = cognito.CfnUserPoolGroup(
             self,
             "AdminsGroup",
-            group_name=f"admins{self.stack_suffix}",
+            group_name="admins",
             user_pool_id=self.user_pool.user_pool_id,
             description="Group for Arcane Scribe administrators",
             precedence=1,  # Ensure this group has precedence over others
@@ -64,7 +64,7 @@ class CognitoStack(NestedStack):
         self.users_group = cognito.CfnUserPoolGroup(
             self,
             "UsersGroup",
-            group_name=f"users{self.stack_suffix}",
+            group_name="users",
             user_pool_id=self.user_pool.user_pool_id,
             description="Group for Arcane Scribe users",
             precedence=2,  # Ensure this group has lower precedence than 'Admins'
