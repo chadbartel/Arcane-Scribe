@@ -6,7 +6,7 @@ from aws_lambda_powertools import Logger
 # Local Modules
 from core.aws import CognitoIdpClient
 from core.utils.config import USER_POOL_ID, USER_POOL_CLIENT_ID
-from api_backend.models import LoginRequest, TokenResponse
+from api_backend.models import LoginRequest, TokenResponse, User
 
 # Initialize logger
 logger = Logger(service="authentication")
@@ -48,4 +48,31 @@ def login_for_access_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=f"Incorrect username or password: {e}",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+@router.get("/user", response_model=User)
+def get_current_user(
+    cognito_client: CognitoIdpClient = Depends(),
+) -> JSONResponse:
+    """Endpoint to retrieve the current authenticated user's information.
+
+    **Returns:**
+    - An instance of `User` containing the user's details.
+
+    **Raises:**
+    - `HTTPException`: If the user is not authenticated, an HTTP 401 Unauthorized
+    error is raised.
+    """
+    try:
+        user = User.model_validate(cognito_client.get_current_user())
+        logger.info(f"Retrieved user info for {user.username}.")
+        return JSONResponse(
+            status_code=status.HTTP_200_OK, content=user.model_dump()
+        )
+    except Exception as e:
+        logger.error(f"Failed to retrieve user info: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="User not authenticated",
         )
