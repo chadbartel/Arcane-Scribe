@@ -42,7 +42,9 @@ class TokenResponse(BaseModel):
 
     # Fields for a successful login
     access_token: Optional[str] = Field(
-        None, alias="AccessToken", description="Access token issued to the user"
+        None,
+        alias="AccessToken",
+        description="Access token issued to the user",
     )
     expires_in: Optional[str] = Field(
         None,

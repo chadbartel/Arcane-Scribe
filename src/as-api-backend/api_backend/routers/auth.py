@@ -53,7 +53,9 @@ def login_for_access_token(
 
         # Check if the response contains a Cognito auth challenge
         if response.get("ChallengeName") == "NEW_PASSWORD_REQUIRED":
-            logger.info(f"User {login_request.username} requires a new password.")
+            logger.info(
+                f"User {login_request.username} requires a new password."
+            )
 
             # Return challenge details to the client
             return JSONResponse(
@@ -62,7 +64,7 @@ def login_for_access_token(
                     "ChallengeName": "NEW_PASSWORD_REQUIRED",
                     "Session": response.get("Session"),
                     "username": login_request.username,
-                }
+                },
             )
 
         # If no challenge, return the authentication result
