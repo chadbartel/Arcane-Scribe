@@ -26,6 +26,15 @@ document.addEventListener("DOMContentLoaded", () => {
     const welcomeUser = document.getElementById("welcome-user");
     const logoutButton = document.getElementById("logout-button");
 
+    // Upload form elements
+    const uploadForm = document.getElementById("upload-form");
+    const srdIdInput = document.getElementById("srd-id-input");
+    const fileInput = document.getElementById("file-input");
+    const uploadButton = document.getElementById("upload-button");
+    const uploadButtonSpinner = document.getElementById("upload-button-spinner");
+    const uploadButtonText = document.getElementById("upload-button-text");
+    const uploadStatus = document.getElementById("upload-status");
+
     // --- API Configuration ---
     const apiSuffix = "/api/v1";
     const isLocal =
@@ -93,6 +102,9 @@ document.addEventListener("DOMContentLoaded", () => {
             input.disabled = !invokeLlmSwitch.checked;
         });
     });
+
+    // Add event listeners for SRD input elements
+    uploadForm.addEventListener("submit", handleUpload);
 
     // --- JWT HELPER ---
     function parseJwt(token) {
@@ -540,6 +552,74 @@ document.addEventListener("DOMContentLoaded", () => {
             // Log the error and rethrow it for handling in the calling function
             console.error(`Authenticated request to ${endpoint} failed:`, error);
             throw error;
+        }
+    }
+
+    /*
+     * Handles the file upload process when the upload form is submitted.
+        * This function retrieves the SRD ID and file from the form,
+        * requests a pre-signed URL from the API,
+        * and uploads the file directly to S3 using that URL.
+    */
+    async function handleUpload(e) {
+        e.preventDefault();
+
+        const srdId = srdIdInput.value.trim();
+        const file = fileInput.files[0];
+
+        if (!srdId || !file) {
+            alert("Please provide an SRD ID and select a file.");
+            return;
+        }
+
+        // Disable button and show spinner
+        uploadButton.disabled = true;
+        uploadButtonSpinner.classList.remove("d-none");
+        uploadButtonText.textContent = "Uploading...";
+        uploadStatus.innerHTML = `<div class="alert alert-info">Step 1 of 2: Requesting secure upload URL...</div>`;
+
+        try {
+            // --- Step 1: Get the Pre-signed URL from our API ---
+            const presignedUrlResponse = await makeAuthenticatedRequest(
+                `/srd/${srdId}/documents/upload-url`,
+                "POST",
+                {
+                    file_name: file.name,
+                    content_type: file.type
+                }
+            );
+
+            uploadStatus.innerHTML = `<div class="alert alert-info">Step 2 of 2: Uploading file to S3... This may take a moment.</div>`;
+
+            // --- Step 2: Upload the file directly to S3 using the URL ---
+            const s3Url = presignedUrlResponse.presigned_url_data.url;
+
+            // Upload the file to S3 using the pre-signed URL
+            const uploadResponse = await fetch(s3Url, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': file.type,
+                },
+                body: file
+            });
+
+            // Check if the upload was successful
+            if (!uploadResponse.ok) {
+                const errorText = await uploadResponse.text();
+                throw new Error(`S3 Upload Failed: ${errorText}`);
+            }
+
+            uploadStatus.innerHTML = `<div class="alert alert-success">Upload complete! Your document is now being processed.</div>`;
+            fileInput.value = ""; // Clear the file input
+
+        } catch (error) {
+            console.error("Upload failed:", error);
+            uploadStatus.innerHTML = `<div class="alert alert-danger">Error during upload: ${error.message}</div>`;
+        } finally {
+            // Re-enable button and hide spinner
+            uploadButton.disabled = false;
+            uploadButtonSpinner.classList.add("d-none");
+            uploadButtonText.textContent = "Upload Document";
         }
     }
 
