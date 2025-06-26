@@ -29,11 +29,13 @@ document.addEventListener("DOMContentLoaded", () => {
     // Upload form elements
     const uploadForm = document.getElementById("upload-form");
     const srdIdInput = document.getElementById("srd-id-input");
+    const srdIdList = document.getElementById("srd-id-list");
     const fileInput = document.getElementById("file-input");
     const uploadButton = document.getElementById("upload-button");
     const uploadButtonSpinner = document.getElementById("upload-button-spinner");
     const uploadButtonText = document.getElementById("upload-button-text");
     const uploadStatus = document.getElementById("upload-status");
+    let allSrdIds = []; // To store the fetched SRD IDs
 
     // Document list elements
     const refreshDocsButton = document.getElementById("refresh-docs-button");
@@ -117,6 +119,29 @@ document.addEventListener("DOMContentLoaded", () => {
     srdIdInput.addEventListener("input", () => {
         // Automatically refresh the list when the user types a new SRD ID
         handleRefresh();
+    });
+
+    // Add navigation listener to populate dropdown when view is shown
+    navbar.addEventListener("click", (e) => {
+        if (e.target.matches('.nav-link') && e.target.dataset.view) {
+            e.preventDefault();
+            const viewId = e.target.dataset.view;
+            showMainView(viewId);
+            // If we are showing the SRD management view, populate the list
+            if (viewId === 'srd-management-view') {
+                populateSrdInputList();
+            }
+        }
+    });
+
+    // Add listener to filter the dropdown as the user types
+    srdIdInput.addEventListener("input", () => {
+        const filterText = srdIdInput.value.toLowerCase();
+        const items = srdIdList.querySelectorAll('li');
+        items.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            item.style.display = text.includes(filterText) ? "" : "none";
+        });
     });
 
     // --- JWT HELPER ---
@@ -641,6 +666,50 @@ document.addEventListener("DOMContentLoaded", () => {
                 return 'badge text-bg-danger';
             default:
                 return 'badge text-bg-secondary';
+        }
+    }
+
+    /**
+     * Fetches the list of SRD IDs and populates the editable dropdown.
+     * This function retrieves the SRD IDs from the API and populates the dropdown list.
+     * If no SRD IDs are found, it displays a message indicating that no SRDs
+     * are available.
+     */
+    async function populateSrdInputList() {
+        srdIdList.innerHTML = `<li><span class="dropdown-item-text">Loading...</span></li>`;
+        try {
+            const srd_ids = await makeAuthenticatedRequest("/srd", "GET");
+            allSrdIds = srd_ids || []; // Store for filtering
+            
+            srdIdList.innerHTML = ""; // Clear loading message
+
+            if (allSrdIds.length > 0) {
+                allSrdIds.forEach(id => {
+                    const listItem = document.createElement("li");
+                    const link = document.createElement("a");
+                    link.className = "dropdown-item";
+                    link.href = "#";
+                    link.textContent = id;
+                    // Add click event to each item
+                    link.addEventListener("click", (e) => {
+                        e.preventDefault();
+                        srdIdInput.value = id; // Set the input field's value
+                        // Manually hide the dropdown after selection
+                        bootstrap.Dropdown.getInstance(srdIdInput)?.hide();
+                    });
+                    listItem.appendChild(link);
+                    srdIdList.appendChild(listItem);
+                });
+            } else {
+                srdIdList.innerHTML = `<li><span class="dropdown-item-text">No existing SRDs found.</span></li>`;
+            }
+        } catch (error) {
+            if (error.status !== 404) { // Ignore 404 for new users
+                console.error("Failed to populate SRD input list:", error);
+                srdIdList.innerHTML = `<li><span class="dropdown-item-text text-danger">Error loading SRD list.</span></li>`;
+            } else {
+                srdIdList.innerHTML = `<li><span class="dropdown-item-text">No existing SRDs found.</span></li>`;
+            }
         }
     }
 
