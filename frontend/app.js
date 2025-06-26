@@ -123,7 +123,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Add navigation listener to populate dropdown when view is shown
     navbar.addEventListener("click", (e) => {
-        showScreen("loading-view");
         if (e.target.matches('.nav-link') && e.target.dataset.view) {
             e.preventDefault();
             const viewId = e.target.dataset.view;
@@ -338,6 +337,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Function to make authenticated requests
     async function populateSrdDropdown() {
+        showScreen("loading-view");
         console.log("1. Starting to populate dropdown. Disabling button.");
         srdDropdownButton.disabled = true;
         srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text">Loading SRDs...</span></li>`;
@@ -681,6 +681,7 @@ document.addEventListener("DOMContentLoaded", () => {
      * are available.
      */
     async function populateSrdInputList() {
+        showScreen("loading-view");
         srdIdList.innerHTML = `<li><span class="dropdown-item-text">Loading...</span></li>`;
         try {
             const srd_ids = await makeAuthenticatedRequest("/srd", "GET");
