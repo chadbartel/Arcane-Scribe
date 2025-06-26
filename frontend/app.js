@@ -245,6 +245,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function handleNewPasswordSubmit(e) {
         e.preventDefault();
         newPasswordError.textContent = "";
+        showScreen("loading-view");
 
         const newPassword = document.getElementById("new-password").value;
         const confirmPassword = document.getElementById("confirm-password").value;
@@ -326,6 +327,7 @@ document.addEventListener("DOMContentLoaded", () => {
      * and shows the login view again.
      */
     function handleLogout() {
+        showScreen("loading-view");  // Show loading screen during logout
         localStorage.clear();
         adminNavItem.classList.add("d-none"); // Hide admin tab on logout
         showScreen("login-view");
