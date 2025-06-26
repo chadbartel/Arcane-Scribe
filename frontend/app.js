@@ -35,6 +35,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const uploadButtonText = document.getElementById("upload-button-text");
     const uploadStatus = document.getElementById("upload-status");
 
+    // Document list elements
+    const refreshDocsButton = document.getElementById("refresh-docs-button");
+    const documentsTable = document.getElementById("documents-table");
+    const documentsTableBody = document.getElementById("documents-table-body");
+    const documentsListStatus = document.getElementById("documents-list-status");
+
     // --- API Configuration ---
     const apiSuffix = "/api/v1";
     const isLocal =
@@ -105,6 +111,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Add event listeners for SRD input elements
     uploadForm.addEventListener("submit", handleUpload);
+
+    // Add listeners for the SRD table
+    refreshDocsButton.addEventListener("click", handleRefresh);
+    srdIdInput.addEventListener("input", () => {
+        // Automatically refresh the list when the user types a new SRD ID
+        handleRefresh();
+    });
 
     // --- JWT HELPER ---
     function parseJwt(token) {
@@ -555,6 +568,82 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
+    /**
+     * Fetches and displays documents for the SRD ID in the input field.
+        * This function retrieves documents from the API and displays them in a table.
+        * If no SRD ID is provided, it shows a message prompting the user to enter one.
+        * If documents are found, they are displayed in a table with their names and processing statuses.
+        * If an error occurs, it displays an appropriate error message.
+    */
+    async function handleRefresh() {
+        const srdId = srdIdInput.value.trim();
+        if (!srdId) {
+            documentsListStatus.textContent = "Enter an SRD ID to see its documents.";
+            documentsTable.classList.add("d-none"); // Hide table
+            return;
+        }
+
+        // Show loading state
+        documentsListStatus.textContent = "Loading documents...";
+        documentsTable.classList.add("d-none");
+        documentsTableBody.innerHTML = "";
+        refreshDocsButton.disabled = true;
+
+        try {
+            const documents = await makeAuthenticatedRequest(`/srd/${srdId}/documents`, "GET");
+            
+            if (documents && Array.isArray(documents) && documents.length > 0) {
+                documentsListStatus.textContent = ""; // Clear status message
+                documentsTable.classList.remove("d-none"); // Show table
+
+                documents.forEach(doc => {
+                    const row = documentsTableBody.insertRow();
+                    const cellName = row.insertCell(0);
+                    const cellStatus = row.insertCell(1);
+
+                    cellName.textContent = doc.original_file_name;
+                    
+                    // Add a styled badge for the status
+                    const statusBadge = document.createElement("span");
+                    statusBadge.textContent = doc.processing_status;
+                    statusBadge.className = getStatusBadgeClass(doc.processing_status);
+                    cellStatus.appendChild(statusBadge);
+                });
+            } else {
+                documentsListStatus.textContent = `No documents found for SRD: ${srdId}`;
+            }
+
+        } catch (error) {
+            if (error.status === 404) {
+                documentsListStatus.textContent = `No documents found for SRD: ${srdId}`;
+            } else {
+                documentsListStatus.textContent = `Error loading documents: ${error.message}`;
+            }
+        } finally {
+            refreshDocsButton.disabled = false;
+        }
+    }
+
+    /**
+     * Returns a Bootstrap badge class based on the document processing status.
+     * @param {string} status - The processing status string.
+     * @returns {string} The corresponding Bootstrap badge class.
+     */
+    function getStatusBadgeClass(status) {
+        switch (status.toLowerCase()) {
+            case 'completed':
+                return 'badge text-bg-success';
+            case 'processing':
+                return 'badge text-bg-info';
+            case 'pending':
+                return 'badge text-bg-warning';
+            case 'failed':
+                return 'badge text-bg-danger';
+            default:
+                return 'badge text-bg-secondary';
+        }
+    }
+
     /*
      * Handles the file upload process when the upload form is submitted.
         * This function retrieves the SRD ID and file from the form,
@@ -611,6 +700,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
             uploadStatus.innerHTML = `<div class="alert alert-success">Upload complete! Your document is now being processed.</div>`;
             fileInput.value = ""; // Clear the file input
+
+            // Refresh the document list after a successful upload
+            await new Promise(resolve => setTimeout(resolve, 1500)); // Wait a moment for consistency
+            await handleRefresh();
 
         } catch (error) {
             console.error("Upload failed:", error);
