@@ -25,7 +25,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const maxTokensInput = document.getElementById("max-tokens-input");
     const stopSequencesInput = document.getElementById("stop-sequences-input");
 
-    // const newPasswordView = document.getElementById("new-password-view");
+    const newPasswordView = document.getElementById("new-password-view");
     const newPasswordForm = document.getElementById("new-password-form");
     const newPasswordError = document.getElementById("new-password-error");
 
