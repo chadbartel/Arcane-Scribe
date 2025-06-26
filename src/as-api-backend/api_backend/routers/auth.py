@@ -218,7 +218,7 @@ def admin_delete_user(
             user_pool_id=USER_POOL_ID,
             username=username,
         )
-        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT, content={})
     except cognito_client.client.exceptions.UserNotFoundException:
         logger.warning(f"Attempted to delete a non-existent user: {username}")
         raise HTTPException(
