@@ -752,7 +752,7 @@ document.addEventListener("DOMContentLoaded", () => {
             uploadStatus.innerHTML = `<div class="alert alert-info">Step 2 of 2: Uploading file to S3... This may take a moment.</div>`;
 
             // --- Step 2: Upload the file directly to S3 using the URL ---
-            const s3Url = presignedUrlResponse.presigned_url_data.url;
+            const s3Url = presignedUrlResponse.presigned_url;
 
             // Upload the file to S3 using the pre-signed URL
             const uploadResponse = await fetch(s3Url, {
