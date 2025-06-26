@@ -362,6 +362,8 @@ class ArcaneScribeStack(Stack):
             name="arcane-scribe-rest-api",
             allow_methods=["POST", "GET", "OPTIONS"],
             allow_headers=[
+                "Content-Type",
+                "Authorization",
                 "X-Amz-Date",
                 "X-Api-Key",
                 "X-Amz-Security-Token",
