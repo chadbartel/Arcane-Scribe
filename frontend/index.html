@@ -172,15 +172,20 @@
                 <div class="card">
                     <div class="card-body">
                         <form id="upload-form">
+
                             <div class="mb-3">
                                 <label for="srd-id-input" class="form-label">SRD ID</label>
-                                <input type="text" class="form-control" id="srd-id-input"
-                                    placeholder="e.g., dnd5e, pathfinder2e, risus" required>
+                                <div class="dropdown">
+                                    <input type="text" class="form-control" id="srd-id-input"
+                                        placeholder="Select an existing SRD or type a new one" data-bs-toggle="dropdown"
+                                        autocomplete="off" required>
+                                    <ul class="dropdown-menu" id="srd-id-list" aria-labelledby="srd-id-input">
+                                    </ul>
+                                </div>
                                 <div class="form-text">
-                                    Enter the ID for the SRD. If it doesn't exist, a new one will be created.
+                                    Choose from the list or type to create a new SRD.
                                 </div>
                             </div>
-
                             <div class="mb-3">
                                 <label for="file-input" class="form-label">PDF Document</label>
                                 <input class="form-control" type="file" id="file-input" accept=".pdf" required>
