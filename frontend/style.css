@@ -1,7 +1,7 @@
 /* Reset some default styles */
 html,
 body {
-  height: 100%;
+  padding-top: 5rem; /* Pushes content down below the fixed navbar */
 }
 
 /* General styles */
