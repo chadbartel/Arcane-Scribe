@@ -1,9 +1,6 @@
 document.addEventListener("DOMContentLoaded", () => {
     // --- DOM ELEMENTS ---
     const loginForm = document.getElementById("login-form");
-    const loginView = document.getElementById("login-view");
-    const appView = document.getElementById("app-view");
-    const loggingInView = document.getElementById("logging-in-view");
     const loginError = document.getElementById("login-error");
 
     const queryButton = document.getElementById("query-button");
@@ -25,7 +22,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const maxTokensInput = document.getElementById("max-tokens-input");
     const stopSequencesInput = document.getElementById("stop-sequences-input");
 
-    const newPasswordView = document.getElementById("new-password-view");
     const newPasswordForm = document.getElementById("new-password-form");
     const newPasswordError = document.getElementById("new-password-error");
 
