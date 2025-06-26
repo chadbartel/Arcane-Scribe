@@ -187,3 +187,45 @@ def admin_create_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while creating the user.",
         )
+
+
+@router.delete("/delete-user/{username}", status_code=status.HTTP_204_NO_CONTENT)
+def admin_delete_user(
+    username: str,
+    admin_user: User = Depends(require_admin_user),
+    cognito_client: CognitoIdpClient = Depends(),
+) -> JSONResponse:
+    """
+    (Admin Only) Deletes a user from the Cognito User Pool.
+
+    **Parameters:**
+    - `username`: The username of the user to be deleted.
+    - `admin_user`: The currently authenticated admin user, obtained via dependency injection.
+
+    **Returns:**
+    - A JSON response with a success message if the user is deleted successfully.
+
+    **Raises:**
+    - `HTTPException`: If the user does not exist, an HTTP 404 Not Found error is raised.
+    """
+    logger.info(
+        f"Admin user '{admin_user.username}' is attempting to delete user '{username}'."
+    )
+    try:
+        cognito_client.admin_delete_user(
+            user_pool_id=USER_POOL_ID,
+            username=username,
+        )
+        return JSONResponse(status_code=status.HTTP_204_NO_CONTENT)
+    except cognito_client.client.exceptions.UserNotFoundException:
+        logger.warning(f"Attempted to delete a non-existent user: {username}")
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found.",
+        )
+    except Exception as e:
+        logger.error(f"Failed to delete user {username}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while deleting the user.",
+        )
