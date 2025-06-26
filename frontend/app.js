@@ -11,7 +11,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const sourcesContainer = document.getElementById("sources-container");
     const srdDropdownButton = document.getElementById("srd-dropdown-button");
     const srdDropdownMenu = document.getElementById("srd-dropdown-menu");
+
+    // Model configuration elements
     const numDocsInput = document.getElementById("num-docs-input");
+    const invokeLlmSwitch = document.getElementById("invoke-llm-switch");
+    const temperatureSlider = document.getElementById("temperature-slider");
+    const topPSlider = document.getElementById("top-p-slider");
+    const maxTokensInput = document.getElementById("max-tokens-input");
+    const stopSequencesInput = document.getElementById("stop-sequences-input");
 
     // Nav elements
     const navbar = document.getElementById("navbarNav");
