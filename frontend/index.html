@@ -227,6 +227,44 @@
                     </table>
                 </div>
 
+                <!-- DANGER ZONE FOR DELETION -->
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        Danger Zone
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <button class="btn btn-danger" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#delete-docs-collapse" aria-expanded="false"
+                                aria-controls="delete-docs-collapse">
+                                Delete Documents...
+                            </button>
+                        </p>
+                        <div class="collapse" id="delete-docs-collapse">
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="delete-documents-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 5%;"><input class="form-check-input" type="checkbox"
+                                                    id="select-all-checkbox"></th>
+                                            <th scope="col">Select File to Delete</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="delete-documents-table-body">
+                                        <!-- Selectable documents will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button class="btn btn-danger w-100" id="delete-selected-button">
+                                <span id="delete-button-spinner" class="spinner-border spinner-border-sm d-none"
+                                    role="status" aria-hidden="true"></span>
+                                <span id="delete-button-text">Delete Selected Documents</span>
+                            </button>
+                            <div id="delete-status" class="mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
             </div>
     </div>
 
