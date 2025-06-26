@@ -43,6 +43,14 @@ document.addEventListener("DOMContentLoaded", () => {
     const documentsTableBody = document.getElementById("documents-table-body");
     const documentsListStatus = document.getElementById("documents-list-status");
 
+    // Deletion section elements
+    const deleteDocumentsTableBody = document.getElementById("delete-documents-table-body");
+    const selectAllCheckbox = document.getElementById("select-all-checkbox");
+    const deleteSelectedButton = document.getElementById("delete-selected-button");
+    const deleteButtonSpinner = document.getElementById("delete-button-spinner");
+    const deleteButtonText = document.getElementById("delete-button-text");
+    const deleteStatus = document.getElementById("delete-status");
+
     // --- API Configuration ---
     const apiSuffix = "/api/v1";
     const isLocal =
@@ -146,6 +154,10 @@ document.addEventListener("DOMContentLoaded", () => {
             item.style.display = text.includes(filterText) ? "" : "none";
         });
     });
+
+    // Add listeners for the new deletion controls
+    selectAllCheckbox.addEventListener('change', handleSelectAll);
+    deleteSelectedButton.addEventListener('click', handleDeleteSelected);
 
     // --- JWT HELPER ---
     function parseJwt(token) {
@@ -609,6 +621,9 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!srdId) {
             documentsListStatus.textContent = "Enter an SRD ID to see its documents.";
             documentsTable.classList.add("d-none"); // Hide table
+
+            // Clear delete table too
+            deleteDocumentsTableBody.innerHTML = "";
             return;
         }
 
@@ -616,27 +631,42 @@ document.addEventListener("DOMContentLoaded", () => {
         documentsListStatus.textContent = "Loading documents...";
         documentsTable.classList.add("d-none");
         documentsTableBody.innerHTML = "";
+        deleteDocumentsTableBody.innerHTML = "";
         refreshDocsButton.disabled = true;
 
         try {
             const documents = await makeAuthenticatedRequest(`/srd/${srdId}/documents`, "GET");
 
+            // Clear status and tables before populating
+            documentsListStatus.textContent = "";
+            documentsTableBody.innerHTML = "";
+            deleteDocumentsTableBody.innerHTML = "";
+
             if (documents && Array.isArray(documents) && documents.length > 0) {
-                documentsListStatus.textContent = ""; // Clear status message
-                documentsTable.classList.remove("d-none"); // Show table
+                documentsTable.classList.remove("d-none"); // Show status table
 
                 documents.forEach(doc => {
-                    const row = documentsTableBody.insertRow();
-                    const cellName = row.insertCell(0);
-                    const cellStatus = row.insertCell(1);
-
-                    cellName.textContent = doc.original_file_name;
-
-                    // Add a styled badge for the status
+                    // --- Populate the Status Table (existing logic) ---
+                    const statusRow = documentsTableBody.insertRow();
+                    statusRow.insertCell(0).textContent = doc.original_file_name;
+                    const statusCell = statusRow.insertCell(1);
                     const statusBadge = document.createElement("span");
                     statusBadge.textContent = doc.processing_status;
                     statusBadge.className = getStatusBadgeClass(doc.processing_status);
-                    cellStatus.appendChild(statusBadge);
+                    statusCell.appendChild(statusBadge);
+
+                    // --- Populate the Delete Table ---
+                    const deleteRow = deleteDocumentsTableBody.insertRow();
+                    const cellCheckbox = deleteRow.insertCell(0);
+                    const cellName = deleteRow.insertCell(1);
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.className = 'form-check-input document-checkbox';
+                    checkbox.value = doc.document_id; // Store the ID to delete
+                    cellCheckbox.appendChild(checkbox);
+
+                    cellName.textContent = doc.original_file_name;
                 });
             } else {
                 documentsListStatus.textContent = `No documents found for SRD: ${srdId}`;
@@ -651,6 +681,80 @@ document.addEventListener("DOMContentLoaded", () => {
         } finally {
             refreshDocsButton.disabled = false;
         }
+    }
+
+    /**
+     * Handles the "Select All" checkbox functionality.
+     */
+    function handleSelectAll() {
+        const checkboxes = document.querySelectorAll('.document-checkbox');
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = selectAllCheckbox.checked;
+        });
+    }
+
+    /**
+     * Handles the deletion of selected documents.
+     */
+    async function handleDeleteSelected() {
+        const srdId = srdIdInput.value.trim();
+        const selectedCheckboxes = document.querySelectorAll('.document-checkbox:checked');
+
+        if (!srdId) {
+            alert("SRD ID is missing.");
+            return;
+        }
+
+        if (selectedCheckboxes.length === 0) {
+            alert("Please select at least one document to delete.");
+            return;
+        }
+
+        if (!confirm(`Are you sure you want to delete ${selectedCheckboxes.length} document(s)? This cannot be undone.`)) {
+            return;
+        }
+
+        // Disable button and show spinner
+        deleteSelectedButton.disabled = true;
+        deleteButtonSpinner.classList.remove("d-none");
+        deleteButtonText.textContent = "Deleting...";
+        deleteStatus.innerHTML = "";
+
+        const totalToDelete = selectedCheckboxes.length;
+        let deletedCount = 0;
+        let hasErrors = false;
+
+        // Loop through and delete each selected document one-by-one
+        for (const checkbox of selectedCheckboxes) {
+            const documentId = checkbox.value;
+            try {
+                deleteStatus.innerHTML = `<div class="alert alert-info">Deleting document ${deletedCount + 1} of ${totalToDelete}...</div>`;
+                await makeAuthenticatedRequest(`/srd/${srdId}/documents/${documentId}`, "DELETE");
+                deletedCount++;
+            } catch (error) {
+                hasErrors = true;
+                console.error(`Failed to delete document ${documentId}:`, error);
+                deleteStatus.innerHTML = `<div class="alert alert-danger">Error deleting document ${documentId}: ${error.message}</div>`;
+                // Stop on first error
+                break;
+            }
+        }
+
+        // Re-enable button and hide spinner
+        deleteSelectedButton.disabled = false;
+        deleteButtonSpinner.classList.add("d-none");
+        deleteButtonText.textContent = "Delete Selected Documents";
+
+        if (hasErrors) {
+            deleteStatus.innerHTML = `<div class="alert alert-warning">Finished with errors. ${deletedCount} of ${totalToDelete} documents were deleted. Please refresh.</div>`;
+        } else {
+            deleteStatus.innerHTML = `<div class="alert alert-success">Successfully deleted ${deletedCount} document(s). Refreshing list...</div>`;
+        }
+
+        // Refresh the document lists after deletion
+        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for user to read message
+        handleRefresh();
+        deleteStatus.innerHTML = "";
     }
 
     /**
