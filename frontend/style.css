@@ -54,3 +54,13 @@ body {
 #answer-text {
   white-space: pre-wrap;
 }
+
+/* Add some padding to the main content area to keep it off the edges */
+#app-view .container {
+    padding-bottom: 2rem; /* Adds space at the very bottom of the page */
+}
+
+/* Add some margin below the "Danger Zone" card to give it breathing room */
+.card.border-danger {
+    margin-bottom: 1rem;
+}
