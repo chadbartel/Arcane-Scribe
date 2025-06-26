@@ -23,6 +23,7 @@ class CustomS3Bucket(Construct):
         lifecycle_rules: Optional[List[s3.LifecycleRule]] = None,
         event_bridge_enabled: Optional[bool] = False,
         public_read_access: Optional[bool] = False,
+        cors_allowed_origins: Optional[List[str]] = None,
         **kwargs,
     ) -> None:
         """Custom S3 Bucket Construct for AWS CDK.
@@ -45,6 +46,8 @@ class CustomS3Bucket(Construct):
             Whether to enable EventBridge for the S3 bucket, by default False
         public_read_access : Optional[bool], optional
             Whether to allow public read access to the S3 bucket, by default False
+        cors_allowed_origins : Optional[List[str]], optional
+            List of allowed CORS origins, by default None
         """
         super().__init__(scope, id, **kwargs)
 
@@ -74,6 +77,25 @@ class CustomS3Bucket(Construct):
                 ),
             ]
 
+        # Define the CORS rules if origins are provided
+        cors_rules = []
+        if cors_allowed_origins:
+            cors_rules.append(
+                s3.CorsRule(
+                    allowed_origins=cors_allowed_origins,
+                    allowed_methods=[
+                        s3.HttpMethods.GET,
+                        s3.HttpMethods.POST,
+                        s3.HttpMethods.PUT,
+                        s3.HttpMethods.DELETE,
+                        s3.HttpMethods.HEAD,
+                    ],
+                    allowed_headers=["*"],  # Allow all headers
+                    exposed_headers=["ETag"],  # Expose the ETag header after upload
+                    max_age=3000,
+                )
+            )
+
         # Create the S3 bucket
         self.bucket = s3.Bucket(
             self,
@@ -88,6 +110,7 @@ class CustomS3Bucket(Construct):
             lifecycle_rules=lifecycle_rules,
             event_bridge_enabled=event_bridge_enabled,
             public_read_access=public_read_access,
+            cors=cors_rules if cors_rules else None,
         )
 
 

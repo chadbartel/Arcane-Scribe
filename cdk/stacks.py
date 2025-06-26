@@ -157,6 +157,7 @@ class ArcaneScribeStack(Stack):
             construct_id="DocumentsBucket",
             name="arcane-scribe-documents",
             versioned=True,
+            cors_allowed_origins=self.cors_allowed_origins.split(","),
         )
 
         # Bucket for storing the FAISS index and processed text
@@ -537,6 +538,7 @@ class ArcaneScribeStack(Stack):
         name: str,
         versioned: Optional[bool] = False,
         public_read_access: Optional[bool] = False,
+        cors_allowed_origins: Optional[List[str]] = None,
     ) -> s3.Bucket:
         """Helper method to create an S3 bucket with a specific name and versioning.
 
@@ -550,6 +552,8 @@ class ArcaneScribeStack(Stack):
             Whether to enable versioning on the bucket, by default False
         public_read_access : Optional[bool], optional
             Whether to allow public read access to the bucket, by default False
+        cors_allowed_origins : Optional[List[str]], optional
+            List of allowed CORS origins, by default None
 
         Returns
         -------
@@ -563,6 +567,7 @@ class ArcaneScribeStack(Stack):
             stack_suffix=self.stack_suffix,
             versioned=versioned,
             public_read_access=public_read_access,
+            cors_allowed_origins=cors_allowed_origins or [],
         )
         return custom_s3_bucket.bucket
 
