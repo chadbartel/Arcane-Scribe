@@ -12,117 +12,154 @@
         href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📜</text></svg>">
 </head>
 
-<body class="d-flex align-items-center py-4 bg-body-tertiary">
+<body>
 
-    <main class="w-100 m-auto">
-        <div id="login-view">
-            <form id="login-form" class="form-signin">
-                <h1 class="h3 mb-3 fw-normal text-center">Arcane Scribe</h1>
-                <div class="form-floating">
-                    <input type="text" class="form-control" id="username" placeholder="Username" required>
-                    <label for="username">Username</label>
-                </div>
-                <div class="form-floating mt-2">
-                    <input type="password" class="form-control" id="password" placeholder="Password" required>
-                    <label for="password">Password</label>
-                </div>
-                <button class="btn btn-primary w-100 py-2 mt-3" type="submit">Sign in</button>
-                <div id="login-error" class="text-danger mt-2"></div>
-            </form>
-        </div>
-
-        <div id="new-password-view" class="d-none">
-            <form id="new-password-form" class="form-signin">
-                <h1 class="h3 mb-3 fw-normal text-center">Set New Password</h1>
-                <div class="form-floating">
-                    <input type="password" class="form-control" id="new-password" placeholder="New Password" required>
-                    <label for="new-password">New Password</label>
-                </div>
-                <div class="form-floating mt-2">
-                    <input type="password" class="form-control" id="confirm-password" placeholder="Confirm Password"
-                        required>
-                    <label for="confirm-password">Confirm Password</label>
-                </div>
-                <button class="btn btn-primary w-100 py-2 mt-3" type="submit">Set Password and Sign In</button>
-                <div id="new-password-error" class="text-danger mt-2"></div>
-            </form>
-        </div>
-
-        <div id="logging-in-view" class="loader-container d-none">
-            <div class="loading-text">Loading<span class="dots"></span></div>
-        </div>
-
-        <div id="app-view" class="container d-none">
-            <h2 class="mb-4">Query your SRD</h2>
-            <div class="mb-3">
-                <div class="btn-group">
-                    <button class="btn btn-secondary dropdown-toggle" type="button" id="srd-dropdown-button"
-                        data-bs-toggle="dropdown" aria-expanded="false">
-                        Select an SRD
-                    </button>
-                    <ul class="dropdown-menu" id="srd-dropdown-menu"></ul>
-                </div>
-                <textarea id="query-input" class="form-control mt-2" rows="3"
-                    placeholder="Ask a question about the selected SRD..."></textarea>
+    <!-- Login View (Covers the whole screen) -->
+    <main id="login-view" class="form-signin w-100 m-auto">
+        <form id="login-form">
+            <h1 class="h3 mb-3 fw-normal text-center">Arcane Scribe</h1>
+            <div class="form-floating">
+                <input type="text" class="form-control" id="username" placeholder="Username" required>
+                <label for="username">Username</label>
             </div>
-
-            <div class="mb-3">
-                <label for="num-docs-input" class="form-label">Number of Documents to Retrieve</label>
-                <input type="number" class="form-control" id="num-docs-input" value="4" min="1" max="50" step="1">
-                <div class="form-text">Controls how many source text chunks are used to generate the answer.</div>
+            <div class="form-floating mt-2">
+                <input type="password" class="form-control" id="password" placeholder="Password" required>
+                <label for="password">Password</label>
             </div>
+            <button class="btn btn-primary w-100 py-2 mt-3" type="submit">Sign in</button>
+            <div id="login-error" class="text-danger mt-2"></div>
+        </form>
+    </main>
 
-            <div class="mb-3">
-                <p>
-                    <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse"
-                        data-bs-target="#modelSettings" aria-expanded="false" aria-controls="modelSettings">
-                        Model Settings <i class="bi bi-sliders"></i>
-                    </button>
-                </p>
-                <div class="collapse" id="modelSettings">
-                    <div class="card card-body">
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" role="switch" id="invoke-llm-switch"
-                                checked>
-                            <label class="form-check-label" for="invoke-llm-switch">Invoke Generative LLM</label>
-                        </div>
+    <!-- Loading View (Covers the whole screen) -->
+    <div id="logging-in-view" class="loader-container d-none">
+        <div class="loading-text">Loading<span class="dots"></span></div>
+    </div>
 
-                        <div id="generation-config-options">
-                            <div class="mb-3">
-                                <label for="temperature-slider" class="form-label">Temperature: <span
-                                        id="temperature-value">0.1</span></label>
-                                <input type="range" class="form-range" min="0" max="1" step="0.1" value="0.1"
-                                    id="temperature-slider">
+    <!-- New Password View (Covers the whole screen) -->
+    <main id="new-password-view" class="form-signin w-100 m-auto d-none">
+        <form id="new-password-form">
+            <h1 class="h3 mb-3 fw-normal text-center">Set New Password</h1>
+            <div class="alert alert-info small" role="alert">
+                Password must contain at least 8 characters, 1 uppercase, 1 lowercase, 1 number, and 1 special
+                character.
+            </div>
+            <div class="form-floating">
+                <input type="password" class="form-control" id="new-password" placeholder="New Password" required>
+                <label for="new-password">New Password</label>
+            </div>
+            <div class="form-floating mt-2">
+                <input type="password" class="form-control" id="confirm-password" placeholder="Confirm Password"
+                    required>
+                <label for="confirm-password">Confirm Password</label>
+            </div>
+            <button class="btn btn-primary w-100 py-2 mt-3" type="submit">Set Password and Sign In</button>
+            <div id="new-password-error" class="text-danger mt-2"></div>
+        </form>
+    </main>
+
+
+    <!-- Main Application View (Initially hidden) -->
+    <div id="app-view" class="d-none">
+        <!-- Bootstrap Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">📜 Arcane Scribe</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#" data-view="query-view">Query</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-view="srd-management-view">SRD Management</a>
+                        </li>
+                        <!-- Admin link will be added here by JS if user is an admin -->
+                        <li id="admin-nav-item" class="nav-item d-none">
+                            <a class="nav-link" href="#" data-view="admin-view">Admin</a>
+                        </li>
+                    </ul>
+                    <span class="navbar-text me-3" id="welcome-user"></span>
+                    <button class="btn btn-outline-light" id="logout-button">Logout</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="container">
+            <!-- Query View -->
+            <div id="query-view" class="content-view">
+                <h2 class="mb-4">Query your SRD</h2>
+                <div class="mb-3">
+                    <div class="btn-group">
+                        <button class="btn btn-secondary dropdown-toggle" type="button" id="srd-dropdown-button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            Select an SRD
+                        </button>
+                        <ul class="dropdown-menu" id="srd-dropdown-menu"></ul>
+                    </div>
+                    <textarea id="query-input" class="form-control mt-2" rows="3"
+                        placeholder="Ask a question about the selected SRD..."></textarea>
+                </div>
+                <div class="mb-3"><label for="num-docs-input" class="form-label">Number of Documents to
+                        Retrieve</label><input type="number" class="form-control" id="num-docs-input" value="4" min="1"
+                        max="20">
+                    <div class="form-text">Controls how many source text chunks are used to generate the answer.
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <p>
+                        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#modelSettings" aria-expanded="false" aria-controls="modelSettings">
+                            Model Settings <i class="bi bi-sliders"></i>
+                        </button>
+                    </p>
+                    <div class="collapse" id="modelSettings">
+                        <div class="card card-body">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" role="switch" id="invoke-llm-switch"
+                                    checked>
+                                <label class="form-check-label" for="invoke-llm-switch">Invoke Generative
+                                    LLM</label>
                             </div>
-                            <div class="mb-3">
-                                <label for="top-p-slider" class="form-label">Top P: <span
-                                        id="top-p-value">1.0</span></label>
-                                <input type="range" class="form-range" min="0" max="1" step="0.05" value="1.0"
-                                    id="top-p-slider">
-                            </div>
-                            <div class="mb-3">
-                                <label for="max-tokens-input" class="form-label">Max Tokens</label>
-                                <input type="number" class="form-control" id="max-tokens-input" placeholder="e.g., 1024"
-                                    min="1">
-                            </div>
-                            <div class="mb-3">
-                                <label for="stop-sequences-input" class="form-label">Stop Sequences</label>
-                                <input type="text" class="form-control" id="stop-sequences-input"
-                                    placeholder="e.g., Human:, Assistant:">
-                                <div class="form-text">Enter comma-separated values.</div>
+
+                            <div id="generation-config-options">
+                                <div class="mb-3">
+                                    <label for="temperature-slider" class="form-label">Temperature: <span
+                                            id="temperature-value">0.1</span></label>
+                                    <input type="range" class="form-range" min="0" max="1" step="0.1" value="0.1"
+                                        id="temperature-slider">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="top-p-slider" class="form-label">Top P: <span
+                                            id="top-p-value">1.0</span></label>
+                                    <input type="range" class="form-range" min="0" max="1" step="0.05" value="1.0"
+                                        id="top-p-slider">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="max-tokens-input" class="form-label">Max Tokens</label>
+                                    <input type="number" class="form-control" id="max-tokens-input"
+                                        placeholder="e.g., 1024" min="1">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="stop-sequences-input" class="form-label">Stop Sequences</label>
+                                    <input type="text" class="form-control" id="stop-sequences-input"
+                                        placeholder="e.g., Human:, Assistant:">
+                                    <div class="form-text">Enter comma-separated values.</div>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            <button id="query-button" class="btn btn-success">Get Answer</button>
-            <hr>
-            <h4>Answer:</h4>
-            <div id="answer-text" class="p-3 bg-light rounded">
-            </div>
-
-            <h5 class="mt-4">Sources:</h5>
-            <div id="sources-container">
+                <button id="query-button" class="btn btn-success">Get Answer</button>
+                <hr>
+                <h4>Answer:</h4>
+                <div id="answer-text" class="p-3 bg-light rounded"></div>
+                <h5 class="mt-4">Sources:</h5>
+                <div id="sources-container"></div>
             </div>
 
             <!-- SRD Management View (Hidden by default) -->
@@ -138,7 +175,7 @@
                 <p>Functionality for user management will go here.</p>
                 <!-- We will build this out later -->
             </div>
-        </div>
+    </div>
     </main>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
