@@ -1,10 +1,5 @@
 document.addEventListener("DOMContentLoaded", () => {
     // --- DOM ELEMENTS ---
-    const loginView = document.getElementById("login-view");
-    const appView = document.getElementById("app-view");
-    const loggingInView = document.getElementById("logging-in-view");
-    const newPasswordView = document.getElementById("new-password-view");
-    
     const loginForm = document.getElementById("login-form");
     const newPasswordForm = document.getElementById("new-password-form");
     const loginError = document.getElementById("login-error");
@@ -37,37 +32,42 @@ document.addEventListener("DOMContentLoaded", () => {
     const APP_VIEWS = ["query-view", "srd-management-view", "admin-view"];
 
     /*
-        * Shows a specific view by ID and hides all others.
-        * @param {string} viewId - The ID of the view to show.
-        * This function updates the visibility of main content views and highlights the active nav link.
-    */
+     * Shows a specific view by ID and hides all others.
+     * @param {string} viewId - The ID of the view to show.
+     * This function updates the visibility of main content views and highlights the active nav link.
+     */
     function showMainView(viewId) {
         // Hide all main content views
-        APP_VIEWS.forEach(id => {
+        APP_VIEWS.forEach((id) => {
             document.getElementById(id)?.classList.add("d-none");
         });
         // Show the target view
         document.getElementById(viewId)?.classList.remove("d-none");
 
         // Update active class on nav links
-        navbar.querySelectorAll('.nav-link').forEach(link => {
+        navbar.querySelectorAll(".nav-link").forEach((link) => {
             if (link.dataset.view === viewId) {
-                link.classList.add('active');
+                link.classList.add("active");
             } else {
-                link.classList.remove('active');
+                link.classList.remove("active");
             }
         });
     }
 
     /*
-        * Shows a specific screen by ID and hides all others.
-        * @param {string} screenId - The ID of the screen to show.
-        * This function is used for top-level screens like login, app, loading, etc.
-    */
+     * Shows a specific screen by ID and hides all others.
+     * @param {string} screenId - The ID of the screen to show.
+     * This function is used for top-level screens like login, app, loading, etc.
+     */
     function showScreen(screenId) {
         // Screens are the top-level containers: login, app, loading, etc.
-        const SCREENS = ["login-view", "logging-in-view", "new-password-view", "app-view"];
-        SCREENS.forEach(id => {
+        const SCREENS = [
+            "login-view",
+            "logging-in-view",
+            "new-password-view",
+            "app-view",
+        ];
+        SCREENS.forEach((id) => {
             document.getElementById(id)?.classList.toggle("d-none", id !== screenId);
         });
     }
@@ -90,7 +90,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // --- JWT HELPER ---
     function parseJwt(token) {
         try {
-            return JSON.parse(atob(token.split('.')[1]));
+            return JSON.parse(atob(token.split(".")[1]));
         } catch (e) {
             return null;
         }
@@ -104,7 +104,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Add navigation listeners
     navbar.addEventListener("click", (e) => {
-        if (e.target.matches('.nav-link') && e.target.dataset.view) {
+        if (e.target.matches(".nav-link") && e.target.dataset.view) {
             e.preventDefault();
             showMainView(e.target.dataset.view);
         }
@@ -120,7 +120,7 @@ document.addEventListener("DOMContentLoaded", () => {
      * Parses FastAPI/Pydantic validation errors into a readable string.
      * @param {object} errorData - The JSON error object from the API.
      * @returns {string} A formatted, human-readable error message.
-    */
+     */
     function parseApiError(errorData) {
         if (errorData && Array.isArray(errorData.detail)) {
             // This is a Pydantic validation error
@@ -234,12 +234,12 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /*
-        * Completes the login process by storing tokens and updating the UI.
-        * @param {string} idToken - The ID token from Cognito.
-        * @param {string} refreshToken - The optional refresh token from Cognito.
-        * This function updates the welcome message, checks for admin group membership,
-        * populates the SRD dropdown, and shows the main app view.
-    */
+     * Completes the login process by storing tokens and updating the UI.
+     * @param {string} idToken - The ID token from Cognito.
+     * @param {string} refreshToken - The optional refresh token from Cognito.
+     * This function updates the welcome message, checks for admin group membership,
+     * populates the SRD dropdown, and shows the main app view.
+     */
     async function completeLogin(idToken, refreshToken) {
         // Store tokens in local storage
         localStorage.setItem("idToken", idToken);
@@ -248,11 +248,12 @@ document.addEventListener("DOMContentLoaded", () => {
         // Update the UI to show the welcome message
         const decodedToken = parseJwt(idToken);
         if (decodedToken) {
-            welcomeUser.textContent = `Welcome, ${decodedToken['cognito:username']}`;
+            welcomeUser.textContent = `Welcome, ${decodedToken["cognito:username"]}`;
             // Check for admin group membership
-            const groups = decodedToken['cognito:groups'] || [];
-            if (groups.includes('admins-dev')) { // Match your group name in Cognito
-                adminNavItem.classList.remove('d-none');
+            const groups = decodedToken["cognito:groups"] || [];
+            if (groups.includes("admins-dev")) {
+                // Match your group name in Cognito
+                adminNavItem.classList.remove("d-none");
             }
         }
 
@@ -263,13 +264,13 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /*
-        * Handles user logout by clearing local storage and updating the UI.
-        * This function hides the admin tab, clears the SRD dropdown,
-        * and shows the login view again.
-    */
+     * Handles user logout by clearing local storage and updating the UI.
+     * This function hides the admin tab, clears the SRD dropdown,
+     * and shows the login view again.
+     */
     function handleLogout() {
         localStorage.clear();
-        adminNavItem.classList.add('d-none'); // Hide admin tab on logout
+        adminNavItem.classList.add("d-none"); // Hide admin tab on logout
         showScreen("login-view");
     }
 
@@ -488,7 +489,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const idToken = localStorage.getItem("idToken");
 
         // Check if the user is authenticated and has a valid ID token
-        if (!idToken || idToken === 'undefined') {
+        if (!idToken || idToken === "undefined") {
             const error = new Error("Authentication error. Please log in again.");
             showScreen("login-view");
             throw error;
