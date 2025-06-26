@@ -189,7 +189,9 @@ def admin_create_user(
         )
 
 
-@router.delete("/delete-user/{username}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete(
+    "/delete-user/{username}", status_code=status.HTTP_204_NO_CONTENT
+)
 def admin_delete_user(
     username: str,
     admin_user: User = Depends(require_admin_user),
