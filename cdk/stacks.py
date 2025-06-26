@@ -417,6 +417,16 @@ class ArcaneScribeStack(Stack):
             authorization_type=apigw.AuthorizationType.NONE,
         )
 
+        # Add the /auth/respond-to-challenge resource and make it public
+        respond_to_challenge_resource = auth_resource.add_resource(
+            "respond-to-challenge"
+        )
+        respond_to_challenge_resource.add_method(
+            "POST",
+            integration=lambda_integration,
+            authorization_type=apigw.AuthorizationType.NONE,
+        )
+
         # Add {proxy+} resource integration to the REST API
         api_proxy_resource = api_base_resource.add_resource("{proxy+}")
         api_proxy_resource.add_method(
