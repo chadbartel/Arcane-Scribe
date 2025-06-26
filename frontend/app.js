@@ -123,6 +123,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Add navigation listener to populate dropdown when view is shown
     navbar.addEventListener("click", (e) => {
+        showScreen("loading-view");
         if (e.target.matches('.nav-link') && e.target.dataset.view) {
             e.preventDefault();
             const viewId = e.target.dataset.view;
@@ -248,7 +249,6 @@ document.addEventListener("DOMContentLoaded", () => {
     async function handleNewPasswordSubmit(e) {
         e.preventDefault();
         newPasswordError.textContent = "";
-        showScreen("loading-view");
 
         const newPassword = document.getElementById("new-password").value;
         const confirmPassword = document.getElementById("confirm-password").value;
