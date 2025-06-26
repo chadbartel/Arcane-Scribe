@@ -31,19 +31,27 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // --- API Configuration ---
     const apiSuffix = "/api/v1";
-    const isLocal = window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || window.location.hostname === "arcane-scribe-dev.thatsmidnight.com";
+    const isLocal =
+        window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1" ||
+        window.location.hostname === "arcane-scribe-dev.thatsmidnight.com";
     const DEV_API_URL = "https://arcane-scribe-dev.thatsmidnight.com";
     const API_BASE_URL = isLocal ? `${DEV_API_URL}${apiSuffix}` : apiSuffix;
 
     // --- STATE MANAGEMENT ---
-    const VIEWS = ["login-view", "logging-in-view", "app-view", "new-password-view"];
+    const VIEWS = [
+        "login-view",
+        "logging-in-view",
+        "app-view",
+        "new-password-view",
+    ];
 
     /*
      * Hides all views and shows only the one specified by ID.
      * @param {string} viewId The ID of the view to show.
-    */
+     */
     function showView(viewId) {
-        VIEWS.forEach(id => {
+        VIEWS.forEach((id) => {
             const view = document.getElementById(id);
             if (id === viewId) {
                 view.classList.remove("d-none");
@@ -63,7 +71,7 @@ document.addEventListener("DOMContentLoaded", () => {
     invokeLlmSwitch.addEventListener("change", () => {
         // Disable generation config options if the LLM is not invoked
         genConfigOptions.style.opacity = invokeLlmSwitch.checked ? "1" : "0.5";
-        genConfigOptions.querySelectorAll("input").forEach(input => {
+        genConfigOptions.querySelectorAll("input").forEach((input) => {
             input.disabled = !invokeLlmSwitch.checked;
         });
     });
@@ -103,7 +111,8 @@ document.addEventListener("DOMContentLoaded", () => {
             // Check if the response is OK and parse the JSON
             const data = await response.json();
             if (!response.ok) {
-                const errorMessage = data.detail || `Login failed with status: ${response.status}`;
+                const errorMessage =
+                    data.detail || `Login failed with status: ${response.status}`;
                 throw new Error(errorMessage);
             }
 
@@ -123,7 +132,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 // UNEXPECTED: The response was OK but didn't contain tokens or a challenge.
                 throw new Error("An unexpected error occurred during login.");
             }
-
         } catch (error) {
             // Handle errors gracefully
             console.error("Login Error:", error);
@@ -151,25 +159,29 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             // Make the API call to respond to the new password challenge
-            const response = await fetch(`${API_BASE_URL}/auth/respond-to-challenge`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    username: challengeUsername,
-                    session: loginSession,
-                    new_password: newPassword,
-                }),
-            });
+            const response = await fetch(
+                `${API_BASE_URL}/auth/respond-to-challenge`,
+                {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        username: challengeUsername,
+                        session: loginSession,
+                        new_password: newPassword,
+                    }),
+                }
+            );
 
             // Check if the response is OK and parse the JSON
             const data = await response.json();
-            if (!response.ok) { throw new Error(data.detail || "Failed to set new password."); }
+            if (!response.ok) {
+                throw new Error(data.detail || "Failed to set new password.");
+            }
 
             // Success! Store tokens and proceed to app.
             localStorage.setItem("idToken", data.IdToken);
             await populateSrdDropdown();
             showView("app-view");
-
         } catch (error) {
             // Handle errors gracefully
             console.error("New Password Error:", error);
@@ -247,7 +259,7 @@ document.addEventListener("DOMContentLoaded", () => {
             query_text: queryInput.value,
             srd_id: srdId,
             invoke_generative_llm: invokeGenerativeLlm,
-            generation_config: {}
+            generation_config: {},
         };
 
         // Get the value from the new input field
@@ -267,10 +279,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!isNaN(topP)) payload.generation_config.topP = topP;
 
             const maxTokenCount = parseInt(maxTokensInput.value, 10);
-            if (!isNaN(maxTokenCount) && maxTokenCount > 0) payload.generation_config.maxTokenCount = maxTokenCount;
+            if (!isNaN(maxTokenCount) && maxTokenCount > 0)
+                payload.generation_config.maxTokenCount = maxTokenCount;
 
-            const stopSequences = stopSequencesInput.value.split(',').map(s => s.trim()).filter(s => s);
-            if (stopSequences.length > 0) payload.generation_config.stopSequences = stopSequences;
+            const stopSequences = stopSequencesInput.value
+                .split(",")
+                .map((s) => s.trim())
+                .filter((s) => s);
+            if (stopSequences.length > 0)
+                payload.generation_config.stopSequences = stopSequences;
         }
 
         return payload;
@@ -297,7 +314,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Get the query response
         try {
-            const responseData = await makeAuthenticatedRequest("/query", "POST", payload);
+            const responseData = await makeAuthenticatedRequest(
+                "/query",
+                "POST",
+                payload
+            );
             displayRagResponse(responseData); // Call the new display function
         } catch (error) {
             answerText.textContent = `Error during query: ${error.message}`;
@@ -323,20 +344,26 @@ document.addEventListener("DOMContentLoaded", () => {
         // Clear and populate the sources container
         sourcesContainer.innerHTML = "";
         // Check for 'source_documents_content' and ensure it's an array
-        if (data && data.source_documents_content && Array.isArray(data.source_documents_content)) {
+        if (
+            data &&
+            data.source_documents_content &&
+            Array.isArray(data.source_documents_content)
+        ) {
             const uniqueSources = new Map();
 
-            data.source_documents_content.forEach(doc => {
+            data.source_documents_content.forEach((doc) => {
                 // Access 'source' and 'page' directly from the 'doc' object,
                 // not from a nested 'metadata' object.
                 const encodedSourceName = doc.source || "Unknown Document";
                 const pageNum = doc.page;
 
                 // Decode the URI component to make it human-readable
-                const sourceName = decodeURIComponent(encodedSourceName.replace(/\+/g, '%20').split('/').pop());
+                const sourceName = decodeURIComponent(
+                    encodedSourceName.replace(/\+/g, "%20").split("/").pop()
+                );
 
                 // We check if page is not undefined because page 0 is valid.
-                if (sourceName && typeof pageNum !== 'undefined') {
+                if (sourceName && typeof pageNum !== "undefined") {
                     const uniqueKey = `${sourceName}-page-${pageNum}`;
                     if (!uniqueSources.has(uniqueKey)) {
                         uniqueSources.set(uniqueKey, { sourceName, pageNum });
@@ -349,11 +376,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Using 'd-flex flex-wrap' to allow badges to wrap to the next line
                 sourceList.className = "d-flex flex-wrap gap-2";
 
-                uniqueSources.forEach(sourceInfo => {
+                uniqueSources.forEach((sourceInfo) => {
                     const badge = document.createElement("span");
                     // Using Bootstrap's badge component for a cleaner look
                     badge.className = "badge text-bg-secondary";
-                    badge.textContent = `${sourceInfo.sourceName} (p. ${sourceInfo.pageNum + 1})`; // Add 1 to page for human-readable format
+                    badge.textContent = `${sourceInfo.sourceName} (p. ${sourceInfo.pageNum + 1
+                        })`; // Add 1 to page for human-readable format
 
                     sourceList.appendChild(badge);
                 });
@@ -379,7 +407,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Prepare the request headers and options
         const headers = {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${idToken}`
+            Authorization: `Bearer ${idToken}`,
         };
 
         // Set the method and headers for the fetch request
@@ -395,8 +423,12 @@ document.addEventListener("DOMContentLoaded", () => {
             const response = await fetch(`${API_BASE_URL}${endpoint}`, config);
             // Check if the response is ok (status in the range 200-299)
             if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ detail: `HTTP error! status: ${response.status}` }));
-                throw new Error(errorData.detail || `HTTP error! status: ${response.status}`);
+                const errorData = await response
+                    .json()
+                    .catch(() => ({ detail: `HTTP error! status: ${response.status}` }));
+                throw new Error(
+                    errorData.detail || `HTTP error! status: ${response.status}`
+                );
             }
             const contentType = response.headers.get("content-type");
             // Check if the response is JSON or text
