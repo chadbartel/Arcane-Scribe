@@ -618,7 +618,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
         try {
             const documents = await makeAuthenticatedRequest(`/srd/${srdId}/documents`, "GET");
-            
+
             if (documents && Array.isArray(documents) && documents.length > 0) {
                 documentsListStatus.textContent = ""; // Clear status message
                 documentsTable.classList.remove("d-none"); // Show table
@@ -629,7 +629,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const cellStatus = row.insertCell(1);
 
                     cellName.textContent = doc.original_file_name;
-                    
+
                     // Add a styled badge for the status
                     const statusBadge = document.createElement("span");
                     statusBadge.textContent = doc.processing_status;
@@ -682,7 +682,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const srd_ids = await makeAuthenticatedRequest("/srd", "GET");
             allSrdIds = srd_ids || []; // Store for filtering
-            
+
             srdIdList.innerHTML = ""; // Clear loading message
 
             if (allSrdIds.length > 0) {
