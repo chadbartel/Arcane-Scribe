@@ -221,15 +221,11 @@ document.addEventListener("DOMContentLoaded", () => {
             const srd_ids = await makeAuthenticatedRequest("/srd", "GET");
             console.log("3. Received API response:", srd_ids);
 
-            // Defensive check: ensure we have an array
-            if (!Array.isArray(srd_ids)) {
-                throw new TypeError("API response for SRD list is not an array.");
-            }
-
             console.log("4. Clearing dropdown menu HTML.");
             srdDropdownMenu.innerHTML = "";
 
-            if (srd_ids.length > 0) {
+            // Check if the response is an array and has items
+            if (srd_ids && Array.isArray(srd_ids) && srd_ids.length > 0) {
                 // Set the default selected SRD to the first one in the list
                 srdDropdownButton.textContent = srd_ids[0];
                 srdDropdownButton.dataset.selectedSrd = srd_ids[0];
@@ -254,13 +250,25 @@ document.addEventListener("DOMContentLoaded", () => {
                 });
                 console.log("7. Finished forEach loop.");
             } else {
+                // This case handles a 200 OK with an empty list
                 console.log("5b. SRD list is empty.");
+                srdDropdownButton.textContent = "No SRDs Found";
                 srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text">No SRDs found.</span></li>`;
             }
         } catch (error) {
+            // Check if the error is the specific "404 Not Found" case for a new user
             console.error("8. [CATCH BLOCK] Failed to populate SRD dropdown:", error);
-            srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text text-danger">Error loading SRDs.</span></li>`;
-            throw error;
+            if (error.status === 404) {
+                console.log("User has no SRDs yet. This is expected.");
+                srdDropdownButton.textContent = "No SRDs Found";
+                srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text">No SRDs found. Upload a document to begin.</span></li>`;
+                // IMPORTANT: We do *not* re-throw the error here, allowing the login to proceed.
+            } else {
+                // For any other error (like a 500), show an error and re-throw it to fail the login
+                console.error("Failed to populate SRD dropdown:", error);
+                srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text text-danger">Error loading SRDs.</span></li>`;
+                throw error;
+            }
         } finally {
             console.log("9. [FINALLY BLOCK] Re-enabling dropdown button.");
             // Re-enable the dropdown button whether the call succeeded or failed
@@ -416,11 +424,10 @@ document.addEventListener("DOMContentLoaded", () => {
         // Retrieve the ID token from local storage
         const idToken = localStorage.getItem("idToken");
 
-        // Check if the user is authenticated
-        if (!idToken) {
+        // Check if the user is authenticated and has a valid ID token
+        if (!idToken || idToken === 'undefined') {
             const error = new Error("Authentication error. Please log in again.");
-            console.error(error);
-            showView("login-view"); // Force user back to login
+            showView("login-view");
             throw error;
         }
 
@@ -446,15 +453,18 @@ document.addEventListener("DOMContentLoaded", () => {
                 const errorData = await response
                     .json()
                     .catch(() => ({ detail: `HTTP error! status: ${response.status}` }));
-                // Pass the raw data to the error parser
-                throw new Error(parseApiError(errorData));
+                // Create a custom error object that includes the status code
+                const error = new Error(parseApiError(errorData));
+                error.status = response.status;
+                throw error;
             }
             const contentType = response.headers.get("content-type");
             // Check if the response is JSON or text
             if (contentType && contentType.includes("application/json")) {
                 return response.json();
             }
-            return response.text();
+            const text = await response.text();
+            return text ? JSON.parse(text) : []; // Return empty array for empty response
         } catch (error) {
             // Log the error and rethrow it for handling in the calling function
             console.error(`Authenticated request to ${endpoint} failed:`, error);
