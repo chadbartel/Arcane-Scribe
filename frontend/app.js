@@ -127,9 +127,12 @@ document.addEventListener("DOMContentLoaded", () => {
             e.preventDefault();
             const viewId = e.target.dataset.view;
             showMainView(viewId);
-            // If we are showing the SRD management view, populate the list
             if (viewId === 'srd-management-view') {
+                // If we are showing the SRD management view, populate the list
                 populateSrdInputList();
+            } else if (viewId === 'query-view') {
+                // Populate the SRD dropdown when entering the query view
+                populateSrdDropdown();
             }
         }
     });
