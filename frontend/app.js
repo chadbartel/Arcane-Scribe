@@ -87,7 +87,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Screens are the top-level containers: login, app, loading, etc.
         const SCREENS = [
             "login-view",
-            "logging-in-view",
+            "loading-view",
             "new-password-view",
             "app-view",
         ];
@@ -201,7 +201,7 @@ document.addEventListener("DOMContentLoaded", () => {
     async function handleLogin(e) {
         e.preventDefault();
         loginError.textContent = "";
-        showScreen("logging-in-view");
+        showScreen("loading-view");
 
         const username = document.getElementById("username").value;
         const password = document.getElementById("password").value;
@@ -256,7 +256,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // Show spinner
-        showScreen("logging-in-view");
+        showScreen("loading-view");
 
         try {
             // Make the API call to respond to the new password challenge
