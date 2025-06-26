@@ -164,19 +164,47 @@
                 <div id="sources-container"></div>
             </div>
 
-            <!-- SRD Management View (Hidden by default) -->
+            <!-- SRD Management View -->
             <div id="srd-management-view" class="content-view d-none">
                 <h2>SRD Management</h2>
-                <p>Functionality to upload, view, and delete documents for your SRDs will go here.</p>
-                <!-- We will build this out later -->
-            </div>
+                <p>Upload a new PDF document to an existing or new SRD.</p>
 
-            <!-- Admin View (Hidden by default) -->
-            <div id="admin-view" class="content-view d-none">
-                <h2>Admin Panel</h2>
-                <p>Functionality for user management will go here.</p>
-                <!-- We will build this out later -->
+                <div class="card">
+                    <div class="card-body">
+                        <form id="upload-form">
+                            <div class="mb-3">
+                                <label for="srd-id-input" class="form-label">SRD ID</label>
+                                <input type="text" class="form-control" id="srd-id-input"
+                                    placeholder="e.g., dnd5e, pathfinder2e, risus" required>
+                                <div class="form-text">
+                                    Enter the ID for the SRD. If it doesn't exist, a new one will be created.
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <label for="file-input" class="form-label">PDF Document</label>
+                                <input class="form-control" type="file" id="file-input" accept=".pdf" required>
+                            </div>
+
+                            <button type="submit" id="upload-button" class="btn btn-primary">
+                                <span id="upload-button-spinner" class="spinner-border spinner-border-sm d-none"
+                                    role="status" aria-hidden="true"></span>
+                                <span id="upload-button-text">Upload Document</span>
+                            </button>
+                        </form>
+                        <div id="upload-status" class="mt-3"></div>
+                    </div>
+                </div>
+
             </div>
+    </div>
+
+    <!-- Admin View (Hidden by default) -->
+    <div id="admin-view" class="content-view d-none">
+        <h2>Admin Panel</h2>
+        <p>Functionality for user management will go here.</p>
+        <!-- We will build this out later -->
+    </div>
     </div>
     </main>
 
