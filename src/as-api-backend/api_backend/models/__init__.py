@@ -12,11 +12,11 @@ from api_backend.models.srd import (
 )
 from api_backend.models.auth import (
     User,
+    LoginRequest,
     TokenResponse,
     SignUpRequest,
     RespondToChallengeRequest,
 )
-from api_backend.models.login import LoginRequest
 from api_backend.models.query import (
     RagQueryRequest,
     GenerationConfig,

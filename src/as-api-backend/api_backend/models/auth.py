@@ -26,6 +26,20 @@ class User(BaseModel):
     )
 
 
+class LoginRequest(BaseModel):
+    """LoginRequest model for user authentication.
+
+    Attributes:
+        username: User's username for login.
+        password: User's password for login.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    username: str = Field(..., description="User's username")
+    password: str = Field(..., description="User's password")
+
+
 class TokenResponse(BaseModel):
     """
     Pydantic model for the response from the /auth/login endpoint.
