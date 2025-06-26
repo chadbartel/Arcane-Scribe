@@ -360,7 +360,7 @@ class ArcaneScribeStack(Stack):
         self.rest_api = self.create_rest_api_gateway(
             construct_id="ArcaneScribeRestApi",
             name="arcane-scribe-rest-api",
-            allow_methods=["POST", "GET", "OPTIONS"],
+            allow_methods=["POST", "GET", "OPTIONS", "DELETE"],
             allow_headers=[
                 "Content-Type",
                 "Authorization",
