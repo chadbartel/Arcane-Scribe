@@ -49,7 +49,7 @@ document.addEventListener("DOMContentLoaded", () => {
     /*
      * Hides all views and shows only the one specified by ID.
      * @param {string} viewId The ID of the view to show.
-     */
+    */
     function showView(viewId) {
         VIEWS.forEach((id) => {
             const view = document.getElementById(id);
@@ -91,6 +91,30 @@ document.addEventListener("DOMContentLoaded", () => {
     let challengeUsername = null;
 
     // --- FUNCTIONS ---
+    /*
+     * Parses FastAPI/Pydantic validation errors into a readable string.
+     * @param {object} errorData - The JSON error object from the API.
+     * @returns {string} A formatted, human-readable error message.
+    */
+    function parseApiError(errorData) {
+        if (errorData && Array.isArray(errorData.detail)) {
+            // This is a Pydantic validation error
+            return errorData.detail
+                .map((err) => {
+                    // loc[1] is usually the field name, e.g., "new_password"
+                    const field = err.loc && err.loc.length > 1 ? err.loc[1] : "Input";
+                    return `${field}: ${err.msg}`;
+                })
+                .join("\n");
+        }
+        // This is a regular HTTPException error
+        if (errorData && errorData.detail) {
+            return errorData.detail;
+        }
+        // Fallback for unknown error formats
+        return "An unknown error occurred.";
+    }
+
     // Function to handle login
     async function handleLogin(e) {
         e.preventDefault();
@@ -111,9 +135,8 @@ document.addEventListener("DOMContentLoaded", () => {
             // Check if the response is OK and parse the JSON
             const data = await response.json();
             if (!response.ok) {
-                const errorMessage =
-                    data.detail || `Login failed with status: ${response.status}`;
-                throw new Error(errorMessage);
+                // Pass the raw data to the error parser
+                throw new Error(parseApiError(data));
             }
 
             // Check the response for either tokens or a challenge
@@ -175,7 +198,8 @@ document.addEventListener("DOMContentLoaded", () => {
             // Check if the response is OK and parse the JSON
             const data = await response.json();
             if (!response.ok) {
-                throw new Error(data.detail || "Failed to set new password.");
+                // Pass the raw data to the error parser
+                throw new Error(parseApiError(data));
             }
 
             // Success! Store tokens and proceed to app.
@@ -426,9 +450,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 const errorData = await response
                     .json()
                     .catch(() => ({ detail: `HTTP error! status: ${response.status}` }));
-                throw new Error(
-                    errorData.detail || `HTTP error! status: ${response.status}`
-                );
+                // Pass the raw data to the error parser
+                throw new Error(parseApiError(errorData));
             }
             const contentType = response.headers.get("content-type");
             // Check if the response is JSON or text
