@@ -258,7 +258,7 @@ document.addEventListener("DOMContentLoaded", () => {
             welcomeUser.textContent = `Welcome, ${decodedToken["cognito:username"]}`;
             // Check for admin group membership
             const groups = decodedToken["cognito:groups"] || [];
-            if (groups.includes("admins-dev")) {
+            if (groups.includes("admins")) {
                 // Match your group name in Cognito
                 adminNavItem.classList.remove("d-none");
             }
