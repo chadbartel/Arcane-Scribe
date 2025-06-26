@@ -47,6 +47,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poe.tasks]
 export = "poetry export --without dev --without-hashes -f requirements.txt -o requirements.txt"
 test-unit = "poetry run pytest -s --cov-report term-missing --cov=. tests/unit"
+run-local = "python -m http.server 8000 --directory frontend"
 
 [tool.coverage.run]
 branch = true
