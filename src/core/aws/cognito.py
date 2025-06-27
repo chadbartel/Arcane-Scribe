@@ -177,6 +177,11 @@ class CognitoIdpClient:
                     username=user["Username"],
                 )
 
+                # Extract group names from the group objects
+                group_names = []
+                for group in groups:
+                    group_names.append(group.get("GroupName", ""))
+
                 # Construct the user info dictionary
                 user_info = {
                     "username": user.get("Username"),
