@@ -75,7 +75,11 @@ document.addEventListener("DOMContentLoaded", () => {
         window.location.hostname === "127.0.0.1" ||
         window.location.hostname === "arcane-scribe-dev.thatsmidnight.com";
     const DEV_API_URL = "https://arcane-scribe-dev.thatsmidnight.com";
-    const API_BASE_URL = isLocal ? `${DEV_API_URL}${apiSuffix}` : apiSuffix;
+    const PROD_API_URL = "https://arcane-scribe.thatsmidnight.com";
+    const API_BASE_URL = isLocal
+        ? `${DEV_API_URL}${apiSuffix}`
+        : `${PROD_API_URL}${apiSuffix}`;
+    console.log("Using API base URL:", API_BASE_URL);
 
     // --- STATE & VIEW MANAGEMENT ---
     const ALL_SCREENS = [
@@ -194,7 +198,9 @@ document.addEventListener("DOMContentLoaded", () => {
     );
 
     // Add listener to filter the dropdown as the user types
-    srdIdInput.addEventListener("input", () => filterSrdInputList(srdIdInput.value));
+    srdIdInput.addEventListener("input", () =>
+        filterSrdInputList(srdIdInput.value)
+    );
 
     // Add listeners for the new deletion controls
     selectAllCheckbox.addEventListener("change", handleSelectAll);
@@ -678,7 +684,9 @@ document.addEventListener("DOMContentLoaded", () => {
      * Handles the "Select All" checkbox functionality.
      */
     function handleSelectAll() {
-        document.querySelectorAll('.document-checkbox').forEach(cb => cb.checked = selectAllCheckbox.checked);
+        document
+            .querySelectorAll(".document-checkbox")
+            .forEach((cb) => (cb.checked = selectAllCheckbox.checked));
     }
 
     /**
@@ -942,17 +950,19 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /**
-        * Returns the appropriate Bootstrap badge class based on the processing status.
-        * @param {string} status - The processing status of the document.
-        * @returns {string} - The Bootstrap badge class for the status.
-        * This function maps processing statuses to Bootstrap badge classes for consistent styling.
-        * It supports "Processing", "Failed", "Completed", and "Pending" statuses.
+     * Returns the appropriate Bootstrap badge class based on the processing status.
+     * @param {string} status - The processing status of the document.
+     * @returns {string} - The Bootstrap badge class for the status.
+     * This function maps processing statuses to Bootstrap badge classes for consistent styling.
+     * It supports "Processing", "Failed", "Completed", and "Pending" statuses.
      */
     function filterSrdInputList(filterText) {
-        const items = srdIdList.querySelectorAll('li a');
-        items.forEach(item => {
+        const items = srdIdList.querySelectorAll("li a");
+        items.forEach((item) => {
             const text = item.textContent.toLowerCase();
-            item.parentElement.style.display = text.includes(filterText.toLowerCase()) ? "" : "none";
+            item.parentElement.style.display = text.includes(filterText.toLowerCase())
+                ? ""
+                : "none";
         });
     }
 
@@ -1055,7 +1065,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             await makeAuthenticatedRequest(`/auth/delete-user/${username}`, "DELETE");
             // Find the table row and fade it out for a nice UX
-            const row = buttonElement.closest('tr');
+            const row = buttonElement.closest("tr");
             row.style.transition = "opacity 0.5s ease";
             row.style.opacity = "0";
             setTimeout(() => row.remove(), 500); // Remove after fade out
