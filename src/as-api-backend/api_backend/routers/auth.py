@@ -231,3 +231,35 @@ def admin_delete_user(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="An unexpected error occurred while deleting the user.",
         )
+
+
+@router.get("/users", response_model=list[User])
+def admin_list_users(
+    admin_user: User = Depends(require_admin_user),
+    cognito_client: CognitoIdpClient = Depends(),
+) -> JSONResponse:
+    """
+    (Admin Only) Lists all users in the Cognito User Pool.
+
+    **Parameters:**
+    - `admin_user`: The currently authenticated admin user, obtained via dependency injection.
+
+    **Returns:**
+    - A list of `User` objects representing all users in the User Pool.
+
+    **Raises:**
+    - `HTTPException`: If an error occurs while fetching the user list, an HTTP 500 Internal Server Error is raised.
+    """
+    logger.info(f"Admin user '{admin_user.username}' is listing all users.")
+    try:
+        users = cognito_client.list_users(user_pool_id=USER_POOL_ID)
+        return JSONResponse(
+            status_code=status.HTTP_200_OK,
+            content=[User(**user) for user in users],
+        )
+    except Exception as e:
+        logger.error(f"Failed to list users: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred while listing users.",
+        )
