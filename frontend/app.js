@@ -1085,7 +1085,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 (err) => {
                     console.error("Failed to initialize app from stored token:", err);
                     handleLogout(); // If setup fails, clear session and show login
-                }
+                
             );
         } else {
             showScreen("login-view");
