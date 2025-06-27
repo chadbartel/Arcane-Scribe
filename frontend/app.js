@@ -35,7 +35,6 @@ document.addEventListener("DOMContentLoaded", () => {
     const uploadButtonSpinner = document.getElementById("upload-button-spinner");
     const uploadButtonText = document.getElementById("upload-button-text");
     const uploadStatus = document.getElementById("upload-status");
-    let allSrdIds = []; // To store the fetched SRD IDs
 
     // Document list elements
     const refreshDocsButton = document.getElementById("refresh-docs-button");
@@ -86,6 +85,9 @@ document.addEventListener("DOMContentLoaded", () => {
         "app-view",
     ];
     const CONTENT_VIEWS = ["query-view", "srd-management-view", "admin-view"];
+    let allSrdIds = [];
+    let loginSession = null;
+    let challengeUsername = null;
 
     /*
      * Shows a specific main content view by ID and hides all others.
@@ -93,10 +95,11 @@ document.addEventListener("DOMContentLoaded", () => {
      * This function is used for content views like query, SRD management, admin, etc.
      */
     function showScreen(screenIdToShow) {
-        ALL_SCREENS.forEach((id) => {
-            const screen = document.getElementById(id);
-            if (screen) screen.classList.toggle("d-none", id !== screenIdToShow);
-        });
+        ALL_SCREENS.forEach((id) =>
+            document
+                .getElementById(id)
+                ?.classList.toggle("d-none", id !== screenIdToShow)
+        );
     }
 
     /*
@@ -105,16 +108,24 @@ document.addEventListener("DOMContentLoaded", () => {
      * This function is used for content views like query, SRD management, admin, etc.
      */
     function showContentView(viewId) {
-        CONTENT_VIEWS.forEach((id) => {
-            document.getElementById(id)?.classList.add("d-none");
-        });
+        CONTENT_VIEWS.forEach((id) =>
+            document.getElementById(id)?.classList.add("d-none")
+        );
         document.getElementById(viewId)?.classList.remove("d-none");
-        navbar.querySelectorAll(".nav-link").forEach((link) => {
-            link.classList.toggle("active", link.dataset.view === viewId);
-        });
+        navbar
+            .querySelectorAll(".nav-link")
+            .forEach((link) =>
+                link.classList.toggle("active", link.dataset.view === viewId)
+            );
     }
 
-    // --- JWT HELPER ---
+    // --- HELPERS ---
+    /*
+     * Parses a JWT token and returns its payload as a JSON object.
+     * @param {string} token - The JWT token to parse.
+     * @returns {object|null} The parsed payload or null if parsing fails.
+     * This function decodes the base64-encoded payload of the JWT and returns it as an object.
+     */
     function parseJwt(token) {
         try {
             return JSON.parse(atob(token.split(".")[1]));
@@ -123,95 +134,6 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // --- EVENT LISTENERS ---
-    // Add event listeners for login and query actions
-    loginForm.addEventListener("submit", handleLogin);
-    queryButton.addEventListener("click", handleQuery);
-    newPasswordForm.addEventListener("submit", handleNewPasswordSubmit);
-
-    // Add event listeners for the model controls
-    invokeLlmSwitch.addEventListener("change", () => {
-        const isDisabled = !invokeLlmSwitch.checked;
-        genConfigOptions.style.opacity = isDisabled ? "0.5" : "1";
-        genConfigOptions
-            .querySelectorAll("input")
-            .forEach((input) => (input.disabled = isDisabled));
-    });
-    temperatureSlider.addEventListener("input", () => {
-        temperatureValue.textContent = temperatureSlider.value;
-    });
-    topPSlider.addEventListener("input", () => {
-        topPValue.textContent = topPSlider.value;
-    });
-
-    // Add event listeners for SRD input elements
-    uploadForm.addEventListener("submit", handleUpload);
-
-    // Add listeners for the SRD table
-    refreshDocsButton.addEventListener("click", () =>
-        handleRefresh(srdIdInput.value.trim())
-    );
-    srdIdInput.addEventListener("input", () =>
-        handleRefresh(srdIdInput.value.trim())
-    );
-
-    // Add navigation listener to populate dropdown when view is shown
-    navbar.addEventListener("click", (e) => {
-        if (e.target.matches(".nav-link") && e.target.dataset.view) {
-            e.preventDefault();
-            const viewId = e.target.dataset.view;
-            showContentView(viewId);
-            if (viewId === "srd-management-view") {
-                // If we are showing the SRD management view, populate the list
-                populateSrdInputList();
-            } else if (viewId === "query-view") {
-                // Populate the SRD dropdown when entering the query view
-                populateSrdDropdown();
-            }
-        }
-    });
-
-    // Add listener to filter the dropdown as the user types
-    srdIdInput.addEventListener("input", () => {
-        const filterText = srdIdInput.value.toLowerCase();
-        const items = srdIdList.querySelectorAll("li");
-        items.forEach((item) => {
-            const text = item.textContent.toLowerCase();
-            item.style.display = text.includes(filterText) ? "" : "none";
-        });
-    });
-
-    // Add listeners for the new deletion controls
-    selectAllCheckbox.addEventListener("change", handleSelectAll);
-    deleteSelectedButton.addEventListener("click", handleDeleteSelected);
-
-    // Add listeners for the admin panel
-    createUserForm.addEventListener("submit", handleCreateUser);
-    refreshUsersButton.addEventListener("click", populateUsersTable);
-
-    // --- EVENT LISTENERS ---
-    loginForm.addEventListener("submit", handleLogin);
-    newPasswordForm.addEventListener("submit", handleNewPasswordSubmit);
-    queryButton.addEventListener("click", handleQuery);
-    logoutButton.addEventListener("click", handleLogout);
-
-    // Add navigation listeners
-    navbar.addEventListener("click", (e) => {
-        if (e.target.matches(".nav-link") && e.target.dataset.view) {
-            e.preventDefault();
-            const viewId = e.target.dataset.view;
-            showContentView(viewId);
-            if (viewId === "admin-view") populateUsersTable();
-            if (viewId === "srd-management-view") populateSrdInputList();
-        }
-    });
-
-    // --- LOGIC ---
-    // Global vars to hold challenge state
-    let loginSession = null;
-    let challengeUsername = null;
-
-    // --- FUNCTIONS ---
     /*
      * Parses FastAPI/Pydantic validation errors into a readable string.
      * @param {object} errorData - The JSON error object from the API.
@@ -236,6 +158,95 @@ document.addEventListener("DOMContentLoaded", () => {
         return "An unknown error occurred.";
     }
 
+    /**
+     * Returns a Bootstrap badge class based on the document processing status.
+     * @param {string} status - The processing status string.
+     * @returns {string} The corresponding Bootstrap badge class.
+     */
+    function getStatusBadgeClass(status) {
+        switch (status.toLowerCase()) {
+            case "completed":
+                return "badge text-bg-success";
+            case "processing":
+                return "badge text-bg-info";
+            case "pending":
+                return "badge text-bg-warning";
+            case "failed":
+                return "badge text-bg-danger";
+            default:
+                return "badge text-bg-secondary";
+        }
+    }
+
+    // --- EVENT LISTENERS ---
+    // Add event listeners for login and query actions
+    loginForm.addEventListener("submit", handleLogin);
+    newPasswordForm.addEventListener("submit", handleNewPasswordSubmit);
+    logoutButton.addEventListener("click", handleLogout);
+    queryButton.addEventListener("click", handleQuery);
+
+    // Add event listeners for SRD input elements
+    uploadForm.addEventListener("submit", handleUpload);
+
+    // Add listeners for the SRD table
+    refreshDocsButton.addEventListener("click", () =>
+        handleRefresh(srdIdInput.value.trim())
+    );
+
+    // Add listener to filter the dropdown as the user types
+    srdIdInput.addEventListener("input", () => filterSrdInputList(srdIdInput.value));
+
+    // Add listeners for the new deletion controls
+    selectAllCheckbox.addEventListener("change", handleSelectAll);
+    deleteSelectedButton.addEventListener("click", handleDeleteSelected);
+
+    // Add listeners for the admin panel
+    createUserForm.addEventListener("submit", handleCreateUser);
+    refreshUsersButton.addEventListener("click", populateUsersTable);
+
+    // Add navigation listener to populate dropdown when view is shown
+    navbar.addEventListener("click", (e) => {
+        if (e.target.matches(".nav-link") && e.target.dataset.view) {
+            e.preventDefault();
+            const viewId = e.target.dataset.view;
+            showContentView(viewId);
+            if (viewId === "srd-management-view") {
+                // If we are showing the SRD management view, populate the list
+                populateSrdInputList();
+            } else if (viewId === "query-view") {
+                // Populate the SRD dropdown when entering the query view
+                populateSrdDropdown();
+            } else if (viewId === "admin-view") {
+                // Populate the users table when entering the admin view
+                populateUsersTable();
+            }
+        }
+    });
+
+    // Add event listeners for the model controls
+    invokeLlmSwitch.addEventListener("change", () => {
+        const isDisabled = !invokeLlmSwitch.checked;
+        genConfigOptions.style.opacity = isDisabled ? "0.5" : "1";
+        genConfigOptions
+            .querySelectorAll("input")
+            .forEach((input) => (input.disabled = isDisabled));
+    });
+    temperatureSlider.addEventListener("input", () => {
+        temperatureValue.textContent = temperatureSlider.value;
+    });
+    topPSlider.addEventListener("input", () => {
+        topPValue.textContent = topPSlider.value;
+    });
+    maxTokensInput.addEventListener("input", () => {
+        maxTokensInput.value = Math.max(1, Math.min(200000, maxTokensInput.value));
+    });
+    stopSequencesInput.addEventListener("input", () => {
+        stopSequencesInput.value = stopSequencesInput.value
+            .replace(/[^a-zA-Z0-9, ]/g, "")
+            .slice(0, 100);
+    });
+
+    // --- MAIN LOGIC FUNCTIONS ---
     async function setupAppForUser(idToken, refreshToken) {
         localStorage.setItem("idToken", idToken);
         if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
@@ -344,13 +355,30 @@ document.addEventListener("DOMContentLoaded", () => {
             }
 
             // If successful, complete the login with the returned tokens
-            await completeLogin(data.IdToken, data.RefreshToken);
+            await setupAppForUser(data.IdToken, data.RefreshToken);
         } catch (error) {
             // Handle errors gracefully
             console.error("New Password Error:", error);
             newPasswordError.textContent = `Error: ${error.message}`;
             showScreen("new-password-view"); // Show password form again on error
         }
+    }
+
+    /*
+     * Handles user logout by clearing local storage and updating the UI.
+     * This function hides the admin tab, clears the SRD dropdown,
+     * and shows the login view again.
+     */
+    function handleLogout() {
+        // 1. Clear all session information from storage
+        localStorage.clear();
+
+        // 2. Show the login screen and hide all others
+        showScreen("login-view");
+
+        // 3. Hide admin-specific UI elements
+        adminNavItem.classList.add("d-none");
+        welcomeUser.textContent = "";
     }
 
     /*
@@ -383,28 +411,11 @@ document.addEventListener("DOMContentLoaded", () => {
         showContentView("query-view"); // Show the query view by default
     }
 
-    /*
-     * Handles user logout by clearing local storage and updating the UI.
-     * This function hides the admin tab, clears the SRD dropdown,
-     * and shows the login view again.
-     */
-    function handleLogout() {
-        localStorage.clear();
-        // 1. Clear all session information from storage
-        localStorage.clear();
-
-        // 2. Hide admin-specific UI elements
-        adminNavItem.classList.add("d-none");
-        welcomeUser.textContent = "";
-
-        // 3. Show the login screen and hide all others
-        showScreen("login-view");
-    }
-
     // Function to make authenticated requests
     async function populateSrdDropdown() {
         console.log("1. Starting to populate dropdown. Disabling button.");
         srdDropdownButton.disabled = true;
+        srdDropdownButton.textContent = "Loading...";
         srdDropdownMenu.innerHTML = `<li><span class="dropdown-item-text">Loading SRDs...</span></li>`;
 
         try {
@@ -664,89 +675,10 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /**
-     * Fetches and displays documents for the SRD ID in the input field.
-     * This function retrieves documents from the API and displays them in a table.
-     * If no SRD ID is provided, it shows a message prompting the user to enter one.
-     * If documents are found, they are displayed in a table with their names and processing statuses.
-     * If an error occurs, it displays an appropriate error message.
-     */
-    async function handleRefresh() {
-        const srdId = srdIdInput.value.trim();
-        if (!srdId) {
-            documentsListStatus.textContent = "Enter an SRD ID to see its documents.";
-            documentsTable.classList.add("d-none"); // Hide table
-
-            // Clear delete table too
-            deleteDocumentsTableBody.innerHTML = "";
-            return;
-        }
-
-        // Show loading state
-        documentsListStatus.textContent = "Loading documents...";
-        documentsTable.classList.add("d-none");
-        documentsTableBody.innerHTML = "";
-        deleteDocumentsTableBody.innerHTML = "";
-        refreshDocsButton.disabled = true;
-
-        try {
-            const documents = await makeAuthenticatedRequest(
-                `/srd/${srdId}/documents`,
-                "GET"
-            );
-
-            // Clear status and tables before populating
-            documentsListStatus.textContent = "";
-            documentsTableBody.innerHTML = "";
-            deleteDocumentsTableBody.innerHTML = "";
-
-            if (documents && Array.isArray(documents) && documents.length > 0) {
-                documentsTable.classList.remove("d-none"); // Show status table
-
-                documents.forEach((doc) => {
-                    // --- Populate the Status Table (existing logic) ---
-                    const statusRow = documentsTableBody.insertRow();
-                    statusRow.insertCell(0).textContent = doc.original_file_name;
-                    const statusCell = statusRow.insertCell(1);
-                    const statusBadge = document.createElement("span");
-                    statusBadge.textContent = doc.processing_status;
-                    statusBadge.className = getStatusBadgeClass(doc.processing_status);
-                    statusCell.appendChild(statusBadge);
-
-                    // --- Populate the Delete Table ---
-                    const deleteRow = deleteDocumentsTableBody.insertRow();
-                    const cellCheckbox = deleteRow.insertCell(0);
-                    const cellName = deleteRow.insertCell(1);
-
-                    const checkbox = document.createElement("input");
-                    checkbox.type = "checkbox";
-                    checkbox.className = "form-check-input document-checkbox";
-                    checkbox.value = doc.document_id; // Store the ID to delete
-                    cellCheckbox.appendChild(checkbox);
-
-                    cellName.textContent = doc.original_file_name;
-                });
-            } else {
-                documentsListStatus.textContent = `No documents found for SRD: ${srdId}`;
-            }
-        } catch (error) {
-            if (error.status === 404) {
-                documentsListStatus.textContent = `No documents found for SRD: ${srdId}`;
-            } else {
-                documentsListStatus.textContent = `Error loading documents: ${error.message}`;
-            }
-        } finally {
-            refreshDocsButton.disabled = false;
-        }
-    }
-
-    /**
      * Handles the "Select All" checkbox functionality.
      */
     function handleSelectAll() {
-        const checkboxes = document.querySelectorAll(".document-checkbox");
-        checkboxes.forEach((checkbox) => {
-            checkbox.checked = selectAllCheckbox.checked;
-        });
+        document.querySelectorAll('.document-checkbox').forEach(cb => cb.checked = selectAllCheckbox.checked);
     }
 
     /**
@@ -758,13 +690,8 @@ document.addEventListener("DOMContentLoaded", () => {
             ".document-checkbox:checked"
         );
 
-        if (!srdId) {
-            alert("SRD ID is missing.");
-            return;
-        }
-
-        if (selectedCheckboxes.length === 0) {
-            alert("Please select at least one document to delete.");
+        if (!srdId || selectedCheckboxes.length === 0) {
+            alert("Please select an SRD and at least one document to delete.");
             return;
         }
 
@@ -819,28 +746,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Refresh the document lists after deletion
         await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for user to read message
-        handleRefresh();
+        handleRefresh(srdId);
         deleteStatus.innerHTML = "";
-    }
-
-    /**
-     * Returns a Bootstrap badge class based on the document processing status.
-     * @param {string} status - The processing status string.
-     * @returns {string} The corresponding Bootstrap badge class.
-     */
-    function getStatusBadgeClass(status) {
-        switch (status.toLowerCase()) {
-            case "completed":
-                return "badge text-bg-success";
-            case "processing":
-                return "badge text-bg-info";
-            case "pending":
-                return "badge text-bg-warning";
-            case "failed":
-                return "badge text-bg-danger";
-            default:
-                return "badge text-bg-secondary";
-        }
     }
 
     /**
@@ -870,6 +777,7 @@ document.addEventListener("DOMContentLoaded", () => {
                         srdIdInput.value = id; // Set the input field's value
                         // Manually hide the dropdown after selection
                         bootstrap.Dropdown.getInstance(srdIdInput)?.hide();
+                        handleRefresh(id);
                     });
                     listItem.appendChild(link);
                     srdIdList.appendChild(listItem);
@@ -947,7 +855,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Refresh the document list after a successful upload
             await new Promise((resolve) => setTimeout(resolve, 1500)); // Wait a moment for consistency
-            await handleRefresh();
+            await handleRefresh(srdId);
         } catch (error) {
             console.error("Upload failed:", error);
             uploadStatus.innerHTML = `<div class="alert alert-danger">Error during upload: ${error.message}</div>`;
@@ -960,6 +868,95 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     /**
+     * Fetches and displays documents for the SRD ID in the input field.
+     * This function retrieves documents from the API and displays them in a table.
+     * If no SRD ID is provided, it shows a message prompting the user to enter one.
+     * If documents are found, they are displayed in a table with their names and processing statuses.
+     * If an error occurs, it displays an appropriate error message.
+     */
+    async function handleRefresh(srdId) {
+        if (!srdId) {
+            documentsListStatus.textContent = "Enter an SRD ID to see its documents.";
+            documentsTable.classList.add("d-none");
+            deleteDocumentsTableBody.innerHTML = "";
+            return;
+        }
+
+        // Show loading state
+        documentsListStatus.textContent = "Loading documents...";
+        documentsTable.classList.add("d-none");
+        documentsTableBody.innerHTML = "";
+        deleteDocumentsTableBody.innerHTML = "";
+        refreshDocsButton.disabled = true;
+
+        try {
+            const documents = await makeAuthenticatedRequest(
+                `/srd/${srdId}/documents`,
+                "GET"
+            );
+
+            // Clear status and tables before populating
+            documentsListStatus.textContent = "";
+            documentsTableBody.innerHTML = "";
+            deleteDocumentsTableBody.innerHTML = "";
+
+            if (documents && Array.isArray(documents) && documents.length > 0) {
+                documentsTable.classList.remove("d-none"); // Show status table
+
+                documents.forEach((doc) => {
+                    // --- Populate the Status Table (existing logic) ---
+                    const statusRow = documentsTableBody.insertRow();
+                    statusRow.insertCell(0).textContent = doc.original_file_name;
+                    const statusCell = statusRow.insertCell(1);
+                    const statusBadge = document.createElement("span");
+                    statusBadge.textContent = doc.processing_status;
+                    statusBadge.className = getStatusBadgeClass(doc.processing_status);
+                    statusCell.appendChild(statusBadge);
+
+                    // --- Populate the Delete Table ---
+                    const deleteRow = deleteDocumentsTableBody.insertRow();
+                    const cellCheckbox = deleteRow.insertCell(0);
+                    const cellName = deleteRow.insertCell(1);
+
+                    // Create a checkbox for deletion
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.className = "form-check-input document-checkbox";
+                    checkbox.value = doc.document_id; // Store the ID to delete
+                    cellCheckbox.appendChild(checkbox);
+
+                    cellName.textContent = doc.original_file_name;
+                });
+            } else {
+                documentsListStatus.textContent = `No documents found for SRD: ${srdId}`;
+            }
+        } catch (error) {
+            if (error.status === 404) {
+                documentsListStatus.textContent = `No documents found for SRD: ${srdId}`;
+            } else {
+                documentsListStatus.textContent = `Error loading documents: ${error.message}`;
+            }
+        } finally {
+            refreshDocsButton.disabled = false;
+        }
+    }
+
+    /**
+        * Returns the appropriate Bootstrap badge class based on the processing status.
+        * @param {string} status - The processing status of the document.
+        * @returns {string} - The Bootstrap badge class for the status.
+        * This function maps processing statuses to Bootstrap badge classes for consistent styling.
+        * It supports "Processing", "Failed", "Completed", and "Pending" statuses.
+     */
+    function filterSrdInputList(filterText) {
+        const items = srdIdList.querySelectorAll('li a');
+        items.forEach(item => {
+            const text = item.textContent.toLowerCase();
+            item.parentElement.style.display = text.includes(filterText.toLowerCase()) ? "" : "none";
+        });
+    }
+
+    /**
      * Handles the new user creation form submission.
      */
     async function handleCreateUser(e) {
@@ -968,6 +965,7 @@ document.addEventListener("DOMContentLoaded", () => {
         createUserButton.disabled = true;
         createUserSpinner.classList.remove("d-none");
 
+        // Construct the payload from the form inputs
         const payload = {
             username: newUsernameInput.value,
             email: newEmailInput.value,
@@ -976,7 +974,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         try {
-            // Your API returns a 201 with an empty body, so we don't need the result
+            // API returns a 201 with an empty body, so we don't need the result
             await makeAuthenticatedRequest("/auth/signup", "POST", payload);
             createUserStatus.innerHTML = `<div class="alert alert-success">User '${payload.username}' created successfully.</div>`;
             createUserForm.reset(); // Clear the form on success
@@ -1001,12 +999,15 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             const users = await makeAuthenticatedRequest("/auth/users", "GET");
 
-            if (users && Array.isArray(users) && users.length > 0) {
+            if (users && users.length > 0) {
                 userListStatus.textContent = "";
                 usersTable.classList.remove("d-none");
 
                 users.forEach((user) => {
+                    // Create a new row for each user
                     const row = usersTableBody.insertRow();
+
+                    // Username and Email Cells
                     row.insertCell(0).textContent = user.username;
                     row.insertCell(1).textContent = user.email;
 
@@ -1014,6 +1015,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const groupsCell = row.insertCell(2);
                     groupsCell.textContent = user.groups.join(", ") || "N/A";
 
+                    // Actions Cell with Delete Button
                     const actionsCell = row.insertCell(3);
                     actionsCell.className = "text-end";
                     const deleteBtn = document.createElement("button");
@@ -1053,6 +1055,7 @@ document.addEventListener("DOMContentLoaded", () => {
         try {
             await makeAuthenticatedRequest(`/auth/delete-user/${username}`, "DELETE");
             // Find the table row and fade it out for a nice UX
+            const row = buttonElement.closest('tr');
             row.style.transition = "opacity 0.5s ease";
             row.style.opacity = "0";
             setTimeout(() => row.remove(), 500); // Remove after fade out
@@ -1068,10 +1071,12 @@ document.addEventListener("DOMContentLoaded", () => {
         const token = localStorage.getItem("idToken");
         if (token) {
             showScreen("loading-view");
-            setupAppForUser(token, localStorage.getItem("refreshToken")).catch(err => {
-                console.error("Failed to initialize app from stored token:", err);
-                handleLogout(); // If setup fails, clear session and show login
-            });
+            setupAppForUser(token, localStorage.getItem("refreshToken")).catch(
+                (err) => {
+                    console.error("Failed to initialize app from stored token:", err);
+                    handleLogout(); // If setup fails, clear session and show login
+                }
+            );
         } else {
             showScreen("login-view");
         }
