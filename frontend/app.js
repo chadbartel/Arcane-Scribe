@@ -44,9 +44,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const documentsListStatus = document.getElementById("documents-list-status");
 
     // Deletion section elements
-    const deleteDocumentsTableBody = document.getElementById("delete-documents-table-body");
+    const deleteDocumentsTableBody = document.getElementById(
+        "delete-documents-table-body"
+    );
     const selectAllCheckbox = document.getElementById("select-all-checkbox");
-    const deleteSelectedButton = document.getElementById("delete-selected-button");
+    const deleteSelectedButton = document.getElementById(
+        "delete-selected-button"
+    );
     const deleteButtonSpinner = document.getElementById("delete-button-spinner");
     const deleteButtonText = document.getElementById("delete-button-text");
     const deleteStatus = document.getElementById("delete-status");
@@ -74,108 +78,41 @@ document.addEventListener("DOMContentLoaded", () => {
     const DEV_API_URL = "https://arcane-scribe-dev.thatsmidnight.com";
     const API_BASE_URL = isLocal ? `${DEV_API_URL}${apiSuffix}` : apiSuffix;
 
-    // --- STATE MANAGEMENT ---
-    const APP_VIEWS = ["query-view", "srd-management-view", "admin-view"];
+    // --- STATE & VIEW MANAGEMENT ---
+    const ALL_SCREENS = [
+        "login-view",
+        "loading-view",
+        "new-password-view",
+        "app-view",
+    ];
+    const CONTENT_VIEWS = ["query-view", "srd-management-view", "admin-view"];
 
     /*
-     * Shows a specific view by ID and hides all others.
+     * Shows a specific main content view by ID and hides all others.
      * @param {string} viewId - The ID of the view to show.
-     * This function updates the visibility of main content views and highlights the active nav link.
+     * This function is used for content views like query, SRD management, admin, etc.
      */
-    function showMainView(viewId) {
-        // Hide all main content views
-        APP_VIEWS.forEach((id) => {
+    function showScreen(screenIdToShow) {
+        ALL_SCREENS.forEach((id) => {
+            const screen = document.getElementById(id);
+            if (screen) screen.classList.toggle("d-none", id !== screenIdToShow);
+        });
+    }
+
+    /*
+     * Shows a specific main content view by ID and hides all others.
+     * @param {string} viewId - The ID of the view to show.
+     * This function is used for content views like query, SRD management, admin, etc.
+     */
+    function showContentView(viewId) {
+        CONTENT_VIEWS.forEach((id) => {
             document.getElementById(id)?.classList.add("d-none");
         });
-        // Show the target view
         document.getElementById(viewId)?.classList.remove("d-none");
-
-        // Update active class on nav links
         navbar.querySelectorAll(".nav-link").forEach((link) => {
-            if (link.dataset.view === viewId) {
-                link.classList.add("active");
-            } else {
-                link.classList.remove("active");
-            }
+            link.classList.toggle("active", link.dataset.view === viewId);
         });
     }
-
-    /*
-     * Shows a specific screen by ID and hides all others.
-     * @param {string} screenId - The ID of the screen to show.
-     * This function is used for top-level screens like login, app, loading, etc.
-     */
-    function showScreen(screenId) {
-        // Screens are the top-level containers: login, app, loading, etc.
-        const SCREENS = [
-            "login-view",
-            "loading-view",
-            "new-password-view",
-            "app-view",
-        ];
-        SCREENS.forEach((id) => {
-            document.getElementById(id)?.classList.toggle("d-none", id !== screenId);
-        });
-    }
-
-    // --- EVENT LISTENERS ---
-    // Add event listeners for login and query actions
-    loginForm.addEventListener("submit", handleLogin);
-    queryButton.addEventListener("click", handleQuery);
-    newPasswordForm.addEventListener("submit", handleNewPasswordSubmit);
-
-    // Add event listeners for the model controls
-    invokeLlmSwitch.addEventListener("change", () => {
-        // Disable generation config options if the LLM is not invoked
-        genConfigOptions.style.opacity = invokeLlmSwitch.checked ? "1" : "0.5";
-        genConfigOptions.querySelectorAll("input").forEach((input) => {
-            input.disabled = !invokeLlmSwitch.checked;
-        });
-    });
-
-    // Add event listeners for SRD input elements
-    uploadForm.addEventListener("submit", handleUpload);
-
-    // Add listeners for the SRD table
-    refreshDocsButton.addEventListener("click", handleRefresh);
-    srdIdInput.addEventListener("input", () => {
-        // Automatically refresh the list when the user types a new SRD ID
-        handleRefresh();
-    });
-
-    // Add navigation listener to populate dropdown when view is shown
-    navbar.addEventListener("click", (e) => {
-        if (e.target.matches('.nav-link') && e.target.dataset.view) {
-            e.preventDefault();
-            const viewId = e.target.dataset.view;
-            showMainView(viewId);
-            if (viewId === 'srd-management-view') {
-                // If we are showing the SRD management view, populate the list
-                populateSrdInputList();
-            } else if (viewId === 'query-view') {
-                // Populate the SRD dropdown when entering the query view
-                populateSrdDropdown();
-            }
-        }
-    });
-
-    // Add listener to filter the dropdown as the user types
-    srdIdInput.addEventListener("input", () => {
-        const filterText = srdIdInput.value.toLowerCase();
-        const items = srdIdList.querySelectorAll('li');
-        items.forEach(item => {
-            const text = item.textContent.toLowerCase();
-            item.style.display = text.includes(filterText) ? "" : "none";
-        });
-    });
-
-    // Add listeners for the new deletion controls
-    selectAllCheckbox.addEventListener('change', handleSelectAll);
-    deleteSelectedButton.addEventListener('click', handleDeleteSelected);
-
-    // Add listeners for the admin panel
-    createUserForm.addEventListener("submit", handleCreateUser);
-    refreshUsersButton.addEventListener("click", populateUsersTable);
 
     // --- JWT HELPER ---
     function parseJwt(token) {
@@ -187,6 +124,72 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --- EVENT LISTENERS ---
+    // Add event listeners for login and query actions
+    loginForm.addEventListener("submit", handleLogin);
+    queryButton.addEventListener("click", handleQuery);
+    newPasswordForm.addEventListener("submit", handleNewPasswordSubmit);
+
+    // Add event listeners for the model controls
+    invokeLlmSwitch.addEventListener("change", () => {
+        const isDisabled = !invokeLlmSwitch.checked;
+        genConfigOptions.style.opacity = isDisabled ? "0.5" : "1";
+        genConfigOptions
+            .querySelectorAll("input")
+            .forEach((input) => (input.disabled = isDisabled));
+    });
+    temperatureSlider.addEventListener("input", () => {
+        temperatureValue.textContent = temperatureSlider.value;
+    });
+    topPSlider.addEventListener("input", () => {
+        topPValue.textContent = topPSlider.value;
+    });
+
+    // Add event listeners for SRD input elements
+    uploadForm.addEventListener("submit", handleUpload);
+
+    // Add listeners for the SRD table
+    refreshDocsButton.addEventListener("click", () =>
+        handleRefresh(srdIdInput.value.trim())
+    );
+    srdIdInput.addEventListener("input", () =>
+        handleRefresh(srdIdInput.value.trim())
+    );
+
+    // Add navigation listener to populate dropdown when view is shown
+    navbar.addEventListener("click", (e) => {
+        if (e.target.matches(".nav-link") && e.target.dataset.view) {
+            e.preventDefault();
+            const viewId = e.target.dataset.view;
+            showContentView(viewId);
+            if (viewId === "srd-management-view") {
+                // If we are showing the SRD management view, populate the list
+                populateSrdInputList();
+            } else if (viewId === "query-view") {
+                // Populate the SRD dropdown when entering the query view
+                populateSrdDropdown();
+            }
+        }
+    });
+
+    // Add listener to filter the dropdown as the user types
+    srdIdInput.addEventListener("input", () => {
+        const filterText = srdIdInput.value.toLowerCase();
+        const items = srdIdList.querySelectorAll("li");
+        items.forEach((item) => {
+            const text = item.textContent.toLowerCase();
+            item.style.display = text.includes(filterText) ? "" : "none";
+        });
+    });
+
+    // Add listeners for the new deletion controls
+    selectAllCheckbox.addEventListener("change", handleSelectAll);
+    deleteSelectedButton.addEventListener("click", handleDeleteSelected);
+
+    // Add listeners for the admin panel
+    createUserForm.addEventListener("submit", handleCreateUser);
+    refreshUsersButton.addEventListener("click", populateUsersTable);
+
+    // --- EVENT LISTENERS ---
     loginForm.addEventListener("submit", handleLogin);
     newPasswordForm.addEventListener("submit", handleNewPasswordSubmit);
     queryButton.addEventListener("click", handleQuery);
@@ -194,15 +197,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Add navigation listeners
     navbar.addEventListener("click", (e) => {
-        if (e.target.matches('.nav-link') && e.target.dataset.view) {
+        if (e.target.matches(".nav-link") && e.target.dataset.view) {
             e.preventDefault();
             const viewId = e.target.dataset.view;
-            showView(viewId);
-            if (viewId === 'admin-view') {
-                populateUsersTable();
-            } else if (viewId === 'srd-management-view') {
-                populateSrdInputList();
-            }
+            showContentView(viewId);
+            if (viewId === "admin-view") populateUsersTable();
+            if (viewId === "srd-management-view") populateSrdInputList();
         }
     });
 
@@ -234,6 +234,22 @@ document.addEventListener("DOMContentLoaded", () => {
         }
         // Fallback for unknown error formats
         return "An unknown error occurred.";
+    }
+
+    async function setupAppForUser(idToken, refreshToken) {
+        localStorage.setItem("idToken", idToken);
+        if (refreshToken) localStorage.setItem("refreshToken", refreshToken);
+
+        const decodedToken = parseJwt(idToken);
+        if (decodedToken) {
+            welcomeUser.textContent = `Welcome, ${decodedToken['cognito:username']}`;
+            const groups = decodedToken['cognito:groups'] || [];
+            adminNavItem.classList.toggle('d-none', !groups.includes('admins-dev'));
+        }
+
+        await populateSrdDropdown();
+        showScreen("app-view");
+        showContentView("query-view");
     }
 
     // Function to handle login
@@ -356,7 +372,7 @@ document.addEventListener("DOMContentLoaded", () => {
         // Populate the SRD dropdown
         await populateSrdDropdown();
         showScreen("app-view");
-        showMainView("query-view"); // Show the query view by default
+        showContentView("query-view"); // Show the query view by default
     }
 
     /*
@@ -365,10 +381,12 @@ document.addEventListener("DOMContentLoaded", () => {
      * and shows the login view again.
      */
     function handleLogout() {
-        showScreen("loading-view");  // Show loading screen during logout
         localStorage.clear();
-        adminNavItem.classList.add("d-none"); // Hide admin tab on logout
         showScreen("login-view");
+        // Also hide admin nav item in case it was visible
+        adminNavItem.classList.add('d-none');
+        // Reset welcome message
+        welcomeUser.textContent = "";
     }
 
     // Function to make authenticated requests
@@ -635,11 +653,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /**
      * Fetches and displays documents for the SRD ID in the input field.
-        * This function retrieves documents from the API and displays them in a table.
-        * If no SRD ID is provided, it shows a message prompting the user to enter one.
-        * If documents are found, they are displayed in a table with their names and processing statuses.
-        * If an error occurs, it displays an appropriate error message.
-    */
+     * This function retrieves documents from the API and displays them in a table.
+     * If no SRD ID is provided, it shows a message prompting the user to enter one.
+     * If documents are found, they are displayed in a table with their names and processing statuses.
+     * If an error occurs, it displays an appropriate error message.
+     */
     async function handleRefresh() {
         const srdId = srdIdInput.value.trim();
         if (!srdId) {
@@ -659,7 +677,10 @@ document.addEventListener("DOMContentLoaded", () => {
         refreshDocsButton.disabled = true;
 
         try {
-            const documents = await makeAuthenticatedRequest(`/srd/${srdId}/documents`, "GET");
+            const documents = await makeAuthenticatedRequest(
+                `/srd/${srdId}/documents`,
+                "GET"
+            );
 
             // Clear status and tables before populating
             documentsListStatus.textContent = "";
@@ -669,7 +690,7 @@ document.addEventListener("DOMContentLoaded", () => {
             if (documents && Array.isArray(documents) && documents.length > 0) {
                 documentsTable.classList.remove("d-none"); // Show status table
 
-                documents.forEach(doc => {
+                documents.forEach((doc) => {
                     // --- Populate the Status Table (existing logic) ---
                     const statusRow = documentsTableBody.insertRow();
                     statusRow.insertCell(0).textContent = doc.original_file_name;
@@ -684,9 +705,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     const cellCheckbox = deleteRow.insertCell(0);
                     const cellName = deleteRow.insertCell(1);
 
-                    const checkbox = document.createElement('input');
-                    checkbox.type = 'checkbox';
-                    checkbox.className = 'form-check-input document-checkbox';
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    checkbox.className = "form-check-input document-checkbox";
                     checkbox.value = doc.document_id; // Store the ID to delete
                     cellCheckbox.appendChild(checkbox);
 
@@ -695,7 +716,6 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 documentsListStatus.textContent = `No documents found for SRD: ${srdId}`;
             }
-
         } catch (error) {
             if (error.status === 404) {
                 documentsListStatus.textContent = `No documents found for SRD: ${srdId}`;
@@ -711,8 +731,8 @@ document.addEventListener("DOMContentLoaded", () => {
      * Handles the "Select All" checkbox functionality.
      */
     function handleSelectAll() {
-        const checkboxes = document.querySelectorAll('.document-checkbox');
-        checkboxes.forEach(checkbox => {
+        const checkboxes = document.querySelectorAll(".document-checkbox");
+        checkboxes.forEach((checkbox) => {
             checkbox.checked = selectAllCheckbox.checked;
         });
     }
@@ -722,7 +742,9 @@ document.addEventListener("DOMContentLoaded", () => {
      */
     async function handleDeleteSelected() {
         const srdId = srdIdInput.value.trim();
-        const selectedCheckboxes = document.querySelectorAll('.document-checkbox:checked');
+        const selectedCheckboxes = document.querySelectorAll(
+            ".document-checkbox:checked"
+        );
 
         if (!srdId) {
             alert("SRD ID is missing.");
@@ -734,7 +756,11 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        if (!confirm(`Are you sure you want to delete ${selectedCheckboxes.length} document(s)? This cannot be undone.`)) {
+        if (
+            !confirm(
+                `Are you sure you want to delete ${selectedCheckboxes.length} document(s)? This cannot be undone.`
+            )
+        ) {
             return;
         }
 
@@ -752,8 +778,12 @@ document.addEventListener("DOMContentLoaded", () => {
         for (const checkbox of selectedCheckboxes) {
             const documentId = checkbox.value;
             try {
-                deleteStatus.innerHTML = `<div class="alert alert-info">Deleting document ${deletedCount + 1} of ${totalToDelete}...</div>`;
-                await makeAuthenticatedRequest(`/srd/${srdId}/documents/${documentId}`, "DELETE");
+                deleteStatus.innerHTML = `<div class="alert alert-info">Deleting document ${deletedCount + 1
+                    } of ${totalToDelete}...</div>`;
+                await makeAuthenticatedRequest(
+                    `/srd/${srdId}/documents/${documentId}`,
+                    "DELETE"
+                );
                 deletedCount++;
             } catch (error) {
                 hasErrors = true;
@@ -776,7 +806,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         // Refresh the document lists after deletion
-        await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for user to read message
+        await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait for user to read message
         handleRefresh();
         deleteStatus.innerHTML = "";
     }
@@ -788,16 +818,16 @@ document.addEventListener("DOMContentLoaded", () => {
      */
     function getStatusBadgeClass(status) {
         switch (status.toLowerCase()) {
-            case 'completed':
-                return 'badge text-bg-success';
-            case 'processing':
-                return 'badge text-bg-info';
-            case 'pending':
-                return 'badge text-bg-warning';
-            case 'failed':
-                return 'badge text-bg-danger';
+            case "completed":
+                return "badge text-bg-success";
+            case "processing":
+                return "badge text-bg-info";
+            case "pending":
+                return "badge text-bg-warning";
+            case "failed":
+                return "badge text-bg-danger";
             default:
-                return 'badge text-bg-secondary';
+                return "badge text-bg-secondary";
         }
     }
 
@@ -816,7 +846,7 @@ document.addEventListener("DOMContentLoaded", () => {
             srdIdList.innerHTML = ""; // Clear loading message
 
             if (allSrdIds.length > 0) {
-                allSrdIds.forEach(id => {
+                allSrdIds.forEach((id) => {
                     const listItem = document.createElement("li");
                     const link = document.createElement("a");
                     link.className = "dropdown-item";
@@ -836,7 +866,8 @@ document.addEventListener("DOMContentLoaded", () => {
                 srdIdList.innerHTML = `<li><span class="dropdown-item-text">No existing SRDs found.</span></li>`;
             }
         } catch (error) {
-            if (error.status !== 404) { // Ignore 404 for new users
+            if (error.status !== 404) {
+                // Ignore 404 for new users
                 console.error("Failed to populate SRD input list:", error);
                 srdIdList.innerHTML = `<li><span class="dropdown-item-text text-danger">Error loading SRD list.</span></li>`;
             } else {
@@ -847,10 +878,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
     /*
      * Handles the file upload process when the upload form is submitted.
-        * This function retrieves the SRD ID and file from the form,
-        * requests a pre-signed URL from the API,
-        * and uploads the file directly to S3 using that URL.
-    */
+     * This function retrieves the SRD ID and file from the form,
+     * requests a pre-signed URL from the API,
+     * and uploads the file directly to S3 using that URL.
+     */
     async function handleUpload(e) {
         e.preventDefault();
 
@@ -875,7 +906,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 "POST",
                 {
                     file_name: file.name,
-                    content_type: file.type
+                    content_type: file.type,
                 }
             );
 
@@ -886,11 +917,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
             // Upload the file to S3 using the pre-signed URL
             const uploadResponse = await fetch(s3Url, {
-                method: 'PUT',
+                method: "PUT",
                 headers: {
-                    'Content-Type': file.type,
+                    "Content-Type": file.type,
                 },
-                body: file
+                body: file,
             });
 
             // Check if the upload was successful
@@ -903,9 +934,8 @@ document.addEventListener("DOMContentLoaded", () => {
             fileInput.value = ""; // Clear the file input
 
             // Refresh the document list after a successful upload
-            await new Promise(resolve => setTimeout(resolve, 1500)); // Wait a moment for consistency
+            await new Promise((resolve) => setTimeout(resolve, 1500)); // Wait a moment for consistency
             await handleRefresh();
-
         } catch (error) {
             console.error("Upload failed:", error);
             uploadStatus.innerHTML = `<div class="alert alert-danger">Error during upload: ${error.message}</div>`;
@@ -916,7 +946,6 @@ document.addEventListener("DOMContentLoaded", () => {
             uploadButtonText.textContent = "Upload Document";
         }
     }
-
 
     /**
      * Handles the new user creation form submission.
@@ -953,7 +982,7 @@ document.addEventListener("DOMContentLoaded", () => {
      */
     async function populateUsersTable() {
         userListStatus.textContent = "Loading users...";
-        usersTable.classList.add('d-none');
+        usersTable.classList.add("d-none");
         usersTableBody.innerHTML = "";
         refreshUsersButton.disabled = true;
 
@@ -962,24 +991,25 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (users && Array.isArray(users) && users.length > 0) {
                 userListStatus.textContent = "";
-                usersTable.classList.remove('d-none');
+                usersTable.classList.remove("d-none");
 
-                users.forEach(user => {
+                users.forEach((user) => {
                     const row = usersTableBody.insertRow();
                     row.insertCell(0).textContent = user.username;
                     row.insertCell(1).textContent = user.email;
 
                     // Groups Cell
                     const groupsCell = row.insertCell(2);
-                    groupsCell.textContent = user.groups.join(', ') || 'N/A';
+                    groupsCell.textContent = user.groups.join(", ") || "N/A";
 
                     const actionsCell = row.insertCell(3);
                     actionsCell.className = "text-end";
-                    const deleteBtn = document.createElement('button');
-                    deleteBtn.className = 'btn btn-danger btn-sm';
+                    const deleteBtn = document.createElement("button");
+                    deleteBtn.className = "btn btn-danger btn-sm";
                     deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
                     deleteBtn.title = `Delete user ${user.username}`;
-                    deleteBtn.onclick = (event) => handleDeleteUser(user.username, event.currentTarget);
+                    deleteBtn.onclick = (event) =>
+                        handleDeleteUser(user.username, event.currentTarget);
                     actionsCell.appendChild(deleteBtn);
                 });
             } else {
@@ -996,18 +1026,23 @@ document.addEventListener("DOMContentLoaded", () => {
      * Handles the deletion of a single user.
      */
     async function handleDeleteUser(username, buttonElement) {
-        if (!confirm(`Are you sure you want to permanently delete the user '${username}'? This cannot be undone.`)) {
+        if (
+            !confirm(
+                `Are you sure you want to permanently delete the user '${username}'? This cannot be undone.`
+            )
+        ) {
             return;
         }
 
         buttonElement.disabled = true;
-        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+        buttonElement.innerHTML =
+            '<span class="spinner-border spinner-border-sm"></span>';
 
         try {
             await makeAuthenticatedRequest(`/auth/delete-user/${username}`, "DELETE");
             // Find the table row and fade it out for a nice UX
-            const row = buttonElement.closest('tr');
-            row.style.opacity = '0';
+            row.style.transition = "opacity 0.5s ease";
+            row.style.opacity = "0";
             setTimeout(() => row.remove(), 500); // Remove after fade out
         } catch (error) {
             alert(`Failed to delete user: ${error.message}`);
@@ -1016,6 +1051,12 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // Initial view state
-    showScreen("login-view");
+    // --- Initial Check ---
+    const token = localStorage.getItem("idToken");
+    if (token) {
+        showScreen("loading-view");
+        setupAppForUser(token, localStorage.getItem("refreshToken"));
+    } else {
+        showScreen("login-view");
+    }
 });
