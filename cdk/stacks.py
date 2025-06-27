@@ -361,7 +361,7 @@ class ArcaneScribeStack(Stack):
         self.rest_api = self.create_rest_api_gateway(
             construct_id="ArcaneScribeRestApi",
             name="arcane-scribe-rest-api",
-            allow_methods=["POST", "GET", "OPTIONS", "DELETE"],
+            allow_methods=["POST", "GET", "OPTIONS", "DELETE", "PUT"],
             allow_headers=[
                 "Content-Type",
                 "Authorization",
@@ -371,6 +371,7 @@ class ArcaneScribeStack(Stack):
                 "X-Amz-User-Agent",
                 "X-File-Name",
                 "X-File-Type",
+                "x-amz-meta-*",  # Allow all custom metadata headers
             ],
         ).api
 
