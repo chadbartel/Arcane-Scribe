@@ -51,6 +51,20 @@ document.addEventListener("DOMContentLoaded", () => {
     const deleteButtonText = document.getElementById("delete-button-text");
     const deleteStatus = document.getElementById("delete-status");
 
+    // Admin Panel elements
+    const createUserForm = document.getElementById("create-user-form");
+    const newUsernameInput = document.getElementById("new-username-input");
+    const newEmailInput = document.getElementById("new-email-input");
+    const newPasswordInput = document.getElementById("new-password-input");
+    const userGroupSelect = document.getElementById("user-group-select");
+    const createUserButton = document.getElementById("create-user-button");
+    const createUserSpinner = document.getElementById("create-user-spinner");
+    const createUserStatus = document.getElementById("create-user-status");
+    const refreshUsersButton = document.getElementById("refresh-users-button");
+    const usersTable = document.getElementById("users-table");
+    const usersTableBody = document.getElementById("users-table-body");
+    const userListStatus = document.getElementById("user-list-status");
+
     // --- API Configuration ---
     const apiSuffix = "/api/v1";
     const isLocal =
@@ -159,6 +173,10 @@ document.addEventListener("DOMContentLoaded", () => {
     selectAllCheckbox.addEventListener('change', handleSelectAll);
     deleteSelectedButton.addEventListener('click', handleDeleteSelected);
 
+    // Add listeners for the admin panel
+    createUserForm.addEventListener("submit", handleCreateUser);
+    refreshUsersButton.addEventListener("click", populateUsersTable);
+
     // --- JWT HELPER ---
     function parseJwt(token) {
         try {
@@ -176,9 +194,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Add navigation listeners
     navbar.addEventListener("click", (e) => {
-        if (e.target.matches(".nav-link") && e.target.dataset.view) {
+        if (e.target.matches('.nav-link') && e.target.dataset.view) {
             e.preventDefault();
-            showMainView(e.target.dataset.view);
+            const viewId = e.target.dataset.view;
+            showContentView(viewId);
+            if (viewId === 'admin-view') {
+                populateUsersTable();
+            } else if (viewId === 'srd-management-view') {
+                populateSrdInputList();
+            }
         }
     });
 
@@ -890,6 +914,105 @@ document.addEventListener("DOMContentLoaded", () => {
             uploadButton.disabled = false;
             uploadButtonSpinner.classList.add("d-none");
             uploadButtonText.textContent = "Upload Document";
+        }
+    }
+
+
+    /**
+     * Handles the new user creation form submission.
+     */
+    async function handleCreateUser(e) {
+        e.preventDefault();
+        createUserStatus.innerHTML = "";
+        createUserButton.disabled = true;
+        createUserSpinner.classList.remove("d-none");
+
+        const payload = {
+            username: newUsernameInput.value,
+            email: newEmailInput.value,
+            temporary_password: newPasswordInput.value,
+            user_group: userGroupSelect.value,
+        };
+
+        try {
+            // Your API returns a 201 with an empty body, so we don't need the result
+            await makeAuthenticatedRequest("/auth/signup", "POST", payload);
+            createUserStatus.innerHTML = `<div class="alert alert-success">User '${payload.username}' created successfully.</div>`;
+            createUserForm.reset(); // Clear the form on success
+            await populateUsersTable(); // Refresh the user list
+        } catch (error) {
+            createUserStatus.innerHTML = `<div class="alert alert-danger">Error: ${error.message}</div>`;
+        } finally {
+            createUserButton.disabled = false;
+            createUserSpinner.classList.add("d-none");
+        }
+    }
+
+    /**
+     * Fetches the list of all users and populates the admin table.
+     */
+    async function populateUsersTable() {
+        userListStatus.textContent = "Loading users...";
+        usersTable.classList.add('d-none');
+        usersTableBody.innerHTML = "";
+        refreshUsersButton.disabled = true;
+
+        try {
+            const users = await makeAuthenticatedRequest("/auth/users", "GET");
+
+            if (users && Array.isArray(users) && users.length > 0) {
+                userListStatus.textContent = "";
+                usersTable.classList.remove('d-none');
+
+                users.forEach(user => {
+                    const row = usersTableBody.insertRow();
+                    row.insertCell(0).textContent = user.username;
+                    row.insertCell(1).textContent = user.email;
+
+                    // Groups Cell
+                    const groupsCell = row.insertCell(2);
+                    groupsCell.textContent = user.groups.join(', ') || 'N/A';
+
+                    const actionsCell = row.insertCell(3);
+                    actionsCell.className = "text-end";
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.className = 'btn btn-danger btn-sm';
+                    deleteBtn.innerHTML = '<i class="bi bi-trash"></i>';
+                    deleteBtn.title = `Delete user ${user.username}`;
+                    deleteBtn.onclick = (event) => handleDeleteUser(user.username, event.currentTarget);
+                    actionsCell.appendChild(deleteBtn);
+                });
+            } else {
+                userListStatus.textContent = "No users found.";
+            }
+        } catch (error) {
+            userListStatus.textContent = `Error loading users: ${error.message}`;
+        } finally {
+            refreshUsersButton.disabled = false;
+        }
+    }
+
+    /**
+     * Handles the deletion of a single user.
+     */
+    async function handleDeleteUser(username, buttonElement) {
+        if (!confirm(`Are you sure you want to permanently delete the user '${username}'? This cannot be undone.`)) {
+            return;
+        }
+
+        buttonElement.disabled = true;
+        buttonElement.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+        try {
+            await makeAuthenticatedRequest(`/auth/delete-user/${username}`, "DELETE");
+            // Find the table row and fade it out for a nice UX
+            const row = buttonElement.closest('tr');
+            row.style.opacity = '0';
+            setTimeout(() => row.remove(), 500); // Remove after fade out
+        } catch (error) {
+            alert(`Failed to delete user: ${error.message}`);
+            buttonElement.disabled = false; // Re-enable button on failure
+            buttonElement.innerHTML = '<i class="bi bi-trash"></i> Delete';
         }
     }
 
