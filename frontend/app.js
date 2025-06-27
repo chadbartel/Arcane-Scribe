@@ -382,11 +382,15 @@ document.addEventListener("DOMContentLoaded", () => {
      */
     function handleLogout() {
         localStorage.clear();
-        showScreen("login-view");
-        // Also hide admin nav item in case it was visible
+        // 1. Clear all session information from storage
+        localStorage.clear();
+
+        // 2. Hide admin-specific UI elements
         adminNavItem.classList.add("d-none");
-        // Reset welcome message
         welcomeUser.textContent = "";
+
+        // 3. Show the login screen and hide all others
+        showScreen("login-view");
     }
 
     // Function to make authenticated requests
@@ -1052,9 +1056,11 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     // --- Initial Check ---
+    // Checks if a token exists on page load to attempt auto-login
     const token = localStorage.getItem("idToken");
     if (token) {
         showScreen("loading-view");
+        // setupAppForUser is your function that sets up the UI for a logged-in user
         setupAppForUser(token, localStorage.getItem("refreshToken"));
     } else {
         showScreen("login-view");
