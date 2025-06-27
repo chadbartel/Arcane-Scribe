@@ -186,7 +186,7 @@ class CognitoIdpClient:
                 user_info = {
                     "username": user.get("Username"),
                     "email": email,
-                    "groups": groups,
+                    "groups": group_names,
                 }
 
                 results.append(user_info)
