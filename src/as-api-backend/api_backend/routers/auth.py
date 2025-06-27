@@ -252,7 +252,18 @@ def admin_list_users(
     """
     logger.info(f"Admin user '{admin_user.username}' is listing all users.")
     try:
-        users = cognito_client.list_users(user_pool_id=USER_POOL_ID)
+        users = cognito_client.admin_list_users(user_pool_id=USER_POOL_ID)
+
+        # Validate the response
+        if not users:
+            logger.info("No users found in the User Pool.")
+            return JSONResponse(
+                status_code=status.HTTP_200_OK,
+                content=[],
+            )
+        else:
+            logger.info(f"Found {len(users)} users in the User Pool.")
+
         return JSONResponse(
             status_code=status.HTTP_200_OK,
             content=[User(**user) for user in users],
