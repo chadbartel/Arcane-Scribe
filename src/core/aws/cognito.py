@@ -173,7 +173,7 @@ class CognitoIdpClient:
 
                 # Get the groups for the user
                 groups = self.admin_list_groups_for_user(
-                    user_pool_id=user["UserPoolId"],
+                    user_pool_id=user_pool_id,
                     username=user["Username"],
                 )
 
