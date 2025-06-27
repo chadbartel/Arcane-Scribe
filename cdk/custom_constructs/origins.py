@@ -16,7 +16,6 @@ class CustomS3Origin(Construct):
         scope: Construct,
         id: str,
         bucket: s3.IBucket,
-        origin_access_control: Optional[cloudfront.IOriginAccessControl] = None,
         origin_access_identity: Optional[cloudfront.IOriginAccessIdentity] = None,
         origin_path: Optional[str] = None,
         custom_headers: Optional[Dict[str, str]] = None,
@@ -31,8 +30,6 @@ class CustomS3Origin(Construct):
             The ID of the construct.
         bucket : s3.IBucket
             The S3 bucket to use as the origin.
-        origin_access_control : Optional[cloudfront.IOriginAccessControl], optional
-            The CloudFront Origin Access Control for the S3 bucket, by default None
         origin_access_identity : Optional[cloudfront.IOriginAccessIdentity], optional
             The CloudFront Origin Access Identity for the S3 bucket (legacy), by default None
         origin_path : Optional[str], optional
