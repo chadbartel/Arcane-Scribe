@@ -175,7 +175,9 @@ class TestVerifySourceIp:
     """Test cases for verify_source_ip function."""
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
-    def test_verify_source_ip_success_x_forwarded_for(self, mock_get_allowed_ip):
+    def test_verify_source_ip_success_x_forwarded_for(
+        self, mock_get_allowed_ip
+    ):
         """Test successful IP verification using X-Forwarded-For header."""
         # Arrange
         mock_get_allowed_ip.return_value = "192.168.1.100"
@@ -191,7 +193,9 @@ class TestVerifySourceIp:
         mock_get_allowed_ip.assert_called_once()
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
-    def test_verify_source_ip_success_api_gateway_fallback(self, mock_get_allowed_ip):
+    def test_verify_source_ip_success_api_gateway_fallback(
+        self, mock_get_allowed_ip
+    ):
         """Test successful IP verification using API Gateway fallback."""
         # Arrange
         mock_get_allowed_ip.return_value = "192.168.1.100"
@@ -211,12 +215,16 @@ class TestVerifySourceIp:
         mock_get_allowed_ip.assert_called_once()
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
-    def test_verify_source_ip_x_forwarded_for_multiple_ips(self, mock_get_allowed_ip):
+    def test_verify_source_ip_x_forwarded_for_multiple_ips(
+        self, mock_get_allowed_ip
+    ):
         """Test IP verification with multiple IPs in X-Forwarded-For header."""
         # Arrange
         mock_get_allowed_ip.return_value = "203.0.113.1"
         request = MagicMock(spec=Request)
-        request.headers = {"x-forwarded-for": "203.0.113.1, 192.168.1.1, 10.0.0.1"}
+        request.headers = {
+            "x-forwarded-for": "203.0.113.1, 192.168.1.1, 10.0.0.1"
+        }
         request.scope = {}
 
         # Act - Should not raise exception
@@ -227,7 +235,9 @@ class TestVerifySourceIp:
         mock_get_allowed_ip.assert_called_once()
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
-    def test_verify_source_ip_forbidden_x_forwarded_for(self, mock_get_allowed_ip):
+    def test_verify_source_ip_forbidden_x_forwarded_for(
+        self, mock_get_allowed_ip
+    ):
         """Test IP verification with non-matching IP in X-Forwarded-For."""
         # Arrange
         mock_get_allowed_ip.return_value = "192.168.1.100"
@@ -240,7 +250,10 @@ class TestVerifySourceIp:
             verify_source_ip(request)
 
         assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
-        assert "Access from your IP address is not permitted" in exc_info.value.detail
+        assert (
+            "Access from your IP address is not permitted"
+            in exc_info.value.detail
+        )
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
     def test_verify_source_ip_forbidden_api_gateway(self, mock_get_allowed_ip):
@@ -260,7 +273,10 @@ class TestVerifySourceIp:
             verify_source_ip(request)
 
         assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
-        assert "Access from your IP address is not permitted" in exc_info.value.detail
+        assert (
+            "Access from your IP address is not permitted"
+            in exc_info.value.detail
+        )
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
     def test_verify_source_ip_no_source_available(self, mock_get_allowed_ip):
@@ -275,11 +291,18 @@ class TestVerifySourceIp:
         with pytest.raises(HTTPException) as exc_info:
             verify_source_ip(request)
 
-        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert "Server configuration error: Cannot determine source IP" in exc_info.value.detail
+        assert (
+            exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        assert (
+            "Server configuration error: Cannot determine source IP"
+            in exc_info.value.detail
+        )
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
-    def test_verify_source_ip_missing_request_context(self, mock_get_allowed_ip):
+    def test_verify_source_ip_missing_request_context(
+        self, mock_get_allowed_ip
+    ):
         """Test IP verification when AWS event has no requestContext."""
         # Arrange
         mock_get_allowed_ip.return_value = "192.168.1.100"
@@ -291,8 +314,13 @@ class TestVerifySourceIp:
         with pytest.raises(HTTPException) as exc_info:
             verify_source_ip(request)
 
-        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert "Server configuration error: Cannot determine source IP" in exc_info.value.detail
+        assert (
+            exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        assert (
+            "Server configuration error: Cannot determine source IP"
+            in exc_info.value.detail
+        )
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
     def test_verify_source_ip_missing_identity(self, mock_get_allowed_ip):
@@ -309,8 +337,13 @@ class TestVerifySourceIp:
         with pytest.raises(HTTPException) as exc_info:
             verify_source_ip(request)
 
-        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert "Server configuration error: Cannot determine source IP" in exc_info.value.detail
+        assert (
+            exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        assert (
+            "Server configuration error: Cannot determine source IP"
+            in exc_info.value.detail
+        )
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
     def test_verify_source_ip_missing_source_ip_key(self, mock_get_allowed_ip):
@@ -329,12 +362,19 @@ class TestVerifySourceIp:
         with pytest.raises(HTTPException) as exc_info:
             verify_source_ip(request)
 
-        assert exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
-        assert "Server configuration error: Cannot determine source IP" in exc_info.value.detail
+        assert (
+            exc_info.value.status_code == status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+        assert (
+            "Server configuration error: Cannot determine source IP"
+            in exc_info.value.detail
+        )
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
     @patch("api_backend.dependencies.dependencies.logger")
-    def test_verify_source_ip_logs_x_forwarded_for(self, mock_logger, mock_get_allowed_ip):
+    def test_verify_source_ip_logs_x_forwarded_for(
+        self, mock_logger, mock_get_allowed_ip
+    ):
         """Test logging when using X-Forwarded-For header."""
         # Arrange
         mock_get_allowed_ip.return_value = "192.168.1.100"
@@ -355,7 +395,9 @@ class TestVerifySourceIp:
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
     @patch("api_backend.dependencies.dependencies.logger")
-    def test_verify_source_ip_logs_api_gateway_fallback(self, mock_logger, mock_get_allowed_ip):
+    def test_verify_source_ip_logs_api_gateway_fallback(
+        self, mock_logger, mock_get_allowed_ip
+    ):
         """Test logging when using API Gateway fallback."""
         # Arrange
         mock_get_allowed_ip.return_value = "192.168.1.100"
@@ -380,7 +422,9 @@ class TestVerifySourceIp:
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
     @patch("api_backend.dependencies.dependencies.logger")
-    def test_verify_source_ip_logs_error_on_missing_source(self, mock_logger, mock_get_allowed_ip):
+    def test_verify_source_ip_logs_error_on_missing_source(
+        self, mock_logger, mock_get_allowed_ip
+    ):
         """Test logging when source IP cannot be determined."""
         # Arrange
         mock_get_allowed_ip.return_value = "192.168.1.100"
@@ -397,7 +441,9 @@ class TestVerifySourceIp:
         )
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
-    def test_verify_source_ip_whitespace_in_x_forwarded_for(self, mock_get_allowed_ip):
+    def test_verify_source_ip_whitespace_in_x_forwarded_for(
+        self, mock_get_allowed_ip
+    ):
         """Test IP verification handles whitespace in X-Forwarded-For header."""
         # Arrange
         mock_get_allowed_ip.return_value = "192.168.1.100"
@@ -413,7 +459,9 @@ class TestVerifySourceIp:
         mock_get_allowed_ip.assert_called_once()
 
     @patch("api_backend.dependencies.dependencies.get_allowed_ip_from_ssm")
-    def test_verify_source_ip_no_whitelisted_ip_available(self, mock_get_allowed_ip):
+    def test_verify_source_ip_no_whitelisted_ip_available(
+        self, mock_get_allowed_ip
+    ):
         """Test IP verification when whitelisted IP cannot be retrieved."""
         # Arrange
         mock_get_allowed_ip.return_value = None  # SSM parameter fetch failed
@@ -426,7 +474,10 @@ class TestVerifySourceIp:
             verify_source_ip(request)
 
         assert exc_info.value.status_code == status.HTTP_403_FORBIDDEN
-        assert "Access from your IP address is not permitted" in exc_info.value.detail
+        assert (
+            "Access from your IP address is not permitted"
+            in exc_info.value.detail
+        )
         mock_get_allowed_ip.assert_called_once()
 
 

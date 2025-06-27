@@ -421,7 +421,9 @@ class TestLoginForAccessToken:
         assert len(response_content["IdToken"]) > 0
         assert len(response_content["RefreshToken"]) > 0
 
-    def test_login_new_password_required_challenge(self, login_router_with_mocks):
+    def test_login_new_password_required_challenge(
+        self, login_router_with_mocks
+    ):
         """Test login when user needs to set a new password."""
         # Arrange
         login_router, mock_cognito_client = login_router_with_mocks
@@ -433,8 +435,8 @@ class TestLoginForAccessToken:
             "ChallengeParameters": {
                 "USER_ID_FOR_SRP": "testuser",
                 "requiredAttributes": "[]",
-                "userAttributes": '{"email":"test@example.com"}'
-            }
+                "userAttributes": '{"email":"test@example.com"}',
+            },
         }
 
         login_request = LoginRequest(

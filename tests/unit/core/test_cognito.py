@@ -1,7 +1,7 @@
 """Unit tests for the cognito module."""
 
 # Standard Library
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock, patch, ANY, call
 
 # Third Party
 import pytest
@@ -381,14 +381,29 @@ class TestCognitoIdpClient:
         mock_client.list_users.return_value = {"Users": users_data}
 
         cognito_client = CognitoIdpClient()
-        result = cognito_client.list_users(user_pool_id=self.user_pool_id)
+        result = cognito_client.admin_list_users(
+            user_pool_id=self.user_pool_id
+        )
+
+        expected = [
+            {"username": "user1", "email": "user1@example.com", "groups": ANY},
+            {"username": "user2", "email": "user2@example.com", "groups": ANY},
+        ]
 
         mock_client.list_users.assert_called_once_with(
             UserPoolId=self.user_pool_id
         )
-        assert result == users_data
-        mock_logger.info.assert_called_once_with(
-            f"Listing all users in user pool {self.user_pool_id}"
+        assert result == expected
+        mock_logger.info.assert_has_calls(
+            [
+                call(f"Listing all users in user pool {self.user_pool_id}"),
+                call(
+                    f"Listing groups for user user1 in user pool {self.user_pool_id}"
+                ),
+                call(
+                    f"Listing groups for user user2 in user pool {self.user_pool_id}"
+                ),
+            ]
         )
 
     @patch("core.aws.cognito.boto3.client")
@@ -401,7 +416,9 @@ class TestCognitoIdpClient:
         mock_client.list_users.return_value = {"Users": []}
 
         cognito_client = CognitoIdpClient()
-        result = cognito_client.list_users(user_pool_id=self.user_pool_id)
+        result = cognito_client.admin_list_users(
+            user_pool_id=self.user_pool_id
+        )
 
         assert result == []
 
@@ -426,7 +443,7 @@ class TestCognitoIdpClient:
         cognito_client = CognitoIdpClient()
 
         with pytest.raises(ClientError):
-            cognito_client.list_users(user_pool_id=self.user_pool_id)
+            cognito_client.admin_list_users(user_pool_id=self.user_pool_id)
 
         mock_logger.error.assert_called_once_with(
             f"Error listing users: {error}"
@@ -655,7 +672,7 @@ class TestCognitoIdpClient:
         )
 
         # Test list_users parameter preservation
-        cognito_client.list_users(user_pool_id=user_pool_id)
+        cognito_client.admin_list_users(user_pool_id=user_pool_id)
         mock_client.list_users.assert_called_with(UserPoolId=user_pool_id)
 
         # Test admin_delete_user parameter preservation
@@ -701,7 +718,7 @@ class TestCognitoIdpClient:
             username=self.username,
             password=self.password,
         )
-        cognito_client.list_users(user_pool_id=self.user_pool_id)
+        cognito_client.admin_list_users(user_pool_id=self.user_pool_id)
 
         # Verify both calls used the same client instance
         assert mock_client.admin_initiate_auth.called
@@ -869,7 +886,7 @@ class TestCognitoIdpClient:
         elif operation == "ListUsers":
             mock_client.list_users.side_effect = error
             with pytest.raises(ClientError) as exc_info:
-                cognito_client.list_users(user_pool_id=self.user_pool_id)
+                cognito_client.admin_list_users(user_pool_id=self.user_pool_id)
         elif operation == "AdminDeleteUser":
             mock_client.admin_delete_user.side_effect = error
             with pytest.raises(ClientError) as exc_info:
@@ -891,7 +908,9 @@ class TestCognitoIdpClient:
         mock_client.list_users.return_value = {"Count": 0}
 
         cognito_client = CognitoIdpClient()
-        result = cognito_client.list_users(user_pool_id=self.user_pool_id)
+        result = cognito_client.admin_list_users(
+            user_pool_id=self.user_pool_id
+        )
 
         assert result == []
 
@@ -1031,8 +1050,8 @@ class TestCognitoIdpClient:
             "ChallengeParameters": {
                 "USER_ID_FOR_SRP": "testuser",
                 "requiredAttributes": "[]",
-                "userAttributes": '{"email":"test@example.com"}'
-            }
+                "userAttributes": '{"email":"test@example.com"}',
+            },
         }
         mock_client.admin_initiate_auth.return_value = challenge_response
 

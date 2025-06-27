@@ -344,7 +344,7 @@ class TestLoadAndMergeFaissIndicesForSrd:
         mock_db_service_class.return_value = mock_db_service
         result = _load_and_merge_faiss_indices_for_srd(
             owner_id, srd_id, mock_logger
-        )        # Assert
+        )  # Assert
         assert result is None
 
     @patch("api_backend.utils.rag_query_processor.BEDROCK_RUNTIME_CLIENT")
@@ -361,7 +361,7 @@ class TestLoadAndMergeFaissIndicesForSrd:
         mock_shutil,
         mock_os,
         mock_bedrock_client,
-    ):        # Local Modules
+    ):  # Local Modules
         from api_backend.utils.rag_query_processor import (
             FAISS_INDEX_CACHE,
             _load_and_merge_faiss_indices_for_srd,
@@ -504,7 +504,7 @@ class TestLoadAndMergeFaissIndicesForSrd:
         # Act
         result = _load_and_merge_faiss_indices_for_srd(
             owner_id, srd_id, mock_logger
-        )        # Assert
+        )  # Assert
         assert result == mock_vector_store1
         mock_vector_store1.merge_from.assert_called_once_with(
             mock_vector_store2  # First store is the base for merging
@@ -522,7 +522,7 @@ class TestLoadAndMergeFaissIndicesForSrd:
         mock_s3_client_class,
         mock_db_service_class,
         mock_bedrock_client,
-    ):        # Local Modules
+    ):  # Local Modules
         from api_backend.utils.rag_query_processor import (
             _load_and_merge_faiss_indices_for_srd,
         )
@@ -1257,7 +1257,9 @@ class TestLoadAndMergeFaissIndicesForSrd:
 
         # Arrange
         mock_vector_store = MagicMock()
-        mock_vector_store.as_retriever.side_effect = Exception("Retriever creation failed")
+        mock_vector_store.as_retriever.side_effect = Exception(
+            "Retriever creation failed"
+        )
         mock_load_faiss.return_value = mock_vector_store
 
         # Act
@@ -1325,11 +1327,13 @@ class TestLoadAndMergeFaissIndicesForSrd:
 
         # Setup LLM
         mock_llm = MagicMock()
-        mock_get_llm.return_value = mock_llm        # Setup RetrievalQA
+        mock_get_llm.return_value = mock_llm  # Setup RetrievalQA
         mock_qa_chain = MagicMock()
         mock_qa_result = {
             "result": "LLM generated answer",
-            "source_documents": [MagicMock(page_content="test doc content")],  # Add a source document
+            "source_documents": [
+                MagicMock(page_content="test doc content")
+            ],  # Add a source document
         }
         mock_qa_chain.invoke.return_value = mock_qa_result
         mock_retrieval_qa.from_chain_type.return_value = mock_qa_chain
