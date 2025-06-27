@@ -247,9 +247,17 @@ document.addEventListener("DOMContentLoaded", () => {
             adminNavItem.classList.toggle("d-none", !groups.includes("admins-dev"));
         }
 
-        await populateSrdDropdown();
+        // Make the main application container visible.
         showScreen("app-view");
-        showContentView("query-view");
+        showContentView("query-view"); // Default to the query view
+
+        // Populate the data within the now-visible container.
+        try {
+            await populateSrdDropdown();
+        } catch (error) {
+            // Even if this fails, the user is still logged in and can see the app.
+            console.error("Initial data load failed:", error);
+        }
     }
 
     // Function to handle login
@@ -1055,14 +1063,20 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     }
 
-    // --- Initial Check ---
-    // Checks if a token exists on page load to attempt auto-login
-    const token = localStorage.getItem("idToken");
-    if (token) {
-        showScreen("loading-view");
-        // setupAppForUser is your function that sets up the UI for a logged-in user
-        setupAppForUser(token, localStorage.getItem("refreshToken"));
-    } else {
-        showScreen("login-view");
+    // Initial Check on Page Load
+    function initializeApp() {
+        const token = localStorage.getItem("idToken");
+        if (token) {
+            showScreen("loading-view");
+            setupAppForUser(token, localStorage.getItem("refreshToken")).catch(err => {
+                console.error("Failed to initialize app from stored token:", err);
+                handleLogout(); // If setup fails, clear session and show login
+            });
+        } else {
+            showScreen("login-view");
+        }
     }
+
+    // Start the application
+    initializeApp();
 });
