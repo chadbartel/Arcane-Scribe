@@ -242,9 +242,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const decodedToken = parseJwt(idToken);
         if (decodedToken) {
-            welcomeUser.textContent = `Welcome, ${decodedToken['cognito:username']}`;
-            const groups = decodedToken['cognito:groups'] || [];
-            adminNavItem.classList.toggle('d-none', !groups.includes('admins-dev'));
+            welcomeUser.textContent = `Welcome, ${decodedToken["cognito:username"]}`;
+            const groups = decodedToken["cognito:groups"] || [];
+            adminNavItem.classList.toggle("d-none", !groups.includes("admins-dev"));
         }
 
         await populateSrdDropdown();
@@ -384,7 +384,7 @@ document.addEventListener("DOMContentLoaded", () => {
         localStorage.clear();
         showScreen("login-view");
         // Also hide admin nav item in case it was visible
-        adminNavItem.classList.add('d-none');
+        adminNavItem.classList.add("d-none");
         // Reset welcome message
         welcomeUser.textContent = "";
     }
