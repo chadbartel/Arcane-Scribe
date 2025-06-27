@@ -43,29 +43,12 @@ class CustomS3Origin(Construct):
         super().__init__(scope, id)
 
         # Create the S3 origin for CloudFront
-        if origin_access_control is not None:
-            # Use Origin Access Control (OAC) - recommended approach
-            self.origin = origins.S3BucketOrigin.with_origin_access_control(
-                bucket,
-                origin_access_control=origin_access_control,
-                origin_path=origin_path,
-                custom_headers=custom_headers,
-            )
-        elif origin_access_identity is not None:
-            # Use Origin Access Identity (OAI) - legacy approach
-            self.origin = origins.S3BucketOrigin.with_origin_access_identity(
-                bucket,
-                origin_access_identity=origin_access_identity,
-                origin_path=origin_path,
-                custom_headers=custom_headers,
-            )
-        else:
-            # Use default bucket settings (no access control)
-            self.origin = origins.S3BucketOrigin.with_bucket_defaults(
-                bucket,
-                origin_path=origin_path,
-                custom_headers=custom_headers,
-            )
+        self.origin = origins.S3BucketOrigin.with_origin_access_identity(
+            bucket,
+            origin_access_identity=origin_access_identity,
+            origin_path=origin_path,
+            custom_headers=custom_headers,
+        )
 
 
 class CustomHttpOrigin(Construct):
