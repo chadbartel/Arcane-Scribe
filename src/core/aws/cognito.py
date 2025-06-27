@@ -134,7 +134,7 @@ class CognitoIdpClient:
             logger.error(f"Error creating user '{username}': {e}")
             raise e
 
-    def list_users(self, user_pool_id: str) -> List[Dict[str, Any]]:
+    def admin_list_users(self, user_pool_id: str) -> List[Dict[str, Any]]:
         """Lists all users in a Cognito user pool.
 
         Parameters
@@ -154,8 +154,39 @@ class CognitoIdpClient:
         """
         try:
             logger.info(f"Listing all users in user pool {user_pool_id}")
-            response = self.client.list_users(UserPoolId=user_pool_id)
-            return response.get("Users", [])
+            users = self.client.list_users(UserPoolId=user_pool_id).get(
+                "Users", []
+            )
+
+            # If no users are found, return an empty list
+            results = []
+            for user in users:
+                # Parse email attribute from user attributes
+                email = next(
+                    (
+                        attr["Value"]
+                        for attr in user.get("Attributes", [])
+                        if attr["Name"] == "email"
+                    ),
+                    "",
+                )
+
+                # Get the groups for the user
+                groups = self.admin_list_groups_for_user(
+                    user_pool_id=user["UserPoolId"],
+                    username=user["Username"],
+                )
+
+                # Construct the user info dictionary
+                user_info = {
+                    "username": user.get("Username"),
+                    "email": email,
+                    "groups": groups,
+                }
+
+                results.append(user_info)
+
+            return results
         except ClientError as e:
             logger.error(f"Error listing users: {e}")
             raise e
