@@ -197,7 +197,7 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.target.matches('.nav-link') && e.target.dataset.view) {
             e.preventDefault();
             const viewId = e.target.dataset.view;
-            showContentView(viewId);
+            showScreen(viewId);
             if (viewId === 'admin-view') {
                 populateUsersTable();
             } else if (viewId === 'srd-management-view') {
