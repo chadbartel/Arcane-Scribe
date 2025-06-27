@@ -205,7 +205,7 @@ class CognitoIdpClient:
 
     def admin_list_groups_for_user(
         self, user_pool_id: str, username: str
-    ) -> Dict[str, List[Dict[str, str]]]:
+    ) -> List[Dict[str, str]]:
         """Lists the groups that a user belongs to in a Cognito user pool.
 
         Parameters
@@ -217,8 +217,9 @@ class CognitoIdpClient:
 
         Returns
         -------
-        Dict[str, List[Dict[str, str]]]
-            A dictionary containing the groups the user belongs to.
+        List[Dict[str, str]]
+            A list of groups that the user belongs to, where each group is
+            represented as a dictionary containing group details.
 
         Raises
         ------
@@ -277,10 +278,15 @@ class CognitoIdpClient:
                 username=response["Username"],
             )
 
+            # Extract group names from the group objects
+            group_names = []
+            for group in groups:
+                group_names.append(group.get("GroupName", ""))
+
             # Construct the user info dictionary
             user_info = {
                 "username": response.get("Username"),
-                "groups": groups,
+                "groups": group_names,
                 "email": email,
             }
             return user_info
