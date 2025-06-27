@@ -1,0 +1,66 @@
+/* Reset some default styles */
+html,
+body {
+  padding-top: 5rem; /* Pushes content down below the fixed navbar */
+}
+
+/* General styles */
+.form-signin {
+  margin: auto;
+  max-width: 400px;
+  padding: 15px;
+}
+
+/* Loading animation styles */
+.loader-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.loading-text {
+  font-size: 24px;
+  font-weight: bold;
+  color: #0000ff;
+}
+
+.dots::after {
+  content: "";
+  display: inline-block;
+  width: 1em;
+  text-align: left;
+  animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+  0%,
+  20% {
+    content: "";
+  }
+  40% {
+    content: ".";
+  }
+  60% {
+    content: "..";
+  }
+  80%,
+  100% {
+    content: "...";
+  }
+}
+
+/* This will preserve line breaks in the answer text */
+#answer-text {
+  white-space: pre-wrap;
+}
+
+/* Add some padding to the main content area to keep it off the edges */
+#app-view .container {
+    padding-bottom: 2rem; /* Adds space at the very bottom of the page */
+}
+
+/* Add some margin below the "Danger Zone" card to give it breathing room */
+.card.border-danger {
+    margin-bottom: 1rem;
+}

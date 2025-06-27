@@ -79,7 +79,7 @@ class CognitoIdpClient:
                 f"Initiating auth for user {username} in user pool {user_pool_id}"
             )
             response = self.client.admin_initiate_auth(**parameters)
-            return response.get("AuthenticationResult", {})
+            return response
         except ClientError as e:
             logger.error(f"Error initiating auth for user '{username}': {e}")
             raise e
@@ -134,7 +134,7 @@ class CognitoIdpClient:
             logger.error(f"Error creating user '{username}': {e}")
             raise e
 
-    def list_users(self, user_pool_id: str) -> List[Dict[str, Any]]:
+    def admin_list_users(self, user_pool_id: str) -> List[Dict[str, Any]]:
         """Lists all users in a Cognito user pool.
 
         Parameters
@@ -154,8 +154,44 @@ class CognitoIdpClient:
         """
         try:
             logger.info(f"Listing all users in user pool {user_pool_id}")
-            response = self.client.list_users(UserPoolId=user_pool_id)
-            return response.get("Users", [])
+            users = self.client.list_users(UserPoolId=user_pool_id).get(
+                "Users", []
+            )
+
+            # If no users are found, return an empty list
+            results = []
+            for user in users:
+                # Parse email attribute from user attributes
+                email = next(
+                    (
+                        attr["Value"]
+                        for attr in user.get("Attributes", [])
+                        if attr["Name"] == "email"
+                    ),
+                    "",
+                )
+
+                # Get the groups for the user
+                groups = self.admin_list_groups_for_user(
+                    user_pool_id=user_pool_id,
+                    username=user["Username"],
+                )
+
+                # Extract group names from the group objects
+                group_names = []
+                for group in groups:
+                    group_names.append(group.get("GroupName", ""))
+
+                # Construct the user info dictionary
+                user_info = {
+                    "username": user.get("Username"),
+                    "email": email,
+                    "groups": group_names,
+                }
+
+                results.append(user_info)
+
+            return results
         except ClientError as e:
             logger.error(f"Error listing users: {e}")
             raise e
@@ -174,7 +210,7 @@ class CognitoIdpClient:
 
     def admin_list_groups_for_user(
         self, user_pool_id: str, username: str
-    ) -> Dict[str, List[Dict[str, str]]]:
+    ) -> List[Dict[str, str]]:
         """Lists the groups that a user belongs to in a Cognito user pool.
 
         Parameters
@@ -186,8 +222,9 @@ class CognitoIdpClient:
 
         Returns
         -------
-        Dict[str, List[Dict[str, str]]]
-            A dictionary containing the groups the user belongs to.
+        List[Dict[str, str]]
+            A list of groups that the user belongs to, where each group is
+            represented as a dictionary containing group details.
 
         Raises
         ------
@@ -205,4 +242,146 @@ class CognitoIdpClient:
             return response.get("Groups", [])
         except ClientError as e:
             logger.error(f"Error listing groups for user: {e}")
+            raise e
+
+    def get_current_user(self, access_token: str) -> Dict[str, Any]:
+        """Retrieves the current authenticated user's information.
+
+        Parameters
+        ----------
+        access_token : str
+            The access token of the authenticated user.
+
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary containing the user's information, such as username,
+            email, and groups.
+
+        Raises
+        ------
+        ClientError
+            If there is an error retrieving the current user's information.
+        """
+        try:
+            logger.info("Retrieving current user information")
+            response = self.client.get_user(AccessToken=access_token)
+
+            # Parse email attribute from user attributes
+            email = next(
+                (
+                    attr["Value"]
+                    for attr in response.get("UserAttributes", [])
+                    if attr["Name"] == "email"
+                ),
+                "",
+            )
+
+            # Get the groups for the user
+            groups = self.admin_list_groups_for_user(
+                user_pool_id=response["UserPoolId"],
+                username=response["Username"],
+            )
+
+            # Extract group names from the group objects
+            group_names = []
+            for group in groups:
+                group_names.append(group.get("GroupName", ""))
+
+            # Construct the user info dictionary
+            user_info = {
+                "username": response.get("Username"),
+                "groups": group_names,
+                "email": email,
+            }
+            return user_info
+        except ClientError as e:
+            logger.error(f"Error retrieving current user: {e}")
+            raise e
+
+    def admin_add_user_to_group(
+        self, user_pool_id: str, username: str, group_name: str
+    ) -> None:
+        """Adds a user to a group in a Cognito user pool.
+
+        Parameters
+        ----------
+        user_pool_id : str
+            The ID of the Cognito user pool.
+        username : str
+            The username of the user to add to the group.
+        group_name : str
+            The name of the group to which the user will be added.
+
+        Raises
+        ------
+        ClientError
+            If there is an error adding the user to the group.
+        """
+        try:
+            logger.info(
+                f"Adding user '{username}' to group '{group_name}' in pool {user_pool_id}"
+            )
+            self.client.admin_add_user_to_group(
+                UserPoolId=user_pool_id,
+                Username=username,
+                GroupName=group_name,
+            )
+        except ClientError as e:
+            logger.error(
+                f"Error adding user '{username}' to group '{group_name}': {e}"
+            )
+            raise e
+
+    def admin_respond_to_auth_challenge(
+        self,
+        user_pool_id: str,
+        client_id: str,
+        username: str,
+        session: str,
+        new_password: str,
+    ) -> Dict[str, Any]:
+        """Responds to an authentication challenge for a user in a Cognito user pool.
+
+        Parameters
+        ----------
+        user_pool_id : str
+            The ID of the Cognito user pool.
+        client_id : str
+            The client ID of the Cognito app client.
+        username : str
+            The username of the user responding to the challenge.
+        session : str
+            The session identifier for the authentication challenge.
+        new_password : str
+            The new password to set for the user.
+
+        Returns
+        -------
+        Dict[str, Any]
+            A dictionary containing the authentication result, which may include
+            access tokens, ID tokens, and refresh tokens.
+
+        Raises
+        ------
+        ClientError
+            If there is an error responding to the authentication challenge.
+        """
+        try:
+            logger.info(
+                f"Responding to auth challenge for user {username} in pool {user_pool_id}"
+            )
+            response = self.client.admin_respond_to_auth_challenge(
+                UserPoolId=user_pool_id,
+                ClientId=client_id,
+                ChallengeName="NEW_PASSWORD_REQUIRED",
+                Session=session,
+                ChallengeResponses={
+                    "USERNAME": username,
+                    "NEW_PASSWORD": new_password,
+                },
+            )
+            return response.get("AuthenticationResult", {})
+        except ClientError as e:
+            logger.error(f"Error responding to auth challenge: {e}")
             raise e

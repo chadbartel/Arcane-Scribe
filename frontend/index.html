@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Arcane Scribe</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="style.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📜</text></svg>">
+</head>
+
+<body>
+
+    <!-- Login View (Covers the whole screen) -->
+    <main id="login-view" class="form-signin w-100 m-auto">
+        <form id="login-form">
+            <h1 class="h3 mb-3 fw-normal text-center">Arcane Scribe</h1>
+            <div class="form-floating">
+                <input type="text" class="form-control" id="username" placeholder="Username" required>
+                <label for="username">Username</label>
+            </div>
+            <div class="form-floating mt-2">
+                <input type="password" class="form-control" id="password" placeholder="Password" required>
+                <label for="password">Password</label>
+            </div>
+            <button class="btn btn-primary w-100 py-2 mt-3" type="submit">Sign in</button>
+            <div id="login-error" class="text-danger mt-2"></div>
+        </form>
+    </main>
+
+    <!-- Loading View (Covers the whole screen) -->
+    <div id="loading-view" class="loader-container d-none">
+        <div class="loading-text">Loading<span class="dots"></span></div>
+    </div>
+
+    <!-- New Password View (Covers the whole screen) -->
+    <main id="new-password-view" class="form-signin w-100 m-auto d-none">
+        <form id="new-password-form">
+            <h1 class="h3 mb-3 fw-normal text-center">Set New Password</h1>
+            <div class="alert alert-info small" role="alert">
+                Password must contain at least 8 characters, 1 uppercase, 1 lowercase, 1 number, and 1 special
+                character.
+            </div>
+            <div class="form-floating">
+                <input type="password" class="form-control" id="new-password" placeholder="New Password" required>
+                <label for="new-password">New Password</label>
+            </div>
+            <div class="form-floating mt-2">
+                <input type="password" class="form-control" id="confirm-password" placeholder="Confirm Password"
+                    required>
+                <label for="confirm-password">Confirm Password</label>
+            </div>
+            <button class="btn btn-primary w-100 py-2 mt-3" type="submit">Set Password and Sign In</button>
+            <div id="new-password-error" class="text-danger mt-2"></div>
+        </form>
+    </main>
+
+
+    <!-- Main Application View (Initially hidden) -->
+    <div id="app-view" class="d-none">
+        <!-- Bootstrap Navbar -->
+        <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+            <div class="container-fluid">
+                <a class="navbar-brand" href="#">📜 Arcane Scribe</a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+                    aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navbarNav">
+                    <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                        <li class="nav-item">
+                            <a class="nav-link active" href="#" data-view="query-view">Query</a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" data-view="srd-management-view">SRD Management</a>
+                        </li>
+                        <!-- Admin link will be added here by JS if user is an admin -->
+                        <li id="admin-nav-item" class="nav-item d-none">
+                            <a class="nav-link" href="#" data-view="admin-view">Admin</a>
+                        </li>
+                    </ul>
+                    <span class="navbar-text me-3" id="welcome-user"></span>
+                    <button class="btn btn-outline-light" id="logout-button">Logout</button>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Area -->
+        <main class="container">
+            <!-- Query View -->
+            <div id="query-view" class="content-view">
+                <h2 class="mb-4">Query your SRD</h2>
+                <p>Use the form below to ask questions about the selected SRD. The system will retrieve relevant
+                    documents and generate an answer using a generative LLM.</p>
+                <div class="mb-3">
+                    <div class="btn-group">
+                        <button class="btn btn-secondary dropdown-toggle" type="button" id="srd-dropdown-button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            Select an SRD
+                        </button>
+                        <ul class="dropdown-menu" id="srd-dropdown-menu"></ul>
+                    </div>
+                    <textarea id="query-input" class="form-control mt-2" rows="3"
+                        placeholder="Ask a question about the selected SRD..."></textarea>
+                </div>
+                <div class="mb-3"><label for="num-docs-input" class="form-label">Number of Documents to
+                        Retrieve</label><input type="number" class="form-control" id="num-docs-input" value="4" min="1"
+                        max="50" step="1">
+                    <div class="form-text">Controls how many source text chunks are used to generate the answer.
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <p>
+                        <button class="btn btn-outline-secondary btn-sm" type="button" data-bs-toggle="collapse"
+                            data-bs-target="#modelSettings" aria-expanded="false" aria-controls="modelSettings">
+                            Model Settings <i class="bi bi-sliders"></i>
+                        </button>
+                    </p>
+                    <div class="collapse" id="modelSettings">
+                        <div class="card card-body">
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" role="switch" id="invoke-llm-switch"
+                                    checked>
+                                <label class="form-check-label" for="invoke-llm-switch">Invoke Generative
+                                    LLM</label>
+                            </div>
+
+                            <div id="generation-config-options">
+                                <div class="mb-3">
+                                    <label for="temperature-slider" class="form-label">Temperature: <span
+                                            id="temperature-value">0.1</span></label>
+                                    <input type="range" class="form-range" min="0" max="1" step="0.1" value="0.1"
+                                        id="temperature-slider">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="top-p-slider" class="form-label">Top P: <span
+                                            id="top-p-value">1.0</span></label>
+                                    <input type="range" class="form-range" min="0" max="1" step="0.05" value="1.0"
+                                        id="top-p-slider">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="max-tokens-input" class="form-label">Max Tokens</label>
+                                    <input type="number" class="form-control" id="max-tokens-input"
+                                        placeholder="e.g., 1024" min="1">
+                                </div>
+                                <div class="mb-3">
+                                    <label for="stop-sequences-input" class="form-label">Stop Sequences</label>
+                                    <input type="text" class="form-control" id="stop-sequences-input"
+                                        placeholder="e.g., Human:, Assistant:">
+                                    <div class="form-text">Enter comma-separated values.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <button id="query-button" class="btn btn-success">Get Answer</button>
+                <hr>
+                <h4>Answer:</h4>
+                <div id="answer-text" class="p-3 bg-light rounded"></div>
+                <h5 class="mt-4">Sources:</h5>
+                <div id="sources-container"></div>
+            </div>
+
+            <!-- SRD Management View -->
+            <div id="srd-management-view" class="content-view d-none">
+                <h2>SRD Management</h2>
+                <p>Upload a new PDF document to an existing or new SRD.</p>
+
+                <div class="card">
+                    <div class="card-body">
+                        <form id="upload-form">
+
+                            <div class="mb-3">
+                                <label for="srd-id-input" class="form-label">SRD ID</label>
+                                <div class="dropdown">
+                                    <input type="text" class="form-control" id="srd-id-input"
+                                        placeholder="Select an existing SRD or type a new one" data-bs-toggle="dropdown"
+                                        autocomplete="off" required>
+                                    <ul class="dropdown-menu" id="srd-id-list" aria-labelledby="srd-id-input">
+                                    </ul>
+                                </div>
+                                <div class="form-text">
+                                    Choose from the list or type to create a new SRD.
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="file-input" class="form-label">PDF Document</label>
+                                <input class="form-control" type="file" id="file-input" accept=".pdf" required>
+                            </div>
+
+                            <button type="submit" id="upload-button" class="btn btn-primary">
+                                <span id="upload-button-spinner" class="spinner-border spinner-border-sm d-none"
+                                    role="status" aria-hidden="true"></span>
+                                <span id="upload-button-text">Upload Document</span>
+                            </button>
+                        </form>
+                        <div id="upload-status" class="mt-3"></div>
+                    </div>
+                </div>
+
+                <hr class="my-4">
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="mb-0">Documents in SRD</h4>
+                    <button class="btn btn-sm btn-outline-primary" id="refresh-docs-button">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                </div>
+
+                <div id="documents-list-status" class="text-center text-muted">
+                    Enter an SRD ID above to see its documents.
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover d-none" id="documents-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">File Name</th>
+                                <th scope="col">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="documents-table-body">
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- DANGER ZONE FOR DELETION -->
+                <div class="card border-danger">
+                    <div class="card-header bg-danger text-white">
+                        Danger Zone
+                    </div>
+                    <div class="card-body">
+                        <p>
+                            <button class="btn btn-danger" type="button" data-bs-toggle="collapse"
+                                data-bs-target="#delete-docs-collapse" aria-expanded="false"
+                                aria-controls="delete-docs-collapse">
+                                Delete Documents...
+                            </button>
+                        </p>
+                        <div class="collapse" id="delete-docs-collapse">
+                            <div class="table-responsive">
+                                <table class="table table-sm" id="delete-documents-table">
+                                    <thead>
+                                        <tr>
+                                            <th style="width: 5%;"><input class="form-check-input" type="checkbox"
+                                                    id="select-all-checkbox"></th>
+                                            <th scope="col">Select File to Delete</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="delete-documents-table-body">
+                                        <!-- Selectable documents will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                            <button class="btn btn-danger w-100" id="delete-selected-button">
+                                <span id="delete-button-spinner" class="spinner-border spinner-border-sm d-none"
+                                    role="status" aria-hidden="true"></span>
+                                <span id="delete-button-text">Delete Selected Documents</span>
+                            </button>
+                            <div id="delete-status" class="mt-2"></div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Admin View (Hidden by default) -->
+            <div id="admin-view" class="content-view d-none">
+                <h2>Admin Panel</h2>
+                <p class="lead">Create new users or remove existing ones.</p>
+
+                <div class="card mb-4">
+                    <h5 class="card-header">Create New User</h5>
+                    <div class="card-body">
+                        <form id="create-user-form">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="new-username-input" class="form-label">Username</label>
+                                    <input type="text" class="form-control" id="new-username-input" required
+                                        minlength="3" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="new-email-input" class="form-label">Email</label>
+                                    <input type="email" class="form-control" id="new-email-input" required />
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="new-password-input" class="form-label">Temporary Password</label>
+                                    <input type="password" class="form-control" id="new-password-input" required
+                                        minlength="8" />
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="user-group-select" class="form-label">User Group</label>
+                                    <select class="form-select" id="user-group-select">
+                                        <option value="users" selected>User</option>
+                                        <option value="admins-dev">Admin</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <button type="submit" id="create-user-button" class="btn btn-primary">
+                                <span id="create-user-spinner" class="spinner-border spinner-border-sm d-none"
+                                    role="status" aria-hidden="true"></span>
+                                <span id="create-user-button-text">Create User</span>
+                            </button>
+                        </form>
+                        <div id="create-user-status" class="mt-3"></div>
+                    </div>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="mb-0">Existing Users</h4>
+                    <button class="btn btn-sm btn-outline-primary" id="refresh-users-button">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh List
+                    </button>
+                </div>
+                <div id="user-list-status" class="text-center text-muted"></div>
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover" id="users-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Username</th>
+                                <th scope="col">Email</th>
+                                <th scope="col">Groups</th>
+                                <th scope="col" class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="users-table-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>

@@ -29,10 +29,14 @@ from .iam_policy_statement import CustomIAMPolicyStatement
 from .iam_role import CustomIamRole
 from .lambda_function import CustomLambdaFromDockerImage, CustomLambdaFunction
 from .rest_api import CustomRestApi
-from .s3_bucket import CustomS3Bucket
+from .s3_bucket import CustomS3Bucket, CustomBucketDeployment
 from .token_authorizer import CustomTokenAuthorizer
 from .cognito_user_pool import CustomCognitoUserPool
 from .cognito_admin_user import CognitoAdminUser
+from .cloudfront_distribution import CustomCdn
+from .cloudfront_oai import CustomOai
+from .cross_region_ssm_reader import CrossRegionSsmReader
+from .origins import CustomS3Origin, CustomHttpOrigin
 
 __all__ = [
     "ApiCustomDomain",
@@ -48,4 +52,10 @@ __all__ = [
     "CustomTokenAuthorizer",
     "CustomCognitoUserPool",
     "CognitoAdminUser",
+    "CustomCdn",
+    "CustomBucketDeployment",
+    "CustomOai",
+    "CrossRegionSsmReader",
+    "CustomS3Origin",
+    "CustomHttpOrigin",
 ]

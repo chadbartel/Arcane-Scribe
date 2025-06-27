@@ -13,6 +13,7 @@ from aws_cdk import (
     aws_route53 as route53,
     aws_dynamodb as dynamodb,
     aws_apigateway as apigw,
+    aws_cloudfront as cloudfront,
     aws_route53_targets as targets,
     aws_s3_notifications as s3n,
     aws_certificatemanager as acm,
@@ -28,7 +29,12 @@ from cdk.custom_constructs import (
     CustomLambdaFromDockerImage,
     CustomS3Bucket,
     CustomRestApi,
-    CustomTokenAuthorizer,
+    CustomCdn,
+    CustomBucketDeployment,
+    CustomOai,
+    CrossRegionSsmReader,
+    CustomS3Origin,
+    CustomHttpOrigin,
 )
 
 
@@ -75,12 +81,31 @@ class ArcaneScribeStack(Stack):
         self.admin_secret_name = self.node.try_get_context(
             "admin_secret_name"
         )
+        self.cors_allowed_origins = (
+            self.node.try_get_context(
+                "dev_cors_origins"
+            ) + "," + f"https://{self.full_domain_name}"
+            if self.stack_suffix else f"https://{self.full_domain_name}"
+        )
         # endregion
 
         # region Import CloudFormation Outputs
         # Import home IP SSM Parameter Name
         imported_home_ip_ssm_param_name = Fn.import_value(
             "home-ip-ssm-param-name"
+        )
+
+        # Import the wildcard certificate for the API domain
+        cert_arn_reader = CrossRegionSsmReader(
+            self, "CertArnReader",
+            parameter_name=self.node.try_get_context(
+                "wildcard_parameter_name"
+            ),
+            region=self.node.try_get_context("wildcard_certificate_region"),
+        )
+        wildcard_certificate_arn = cert_arn_reader.value
+        wildcard_api_certificate = acm.Certificate.from_certificate_arn(
+            self, "ImportedApiCertificate", wildcard_certificate_arn
         )
         # endregion
 
@@ -132,6 +157,7 @@ class ArcaneScribeStack(Stack):
             construct_id="DocumentsBucket",
             name="arcane-scribe-documents",
             versioned=True,
+            cors_allowed_origins=self.cors_allowed_origins.split(","),
         )
 
         # Bucket for storing the FAISS index and processed text
@@ -139,6 +165,12 @@ class ArcaneScribeStack(Stack):
             construct_id="VectorStoreBucket",
             name="arcane-scribe-vector-store",
             versioned=True,
+        )
+
+        # Bucket to store static website files
+        self.frontend_bucket = self.create_s3_bucket(
+            construct_id="ArcaneScribeFrontendBucket",
+            name="arcane-scribe-frontend",
         )
         # endregion
 
@@ -240,6 +272,7 @@ class ArcaneScribeStack(Stack):
                 "USER_POOL_CLIENT_ID": (
                     cognito_nested_stack.user_pool_client.user_pool_client_id
                 ),
+                "CORS_ALLOWED_ORIGINS": self.cors_allowed_origins,
             },
             memory_size=1024,
             timeout=Duration.seconds(30),
@@ -269,7 +302,10 @@ class ArcaneScribeStack(Stack):
                     "cognito-idp:AdminGetUser",
                     "cognito-idp:AdminUpdateUserAttributes",
                     "cognito-idp:ListUsers",
-                    "cognito-idp:ListUsersInGroup"
+                    "cognito-idp:ListUsersInGroup",
+                    "cognito-idp:AdminAddUserToGroup",
+                    "cognito-idp:AdminRespondToAuthChallenge",
+                    "cognito-idp:AdminListGroupsForUser",
                 ],
                 resources=[cognito_nested_stack.user_pool.user_pool_arn],
             ).statement
@@ -325,8 +361,10 @@ class ArcaneScribeStack(Stack):
         self.rest_api = self.create_rest_api_gateway(
             construct_id="ArcaneScribeRestApi",
             name="arcane-scribe-rest-api",
-            allow_methods=["POST", "GET", "OPTIONS"],
+            allow_methods=["POST", "GET", "OPTIONS", "DELETE"],
             allow_headers=[
+                "Content-Type",
+                "Authorization",
                 "X-Amz-Date",
                 "X-Api-Key",
                 "X-Amz-Security-Token",
@@ -374,9 +412,20 @@ class ArcaneScribeStack(Stack):
                 authorization_type=apigw.AuthorizationType.NONE,
             )
 
-        # Add a /login resource for user login
-        login_resource = api_base_resource.add_resource("login")
+        # Add a /auth/login resource for user login
+        auth_resource = api_base_resource.add_resource("auth")
+        login_resource = auth_resource.add_resource("login")
         login_resource.add_method(
+            "POST",
+            integration=lambda_integration,
+            authorization_type=apigw.AuthorizationType.NONE,
+        )
+
+        # Add the /auth/respond-to-challenge resource and make it public
+        respond_to_challenge_resource = auth_resource.add_resource(
+            "respond-to-challenge"
+        )
+        respond_to_challenge_resource.add_method(
             "POST",
             integration=lambda_integration,
             authorization_type=apigw.AuthorizationType.NONE,
@@ -400,6 +449,65 @@ class ArcaneScribeStack(Stack):
         )
         # endregion
 
+        # region Define the origins
+        # Create a custom origina access identity (OAI) for the frontend bucket
+        self.frontend_oai = CustomOai(
+            scope=self,
+            id="ArcaneScribeFrontendOAI",
+            comment="Arcane Scribe Frontend OAI",
+        )
+        self.frontend_bucket.grant_read(self.frontend_oai.oai)
+
+        # Create a custom S3 origin for the frontend bucket
+        s3_origin = CustomS3Origin(
+            scope=self,
+            id="ArcaneScribeFrontendS3Origin",
+            bucket=self.frontend_bucket,
+            origin_access_identity=self.frontend_oai.oai
+        ).origin
+
+        # Create a custom HTTP origin for the API Gateway
+        api_origin = CustomHttpOrigin(
+            scope=self,
+            id="ArcaneScribeApiHttpOrigin",
+            domain_name=Fn.select(2, Fn.split("/", self.rest_api.url)),
+            origin_path=f"/{self.rest_api.deployment_stage.stage_name}",
+        ).origin
+        # endregion
+
+        # region Unified CloudFront Distribution
+        # Create a CloudFront distribution for the frontend bucket
+        self.frontend_cdn = CustomCdn(
+            scope=self,
+            id="ArcaneScribeFrontendCdn",
+            name="arcane-scribe-frontend-cdn",
+            s3_origin=s3_origin,
+            stack_suffix=self.stack_suffix,
+            domain_name=self.full_domain_name,
+            api_certificate=wildcard_api_certificate,
+        ).distribution
+
+        # Any reqeust to "https://my.domain/api/*" will be forwarded to the API Gateway
+        self.frontend_cdn.add_behavior(
+            path_pattern=f"{self.api_prefix}/*",  # '/api/v1/*'
+            origin=api_origin,
+            allowed_methods=cloudfront.AllowedMethods.ALLOW_ALL,
+            cache_policy=cloudfront.CachePolicy.CACHING_DISABLED,
+            origin_request_policy=cloudfront.OriginRequestPolicy.ALL_VIEWER_EXCEPT_HOST_HEADER,
+            compress=True,
+        )
+
+        # Deploy static website files to the frontend bucket
+        CustomBucketDeployment(
+            scope=self,
+            id="ArcaneScribeFrontendDeployment",
+            destination_bucket=self.frontend_bucket,
+            source="frontend",
+            distribution=self.frontend_cdn,
+            distribution_paths=["/*"],  # Invalidate all paths
+        )
+        # endregion
+
         # region Custom Domain Setup for API Gateway
         # 1. Look up existing hosted zone for "thatsmidnight.com"
         hosted_zone = route53.HostedZone.from_lookup(
@@ -408,62 +516,32 @@ class ArcaneScribeStack(Stack):
             domain_name=self.base_domain_name,
         )
 
-        # 2. Create an ACM certificate for subdomain with DNS validation
-        api_certificate = acm.Certificate(
-            self,
-            "ApiCertificate",
-            domain_name=self.full_domain_name,
-            validation=acm.CertificateValidation.from_dns(hosted_zone),
-        )
-
-        # 3. Create the API Gateway Custom Domain Name resource (REST API v1)
-        apigw_custom_domain = apigw.DomainName(
-            self,
-            "ApiCustomDomain",
-            domain_name=self.full_domain_name,
-            certificate=api_certificate,
-            endpoint_type=apigw.EndpointType.REGIONAL,
-        )
-
-        # 4. Map REST API to this custom domain
+        # 2. Map REST API to this custom domain
         default_stage = self.rest_api.deployment_stage
         if not default_stage:
             raise ValueError(
                 "Default stage could not be found for API mapping. Ensure API has a default stage or specify one."
             )
 
-        # Create base path mapping for REST API
-        apigw.BasePathMapping(
-            self,
-            "ApiBasePathMapping",
-            domain_name=apigw_custom_domain,
-            rest_api=self.rest_api,
-            stage=default_stage,
-        )
-
-        # 5. Create the Route 53 Alias Record pointing to the API Gateway custom domain
+        # 3. Create the Route 53 Alias Record pointing to the API Gateway custom domain
         route53.ARecord(
             self,
             "ApiAliasRecord",
             zone=hosted_zone,
             record_name=f"{self.subdomain_part}{self.stack_suffix}",
             target=route53.RecordTarget.from_alias(
-                targets.ApiGatewayDomain(apigw_custom_domain)
+                targets.CloudFrontTarget(self.frontend_cdn)
             ),
-        )
-
-        # 6. Output the custom API URL
-        CfnOutput(
-            self,
-            "CustomApiUrlOutput",
-            value=f"https://{self.full_domain_name}",
-            description="Custom API URL for Arcane Scribe",
-            export_name=f"arcane-scribe-custom-api-url{self.stack_suffix}",
         )
         # endregion
 
     def create_s3_bucket(
-        self, construct_id: str, name: str, versioned: Optional[bool] = False
+        self,
+        construct_id: str,
+        name: str,
+        versioned: Optional[bool] = False,
+        public_read_access: Optional[bool] = False,
+        cors_allowed_origins: Optional[List[str]] = None,
     ) -> s3.Bucket:
         """Helper method to create an S3 bucket with a specific name and versioning.
 
@@ -475,6 +553,10 @@ class ArcaneScribeStack(Stack):
             The name of the S3 bucket.
         versioned : Optional[bool], optional
             Whether to enable versioning on the bucket, by default False
+        public_read_access : Optional[bool], optional
+            Whether to allow public read access to the bucket, by default False
+        cors_allowed_origins : Optional[List[str]], optional
+            List of allowed CORS origins, by default None
 
         Returns
         -------
@@ -487,6 +569,8 @@ class ArcaneScribeStack(Stack):
             name=name,
             stack_suffix=self.stack_suffix,
             versioned=versioned,
+            public_read_access=public_read_access,
+            cors_allowed_origins=cors_allowed_origins or [],
         )
         return custom_s3_bucket.bucket
 
@@ -732,45 +816,3 @@ class ArcaneScribeStack(Stack):
             authorizer=authorizer,
         )
         return custom_rest_api
-
-    def create_token_authorizer(
-        self,
-        construct_id: str,
-        name: str,
-        handler: lambda_.IFunction,
-        identity_source: Optional[str] = apigw.IdentitySource.header(
-            "Authorization"
-        ),
-        results_cache_ttl: Optional[Duration] = Duration.seconds(0),
-    ) -> apigw.TokenAuthorizer:
-        """Helper method to create a Token Authorizer.
-
-        Parameters
-        ----------
-        construct_id : str
-            The ID of the construct.
-        name : str
-            The name of the authorizer.
-        handler : lambda_.IFunction
-            The Lambda function to be used as the authorizer.
-        identity_source : Optional[str], optional
-            The identity source for the authorizer, by default
-            apigw.IdentitySource.header("Authorization")
-        results_cache_ttl : Optional[Duration], optional
-            Results cache TTL for the authorizer, by default Duration.seconds(0)
-
-        Returns
-        -------
-        apigw.TokenAuthorizer
-            The created Token Authorizer instance.
-        """
-        custom_token_authorizer = CustomTokenAuthorizer(
-            scope=self,
-            id=construct_id,
-            name=name,
-            handler=handler,
-            stack_suffix=self.stack_suffix,
-            identity_source=identity_source,
-            results_cache_ttl=results_cache_ttl,
-        )
-        return custom_token_authorizer.authorizer

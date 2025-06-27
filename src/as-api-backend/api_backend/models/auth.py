@@ -4,6 +4,9 @@ from typing import Optional
 # Third Party
 from pydantic import BaseModel, Field, ConfigDict
 
+# Local Modules
+from core.utils import CognitoGroup
+
 
 class User(BaseModel):
     """User model representing a user in the system.
@@ -23,9 +26,23 @@ class User(BaseModel):
     )
 
 
+class LoginRequest(BaseModel):
+    """LoginRequest model for user authentication.
+
+    Attributes:
+        username: User's username for login.
+        password: User's password for login.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    username: str = Field(..., description="User's username")
+    password: str = Field(..., description="User's password")
+
+
 class TokenResponse(BaseModel):
     """
-    Pydantic model for the response from the /login endpoint.
+    Pydantic model for the response from the /auth/login endpoint.
 
     Attributes:
         AccessToken: The access token issued to the user.
@@ -37,24 +54,104 @@ class TokenResponse(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
 
-    access_token: str = Field(
-        ..., alias="AccessToken", description="Access token issued to the user"
+    # Fields for a successful login
+    access_token: Optional[str] = Field(
+        None,
+        alias="AccessToken",
+        description="Access token issued to the user",
     )
-    expires_in: int = Field(
-        ...,
+    expires_in: Optional[str] = Field(
+        None,
         alias="ExpiresIn",
         description="Duration in seconds for which the access token is valid",
     )
-    id_token: str = Field(
-        ..., alias="IdToken", description="ID token issued to the user"
+    id_token: Optional[str] = Field(
+        None, alias="IdToken", description="ID token issued to the user"
     )
     refresh_token: Optional[str] = Field(
         None,
         alias="RefreshToken",
         description="Optional refresh token for obtaining new access tokens",
     )
-    token_type: str = Field(
+    token_type: Optional[str] = Field(
         "Bearer",
         alias="TokenType",
         description="The type of token issued, usually 'Bearer'",
+    )
+
+    # Fields for a new password challenge
+    challenge_name: Optional[str] = Field(
+        None,
+        alias="ChallengeName",
+        description="Name of the challenge, e.g., 'NEW_PASSWORD_REQUIRED'",
+    )
+    session: Optional[str] = Field(
+        None,
+        alias="Session",
+        description="Session string for the challenge, used to respond to it",
+    )
+
+    # Pass username back to the client during a challenge
+    username: Optional[str] = Field(
+        None,
+        alias="Username",
+        description="Username of the user, returned during a challenge",
+    )
+
+
+class SignUpRequest(BaseModel):
+    """
+    Pydantic model for the admin-only user creation request body.
+
+    Attributes:
+        username: The username for the new user.
+        email: The email address for the new user.
+        temporary_password: A temporary password for the new user. The user will be required to change this on first login.
+        user_group: Optional user group to assign the new user to. If not provided, the user will be assigned to the default 'users' group.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    username: str = Field(
+        ...,
+        min_length=3,
+        max_length=50,
+        description="The username for the new user.",
+    )
+    email: str = Field(..., description="The email address for the new user.")
+    temporary_password: str = Field(
+        ...,
+        min_length=8,
+        description=(
+            "A temporary password for the new user. The user will be required "
+            "to change this on first login."
+        ),
+    )
+    user_group: Optional[CognitoGroup] = Field(
+        CognitoGroup.users,
+        description=(
+            "Optional user group to assign the new user to. If not provided, "
+            "the user will be assigned to the default 'users' group."
+        ),
+    )
+
+
+class RespondToChallengeRequest(BaseModel):
+    """
+    Request model for responding to a Cognito authentication challenge.
+
+    Attributes:
+        username: The user's username.
+        session: The session string from the Cognito challenge.
+        new_password: The user's chosen new password, which must be at least 16 characters long.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    username: str = Field(..., description="The user's username.")
+    session: str = Field(
+        ..., description="The session string from the Cognito challenge."
+    )
+    new_password: str = Field(
+        ..., min_length=16, description="The user's chosen new password."
     )

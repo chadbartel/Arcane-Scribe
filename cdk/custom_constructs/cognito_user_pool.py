@@ -28,7 +28,7 @@ class CustomCognitoUserPool(Construct):
         password_policy: Optional[
             Union[cognito.PasswordPolicy, Dict[str, Any]]
         ] = cognito.PasswordPolicy(
-            min_length=8,
+            min_length=16,
             require_lowercase=True,
             require_uppercase=True,
             require_digits=True,

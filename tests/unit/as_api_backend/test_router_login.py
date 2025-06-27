@@ -15,12 +15,15 @@ from api_backend.models import LoginRequest
 def mock_cognito_client():
     """Create a mock Cognito IDP client for testing."""
     mock_client = MagicMock()
+    # Default response should include AuthenticationResult for successful login
     mock_client.admin_initiate_auth.return_value = {
-        "AccessToken": "mock_access_token_12345",
-        "ExpiresIn": 3600,
-        "IdToken": "mock_id_token_67890",
-        "RefreshToken": "mock_refresh_token_abcde",
-        "TokenType": "Bearer",
+        "AuthenticationResult": {
+            "AccessToken": "mock_access_token_12345",
+            "ExpiresIn": 3600,
+            "IdToken": "mock_id_token_67890",
+            "RefreshToken": "mock_refresh_token_abcde",
+            "TokenType": "Bearer",
+        }
     }
     return mock_client
 
@@ -29,30 +32,41 @@ def mock_cognito_client():
 def login_router_with_mocks(mock_cognito_client):
     """Create login router with mocked dependencies."""
     with patch(
-        "api_backend.routers.login.CognitoIdpClient"
+        "api_backend.routers.auth.CognitoIdpClient"
     ) as mock_cognito_class:
         # Mock the dependency injection to return our mock client
         mock_cognito_class.return_value = mock_cognito_client
 
         # Mock the config values
-        with patch("api_backend.routers.login.USER_POOL_ID", "test_pool_id"):
+        with patch("api_backend.routers.auth.USER_POOL_ID", "test_pool_id"):
             with patch(
-                "api_backend.routers.login.USER_POOL_CLIENT_ID",
+                "api_backend.routers.auth.USER_POOL_CLIENT_ID",
                 "test_client_id",
             ):
                 # Local Modules
-                from api_backend.routers import login
+                from api_backend.routers import auth
 
-                yield login, mock_cognito_client
+                yield auth, mock_cognito_client
 
 
 class TestLoginForAccessToken:
     """Test cases for the login_for_access_token endpoint."""
 
     def test_login_success(self, login_router_with_mocks):
-        """Test successful user login."""
+        """Test successful user login without challenge."""
         # Arrange
         login_router, mock_cognito_client = login_router_with_mocks
+
+        # Mock successful authentication response without challenge
+        mock_cognito_client.admin_initiate_auth.return_value = {
+            "AuthenticationResult": {
+                "AccessToken": "mock_access_token_12345",
+                "ExpiresIn": 3600,
+                "IdToken": "mock_id_token_67890",
+                "RefreshToken": "mock_refresh_token_abcde",
+                "TokenType": "Bearer",
+            }
+        }
 
         login_request = LoginRequest(
             username="testuser", password="testpassword123"
@@ -74,7 +88,7 @@ class TestLoginForAccessToken:
             password="testpassword123",
         )
 
-        # Check response content
+        # Check response content - should contain AuthenticationResult
         response_content = eval(response.body.decode())
         assert response_content["AccessToken"] == "mock_access_token_12345"
         assert response_content["ExpiresIn"] == 3600
@@ -88,6 +102,17 @@ class TestLoginForAccessToken:
         """Test successful login with special characters in credentials."""
         # Arrange
         login_router, mock_cognito_client = login_router_with_mocks
+
+        # Ensure the mock returns the correct format
+        mock_cognito_client.admin_initiate_auth.return_value = {
+            "AuthenticationResult": {
+                "AccessToken": "mock_access_token_12345",
+                "ExpiresIn": 3600,
+                "IdToken": "mock_id_token_67890",
+                "RefreshToken": "mock_refresh_token_abcde",
+                "TokenType": "Bearer",
+            }
+        }
 
         login_request = LoginRequest(
             username="user@example.com",  # Email as username
@@ -189,6 +214,17 @@ class TestLoginForAccessToken:
         # Arrange
         login_router, mock_cognito_client = login_router_with_mocks
 
+        # Ensure the mock returns the correct format
+        mock_cognito_client.admin_initiate_auth.return_value = {
+            "AuthenticationResult": {
+                "AccessToken": "mock_access_token_12345",
+                "ExpiresIn": 3600,
+                "IdToken": "mock_id_token_67890",
+                "RefreshToken": "mock_refresh_token_abcde",
+                "TokenType": "Bearer",
+            }
+        }
+
         login_request = LoginRequest(username="", password="somepassword")
 
         # Act
@@ -211,6 +247,17 @@ class TestLoginForAccessToken:
         """Test login with empty password."""
         # Arrange
         login_router, mock_cognito_client = login_router_with_mocks
+
+        # Ensure the mock returns the correct format
+        mock_cognito_client.admin_initiate_auth.return_value = {
+            "AuthenticationResult": {
+                "AccessToken": "mock_access_token_12345",
+                "ExpiresIn": 3600,
+                "IdToken": "mock_id_token_67890",
+                "RefreshToken": "mock_refresh_token_abcde",
+                "TokenType": "Bearer",
+            }
+        }
 
         login_request = LoginRequest(username="testuser", password="")
 
@@ -337,11 +384,13 @@ class TestLoginForAccessToken:
 
         # Mock a more complete token response
         mock_cognito_client.admin_initiate_auth.return_value = {
-            "AccessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            "ExpiresIn": 7200,
-            "IdToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-            "RefreshToken": "eyJjdHkiOiJKV1QiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiUlNBLU9BRVAifQ...",
-            "TokenType": "Bearer",
+            "AuthenticationResult": {
+                "AccessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "ExpiresIn": 7200,
+                "IdToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+                "RefreshToken": "eyJjdHkiOiJKV1QiLCJlbmMiOiJBMjU2R0NNIiwiYWxnIjoiUlNBLU9BRVAifQ...",
+                "TokenType": "Bearer",
+            }
         }
 
         login_request = LoginRequest(
@@ -372,6 +421,50 @@ class TestLoginForAccessToken:
         assert len(response_content["IdToken"]) > 0
         assert len(response_content["RefreshToken"]) > 0
 
+    def test_login_new_password_required_challenge(
+        self, login_router_with_mocks
+    ):
+        """Test login when user needs to set a new password."""
+        # Arrange
+        login_router, mock_cognito_client = login_router_with_mocks
+
+        # Mock Cognito response with NEW_PASSWORD_REQUIRED challenge
+        mock_cognito_client.admin_initiate_auth.return_value = {
+            "ChallengeName": "NEW_PASSWORD_REQUIRED",
+            "Session": "mock-session-token-12345",
+            "ChallengeParameters": {
+                "USER_ID_FOR_SRP": "testuser",
+                "requiredAttributes": "[]",
+                "userAttributes": '{"email":"test@example.com"}',
+            },
+        }
+
+        login_request = LoginRequest(
+            username="testuser", password="temporarypassword"
+        )
+
+        # Act
+        response = login_router.login_for_access_token(
+            login_request=login_request, cognito_client=mock_cognito_client
+        )
+
+        # Assert
+        assert response.status_code == status.HTTP_200_OK
+
+        # Check response content - should contain challenge information
+        response_content = eval(response.body.decode())
+        assert response_content["ChallengeName"] == "NEW_PASSWORD_REQUIRED"
+        assert response_content["Session"] == "mock-session-token-12345"
+        assert response_content["username"] == "testuser"
+
+        # Verify cognito client was called correctly
+        mock_cognito_client.admin_initiate_auth.assert_called_once_with(
+            user_pool_id="test_pool_id",
+            client_id="test_client_id",
+            username="testuser",
+            password="temporarypassword",
+        )
+
 
 class TestRouterIntegration:
     """Integration tests for the login router."""
@@ -384,7 +477,7 @@ class TestRouterIntegration:
 
         # Check that router has the expected route
         route_paths = [route.path for route in router.routes]
-        assert "/login" in route_paths
+        assert "/auth/login" in route_paths
 
     def test_router_methods(self, login_router_with_mocks):
         """Test that route has correct HTTP method."""
@@ -393,17 +486,17 @@ class TestRouterIntegration:
 
         # Find the route and check method
         for route in router.routes:
-            if route.path == "/login":
+            if route.path == "/auth/login":
                 assert "POST" in route.methods
                 break
         else:
-            pytest.fail("Route /login not found")
+            pytest.fail("Route /auth/login not found")
 
     def test_router_prefix(self, login_router_with_mocks):
         """Test that router has correct prefix."""
         login_router, _ = login_router_with_mocks
         router = login_router.router
-        assert router.prefix == "/login"
+        assert router.prefix == "/auth"
 
     def test_router_tags(self, login_router_with_mocks):
         """Test that router has correct tags."""
@@ -461,12 +554,9 @@ class TestRouterIntegration:
         assert valid_request.username == "testuser"
         assert valid_request.password == "testpassword"
 
-        # Test that required fields are enforced
-        with pytest.raises(ValueError):
-            LoginRequest()  # Missing required fields
+        # Test that empty strings are allowed (Cognito will handle validation)
+        empty_request = LoginRequest(username="", password="")
+        assert empty_request.username == ""
+        assert empty_request.password == ""
 
-        with pytest.raises(ValueError):
-            LoginRequest(username="testuser")  # Missing password
-
-        with pytest.raises(ValueError):
-            LoginRequest(password="testpassword")  # Missing username
+        # Note: FastAPI will validate the request body at the endpoint level

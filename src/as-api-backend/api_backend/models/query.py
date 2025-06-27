@@ -83,6 +83,28 @@ class RagQueryRequest(BaseModel):
     )
 
 
+class SourceDocument(BaseModel):
+    """Model representing a source document.
+
+    Attributes:
+        source: The filename of the document.
+        page: The page number of the document.
+        content: The content of the source document.
+    """
+
+    model_config = ConfigDict(populate_by_name=True)
+
+    source: Optional[str] = Field(
+        None, description="Source filename of the document"
+    )
+    page: Optional[int] = Field(
+        None, ge=1, description="Page number of the document"
+    )
+    content: Optional[str] = Field(
+        None, description="Content of the source document"
+    )
+
+
 class RagQueryResponse(BaseModel):
     """Response model for RAG (Retrieval-Augmented Generation) queries.
 
@@ -101,6 +123,10 @@ class RagQueryResponse(BaseModel):
         default=None,
         ge=0,
         description="Number of documents retrieved from the source",
+    )
+    source_documents_content: Optional[List[SourceDocument]] = Field(
+        default=None,
+        description="List of source documents retrieved for the query",
     )
     source: ResponseSource = Field(
         ...,

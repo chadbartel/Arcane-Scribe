@@ -8,6 +8,7 @@ from aws_lambda_powertools import Logger
 
 # Local Modules
 from core.aws import SsmClient
+from core.utils import CognitoGroup
 from core.utils.config import HOME_IP_SSM_PARAMETER_NAME
 from api_backend.models import User
 
@@ -45,13 +46,19 @@ def get_allowed_ip_from_ssm() -> Optional[str]:
     return None
 
 
-def verify_source_ip(request: Request) -> None:
+def verify_source_ip(request: Request) -> bool:
     """Verifies the source IP of the request against a whitelisted IP from SSM.
 
     Parameters
     ----------
     request : Request
         The FastAPI request object containing the source IP.
+
+    Returns
+    -------
+    bool
+        True if the source IP matches the whitelisted IP, otherwise raises an
+        HTTPException.
 
     Raises
     ------
@@ -62,57 +69,40 @@ def verify_source_ip(request: Request) -> None:
     """
     # Initialize the source IP to None
     source_ip = None  # For API Gateway with Lambda Proxy integration (works for both REST and HTTP APIs)
-    if "requestContext" in request.scope.get("aws.event", {}):
-        identity = request.scope["aws.event"]["requestContext"].get(
-            "identity", {}
-        )
-        source_ip = identity.get("sourceIp")
 
-    # Fallback for local testing where Uvicorn sets `request.client`
-    if not source_ip and request.client:
-        source_ip = request.client.host
+    # Prioritize the X-Forwarded-For header added by CloudFront
+    #  The header can contain a list of IPs, the original client is the first one.
+    if "x-forwarded-for" in request.headers:
+        source_ip = request.headers["x-forwarded-for"].split(",")[0].strip()
+        logger.info(f"Found source IP in X-Forwarded-For header: {source_ip}")
+    else:
+        # Fallback to the direct source IP from API Gateway context
+        try:
+            source_ip = request.scope["aws.event"]["requestContext"][
+                "identity"
+            ]["sourceIp"]
+            logger.info(f"Using source IP from requestContext: {source_ip}")
+        except KeyError:
+            logger.error("Could not find 'sourceIp' in request context.")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Server configuration error: Cannot determine source IP.",
+            )
 
-    # Log the source IP for debugging
-    logger.append_keys(source_ip=source_ip)
-    logger.info("Executing IP whitelist check.")
+    # Get the allowed IP from SSM Parameter Store
+    whitelisted_ip = get_allowed_ip_from_ssm()
 
-    # If source IP is still None, raise an error
-    if not source_ip:
-        logger.warning("Source IP could not be determined from the request.")
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Could not determine client IP address.",
-        )
-
-    # Fetch the allowed IP from SSM
-    allowed_ip = get_allowed_ip_from_ssm()
-
-    # If allowed IP is None, raise an error
-    if not allowed_ip:
-        logger.error(
-            "Whitelist IP could not be loaded from configuration. Denying access by default."
-        )
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=(
-                "Service is temporarily unavailable due to a configuration issue."
-            ),
-        )
-
-    # If the source IP does not match the allowed IP, raise an error
-    if source_ip != allowed_ip:
-        logger.warning(
-            f"Forbidden access for IP: {source_ip}. Whitelisted IP is {allowed_ip}."
-        )
+    # Compare the IPs and raise an exception if they don't match
+    logger.info(
+        f"Verifying request source IP '{source_ip}' against whitelisted IP '{whitelisted_ip}'."
+    )
+    if source_ip != whitelisted_ip:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Access from your IP address is not permitted.",
         )
 
-    # If the source IP matches the allowed IP, log success
-    logger.info(
-        f"IP address {source_ip} successfully verified against whitelist."
-    )
+    return True
 
 
 def get_current_user(request: Request) -> User:
@@ -182,7 +172,7 @@ def require_admin_user(current_user: User = Depends(get_current_user)) -> User:
         raised.
         - 403 Forbidden if the user does not belong to the "Admins" group.
     """
-    if "Admins" not in current_user.groups:
+    if CognitoGroup.admins.value not in current_user.groups:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="User does not have admin privileges.",

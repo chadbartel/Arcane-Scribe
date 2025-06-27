@@ -41,6 +41,40 @@ BEDROCK_RUNTIME_CLIENT = BedrockRuntimeClient()
 DEFAULT_LLM_INSTANCE: Optional[ChatBedrock] = None
 
 
+def format_docs(docs: List[Any]) -> List[Dict[str, str]]:
+    """Format a list of document objects into a list of dictionaries
+    containing source, page, and content. This function is useful for
+    preparing documents for display or further processing, ensuring that
+    each document's metadata is captured in a structured format.
+
+    Parameters
+    ----------
+    docs : List[Any]
+        A list of document objects, where each object is expected to have
+        `metadata` and `page_content` attributes. The `metadata` should
+        contain 'source' and 'page' keys, while `page_content` contains
+        the text content of the document.
+
+    Returns
+    -------
+    List[Dict[str, str]]
+        A list of dictionaries, each containing the 'source', 'page',
+        and 'content' of the document. If 'source' or 'page' is not
+        available in the metadata, it will default to 'Unknown' or 'N/A'
+        respectively.
+    """
+    if not docs:
+        return []
+    return [
+        {
+            "source": doc.metadata.get("source", "Unknown"),
+            "page": doc.metadata.get("page", "N/A"),
+            "content": doc.page_content,
+        }
+        for doc in docs
+    ]
+
+
 def get_llm_instance(
     generation_config: Dict[str, Any],
 ) -> Optional[ChatBedrock]:
@@ -357,6 +391,9 @@ def get_answer_from_rag(
                 lambda_logger.info(f"Cache hit for query_hash: {query_hash}")
                 return {
                     "answer": response["answer"],
+                    "source_documents_content": response.get(
+                        "source_documents_content", []
+                    ),
                     "source": "cache",
                 }
         except ClientError as e:
@@ -427,6 +464,7 @@ def get_answer_from_rag(
             "answer": formatted_answer,
             "source": "retrieval_only",
             "source_documents_retrieved": len(docs),
+            "source_documents_content": format_docs(docs),
         }
 
     # Initialize LLM instance with dynamic config for this request
@@ -486,9 +524,7 @@ Helpful Answer:"""
             {"query": final_query_text}
         )  # Langchain 0.2.x uses invoke
         answer = result.get("result", "No answer generated.")
-        source_docs_content = [
-            doc.page_content for doc in result.get("source_documents", [])
-        ]
+        source_docs_content = format_docs(result.get("source_documents", []))
 
         # Cache the successful Bedrock response
         if (
@@ -506,9 +542,7 @@ Helpful Answer:"""
                         "owner_id": owner_id,
                         "srd_id": srd_id,
                         "query_text": query_text,
-                        "source_documents_summary": (
-                            "; ".join(source_docs_content)
-                        )[:1000],
+                        "source_documents_content": source_docs_content,
                         "timestamp": str(time.time()),
                         "ttl": str(ttl_value),
                         "generation_config_used": json.dumps(
@@ -533,6 +567,7 @@ Helpful Answer:"""
         return {
             "answer": answer,
             "source_documents_retrieved": len(source_docs_content),
+            "source_documents_content": source_docs_content,
             "source": "bedrock_llm",
         }
     # Catch specific Bedrock client errors
