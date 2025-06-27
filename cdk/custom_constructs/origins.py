@@ -1,5 +1,5 @@
 # Standard Library
-from typing import Optional
+from typing import Optional, Dict
 
 # Third Party
 from aws_cdk import (
@@ -16,9 +16,10 @@ class CustomS3Origin(Construct):
         scope: Construct,
         id: str,
         bucket: s3.IBucket,
-        origin_access_identity: Optional[cloudfront.OriginAccessIdentity] = None,
+        origin_access_control: Optional[cloudfront.IOriginAccessControl] = None,
+        origin_access_identity: Optional[cloudfront.IOriginAccessIdentity] = None,
         origin_path: Optional[str] = None,
-        custom_headers: Optional[dict] = None,
+        custom_headers: Optional[Dict[str, str]] = None,
     ) -> None:
         """Custom S3 Origin Construct for AWS CDK.
 
@@ -30,22 +31,41 @@ class CustomS3Origin(Construct):
             The ID of the construct.
         bucket : s3.IBucket
             The S3 bucket to use as the origin.
-        origin_access_identity : Optional[cloudfront.OriginAccessIdentity], optional
-            The CloudFront Origin Access Identity for the S3 bucket, by default None
+        origin_access_control : Optional[cloudfront.IOriginAccessControl], optional
+            The CloudFront Origin Access Control for the S3 bucket, by default None
+        origin_access_identity : Optional[cloudfront.IOriginAccessIdentity], optional
+            The CloudFront Origin Access Identity for the S3 bucket (legacy), by default None
         origin_path : Optional[str], optional
             The path within the S3 bucket to use as the origin, by default None
-        custom_headers : Optional[dict], optional
+        custom_headers : Optional[Dict[str, str]], optional
             Custom headers to include in the origin request, by default None
         """
         super().__init__(scope, id)
 
         # Create the S3 origin for CloudFront
-        self.origin = origins.S3Origin(
-            bucket,
-            origin_access_identity=origin_access_identity,
-            origin_path=origin_path,
-            custom_headers=custom_headers,
-        )
+        if origin_access_control is not None:
+            # Use Origin Access Control (OAC) - recommended approach
+            self.origin = origins.S3BucketOrigin.with_origin_access_control(
+                bucket,
+                origin_access_control=origin_access_control,
+                origin_path=origin_path,
+                custom_headers=custom_headers,
+            )
+        elif origin_access_identity is not None:
+            # Use Origin Access Identity (OAI) - legacy approach
+            self.origin = origins.S3BucketOrigin.with_origin_access_identity(
+                bucket,
+                origin_access_identity=origin_access_identity,
+                origin_path=origin_path,
+                custom_headers=custom_headers,
+            )
+        else:
+            # Use default bucket settings (no access control)
+            self.origin = origins.S3BucketOrigin.with_bucket_defaults(
+                bucket,
+                origin_path=origin_path,
+                custom_headers=custom_headers,
+            )
 
 
 class CustomHttpOrigin(Construct):
@@ -55,7 +75,7 @@ class CustomHttpOrigin(Construct):
         id: str,
         domain_name: str,
         origin_path: Optional[str] = None,
-        custom_headers: Optional[dict] = None,
+        custom_headers: Optional[Dict[str, str]] = None,
     ) -> None:
         """Custom HTTP Origin Construct for AWS CDK.
 
