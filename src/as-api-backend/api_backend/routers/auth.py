@@ -1,3 +1,6 @@
+# Standard Library
+from typing import Dict
+
 # Third Party
 from fastapi import APIRouter, Depends, HTTPException, status, Body
 from fastapi.responses import JSONResponse
@@ -233,7 +236,7 @@ def admin_delete_user(
         )
 
 
-@router.get("/users", response_model=list[User])
+@router.get("/users", response_model=list[Dict[str, str]])
 def admin_list_users(
     admin_user: User = Depends(require_admin_user),
     cognito_client: CognitoIdpClient = Depends(),
@@ -266,7 +269,7 @@ def admin_list_users(
 
         return JSONResponse(
             status_code=status.HTTP_200_OK,
-            content=[User(**user) for user in users],
+            content=users,
         )
     except Exception as e:
         logger.error(f"Failed to list users: {e}")
