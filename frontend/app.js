@@ -501,7 +501,16 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         // Get the value from the new input field
-        const numDocs = parseInt(numDocsInput.value, 10);
+        if (!isNaN(numDocs) && numDocs > 0 && numDocs <= 50) {
+            payload.number_of_documents = numDocs;
+        } else {
+            // Default to 5 if the input is invalid or not provided
+            payload.number_of_documents = 10;
+            // Show a warning message if the input is invalid
+            console.warn(
+                "WARNING: Number of documents set to a value greater than 50 - defaulting to 10."
+            );
+        }
 
         // Add it to the payload if it's a valid number
         if (!isNaN(numDocs) && numDocs > 0) {
