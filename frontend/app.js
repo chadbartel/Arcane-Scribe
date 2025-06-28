@@ -232,6 +232,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Add event listeners for the model controls
+    numDocsInput.addEventListener("input", () => {
+        numDocsInput.value = Math.max(1, Math.min(50, numDocsInput.value));
+    });
     invokeLlmSwitch.addEventListener("change", () => {
         const isDisabled = !invokeLlmSwitch.checked;
         genConfigOptions.style.opacity = isDisabled ? "0.5" : "1";
@@ -501,6 +504,7 @@ document.addEventListener("DOMContentLoaded", () => {
         };
 
         // Get the value from the new input field
+        const numDocs = parseInt(numDocsInput.value, 10);
         if (!isNaN(numDocs) && numDocs > 0 && numDocs <= 50) {
             payload.number_of_documents = numDocs;
         } else {
@@ -510,11 +514,6 @@ document.addEventListener("DOMContentLoaded", () => {
             alert(
                 "WARNING: Number of documents set to a value greater than 50 - defaulting to 10."
             );
-        }
-
-        // Add it to the payload if it's a valid number
-        if (!isNaN(numDocs) && numDocs > 0) {
-            payload.number_of_documents = numDocs;
         }
 
         // If the LLM is invoked, add generation config parameters
