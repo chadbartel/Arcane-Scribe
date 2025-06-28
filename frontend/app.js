@@ -508,12 +508,8 @@ document.addEventListener("DOMContentLoaded", () => {
         if (!isNaN(numDocs) && numDocs > 0 && numDocs <= 50) {
             payload.number_of_documents = numDocs;
         } else {
-            // Default to 5 if the input is invalid or not provided
+            // Default to 10 if the input is invalid or not provided
             payload.number_of_documents = 10;
-            // Display a warning to the user
-            alert(
-                "WARNING: Number of documents set to a value greater than 50 - defaulting to 10."
-            );
         }
 
         // If the LLM is invoked, add generation config parameters
@@ -530,10 +526,6 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 // Default to 1000 if the input is invalid or not provided
                 payload.generation_config.maxTokenCount = 1000;
-                // Display a warning to the user
-                alert(
-                    "WARNING: Max token count set to a value greater than 200000 - defaulting to 1000."
-                );
             }
 
             const stopSequences = stopSequencesInput.value
