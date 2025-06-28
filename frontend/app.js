@@ -526,8 +526,15 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!isNaN(topP)) payload.generation_config.topP = topP;
 
             const maxTokenCount = parseInt(maxTokensInput.value, 10);
-            if (!isNaN(maxTokenCount) && maxTokenCount > 0)
+            if (!isNaN(maxTokenCount) && maxTokenCount > 0 && maxTokenCount <= 200000) {
                 payload.generation_config.maxTokenCount = maxTokenCount;
+            } else {
+                // Default to 1000 if the input is invalid or not provided
+                payload.generation_config.maxTokenCount = 1000;
+                console.warn(
+                    "WARNING: Max token count set to a value greater than 200000 - defaulting to 1000."
+                );
+            }
 
             const stopSequences = stopSequencesInput.value
                 .split(",")
