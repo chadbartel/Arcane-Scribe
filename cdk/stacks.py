@@ -325,8 +325,8 @@ class ArcaneScribeStack(Stack):
                     self.documents_metadata_table.table_name
                 ),
             },
-            memory_size=1024,  # More memory for processing PDFs
-            timeout=Duration.minutes(5),  # May take longer for large PDFs
+            memory_size=2048,  # More memory for processing PDFs
+            timeout=Duration.minutes(10),  # May take longer for large PDFs
             initial_policy=[self.bedrock_invoke_embedding_policy],
             description="Ingests PDF documents, extracts text, and stores embeddings in the vector store",
         )

@@ -16,7 +16,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const numDocsInput = document.getElementById("num-docs-input");
     const invokeLlmSwitch = document.getElementById("invoke-llm-switch");
     const temperatureSlider = document.getElementById("temperature-slider");
+    const temperatureValue = document.getElementById("temperature-value");
     const topPSlider = document.getElementById("top-p-slider");
+    const topPValue = document.getElementById("top-p-value");
     const maxTokensInput = document.getElementById("max-tokens-input");
     const stopSequencesInput = document.getElementById("stop-sequences-input");
 
@@ -230,6 +232,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Add event listeners for the model controls
+    numDocsInput.addEventListener("input", () => {
+        numDocsInput.value = Math.max(1, Math.min(50, numDocsInput.value));
+    });
     invokeLlmSwitch.addEventListener("change", () => {
         const isDisabled = !invokeLlmSwitch.checked;
         genConfigOptions.style.opacity = isDisabled ? "0.5" : "1";
@@ -500,10 +505,15 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Get the value from the new input field
         const numDocs = parseInt(numDocsInput.value, 10);
-
-        // Add it to the payload if it's a valid number
-        if (!isNaN(numDocs) && numDocs > 0) {
+        if (!isNaN(numDocs) && numDocs > 0 && numDocs <= 50) {
             payload.number_of_documents = numDocs;
+        } else {
+            // Default to 5 if the input is invalid or not provided
+            payload.number_of_documents = 10;
+            // Display a warning to the user
+            alert(
+                "WARNING: Number of documents set to a value greater than 50 - defaulting to 10."
+            );
         }
 
         // If the LLM is invoked, add generation config parameters
@@ -515,8 +525,16 @@ document.addEventListener("DOMContentLoaded", () => {
             if (!isNaN(topP)) payload.generation_config.topP = topP;
 
             const maxTokenCount = parseInt(maxTokensInput.value, 10);
-            if (!isNaN(maxTokenCount) && maxTokenCount > 0)
+            if (!isNaN(maxTokenCount) && maxTokenCount > 0 && maxTokenCount <= 200000) {
                 payload.generation_config.maxTokenCount = maxTokenCount;
+            } else {
+                // Default to 1000 if the input is invalid or not provided
+                payload.generation_config.maxTokenCount = 1000;
+                // Display a warning to the user
+                alert(
+                    "WARNING: Max token count set to a value greater than 200000 - defaulting to 1000."
+                );
+            }
 
             const stopSequences = stopSequencesInput.value
                 .split(",")

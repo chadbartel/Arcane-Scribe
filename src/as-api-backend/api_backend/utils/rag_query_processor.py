@@ -5,6 +5,7 @@ import json
 import shutil
 import hashlib
 from typing import Optional, Dict, Any, List
+from decimal import Decimal
 
 # Third Party
 from botocore.exceptions import ClientError
@@ -41,6 +42,18 @@ BEDROCK_RUNTIME_CLIENT = BedrockRuntimeClient()
 DEFAULT_LLM_INSTANCE: Optional[ChatBedrock] = None
 
 
+class DecimalEncoder(json.JSONEncoder):
+    """Helper class to convert a DynamoDB item to JSON."""
+
+    def default(self, o):
+        if isinstance(o, Decimal):
+            if o % 1 > 0:
+                return float(o)
+            else:
+                return int(o)
+        return super(DecimalEncoder, self).default(o)
+
+
 def format_docs(docs: List[Any]) -> List[Dict[str, str]]:
     """Format a list of document objects into a list of dictionaries
     containing source, page, and content. This function is useful for
@@ -65,14 +78,40 @@ def format_docs(docs: List[Any]) -> List[Dict[str, str]]:
     """
     if not docs:
         return []
-    return [
-        {
-            "source": doc.metadata.get("source", "Unknown"),
-            "page": doc.metadata.get("page", "N/A"),
-            "content": doc.page_content,
-        }
-        for doc in docs
-    ]
+
+    formatted_docs = []
+    for doc in docs:
+        try:
+            # Safely access metadata with fallback
+            metadata = getattr(doc, "metadata", {})
+            if hasattr(metadata, "get"):
+                source = metadata.get("source", "Unknown")
+                page = metadata.get("page", "N/A")
+            else:
+                source = "Unknown"
+                page = "N/A"
+
+            # Safely access page_content with fallback
+            content = getattr(doc, "page_content", "")
+
+            formatted_docs.append(
+                {
+                    "source": source,
+                    "page": page,
+                    "content": content,
+                }
+            )
+        except Exception:
+            # If any error occurs processing this document, use safe defaults
+            formatted_docs.append(
+                {
+                    "source": "Unknown",
+                    "page": "N/A",
+                    "content": getattr(doc, "page_content", ""),
+                }
+            )
+
+    return formatted_docs
 
 
 def get_llm_instance(
@@ -389,9 +428,16 @@ def get_answer_from_rag(
             if response and int(response.get("ttl", 0)) > time.time():
                 # Return the cached answer if it exists
                 lambda_logger.info(f"Cache hit for query_hash: {query_hash}")
+
+                # Use the custom encoder to handle Decimal types before checking TTL
+                # This safely converts all Decimals in the item to standard Python numbers
+                cached_item_json_str = json.dumps(response, cls=DecimalEncoder)
+                cached_item = json.loads(cached_item_json_str)
+
+                # Return the cached answer and source documents
                 return {
-                    "answer": response["answer"],
-                    "source_documents_content": response.get(
+                    "answer": cached_item["answer"],
+                    "source_documents_content": cached_item.get(
                         "source_documents_content", []
                     ),
                     "source": "cache",
@@ -542,9 +588,11 @@ Helpful Answer:"""
                         "owner_id": owner_id,
                         "srd_id": srd_id,
                         "query_text": query_text,
-                        "source_documents_content": source_docs_content,
+                        "source_documents_content": json.loads(
+                            json.dumps(source_docs_content, cls=DecimalEncoder)
+                        ),
                         "timestamp": str(time.time()),
-                        "ttl": str(ttl_value),
+                        "ttl": ttl_value,
                         "generation_config_used": json.dumps(
                             generation_config_payload
                         ),
@@ -567,7 +615,9 @@ Helpful Answer:"""
         return {
             "answer": answer,
             "source_documents_retrieved": len(source_docs_content),
-            "source_documents_content": source_docs_content,
+            "source_documents_content": json.loads(
+                json.dumps(source_docs_content, cls=DecimalEncoder)
+            ),
             "source": "bedrock_llm",
         }
     # Catch specific Bedrock client errors
