@@ -16,7 +16,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const numDocsInput = document.getElementById("num-docs-input");
     const invokeLlmSwitch = document.getElementById("invoke-llm-switch");
     const temperatureSlider = document.getElementById("temperature-slider");
+    const temperatureValue = document.getElementById("temperature-value");
     const topPSlider = document.getElementById("top-p-slider");
+    const topPValue = document.getElementById("top-p-value");
     const maxTokensInput = document.getElementById("max-tokens-input");
     const stopSequencesInput = document.getElementById("stop-sequences-input");
 
