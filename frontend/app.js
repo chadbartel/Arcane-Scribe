@@ -506,8 +506,8 @@ document.addEventListener("DOMContentLoaded", () => {
         } else {
             // Default to 5 if the input is invalid or not provided
             payload.number_of_documents = 10;
-            // Show a warning message if the input is invalid
-            console.warn(
+            // Display a warning to the user
+            alert(
                 "WARNING: Number of documents set to a value greater than 50 - defaulting to 10."
             );
         }
@@ -531,7 +531,8 @@ document.addEventListener("DOMContentLoaded", () => {
             } else {
                 // Default to 1000 if the input is invalid or not provided
                 payload.generation_config.maxTokenCount = 1000;
-                console.warn(
+                // Display a warning to the user
+                alert(
                     "WARNING: Max token count set to a value greater than 200000 - defaulting to 1000."
                 );
             }
