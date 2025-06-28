@@ -917,8 +917,14 @@ class TestLoadAndMergeFaissIndicesForSrd:
 
         # Setup RetrievalQA
         mock_qa_chain = MagicMock()
-        mock_source_doc = MagicMock()
-        mock_source_doc.page_content = "source content"
+        
+        # Create a proper mock document that can be JSON serialized
+        class MockDocument:
+            def __init__(self, page_content, metadata=None):
+                self.page_content = page_content
+                self.metadata = metadata or {}
+        
+        mock_source_doc = MockDocument("source content", {"source": "test.pdf", "page": "1"})
         mock_qa_result = {
             "result": "LLM generated answer",
             "source_documents": [mock_source_doc],
@@ -1329,10 +1335,17 @@ class TestLoadAndMergeFaissIndicesForSrd:
         mock_llm = MagicMock()
         mock_get_llm.return_value = mock_llm  # Setup RetrievalQA
         mock_qa_chain = MagicMock()
+        
+        # Create a proper mock document that can be JSON serialized
+        class MockDocument:
+            def __init__(self, page_content, metadata=None):
+                self.page_content = page_content
+                self.metadata = metadata or {}
+        
         mock_qa_result = {
             "result": "LLM generated answer",
             "source_documents": [
-                MagicMock(page_content="test doc content")
+                MockDocument("test doc content", {"source": "test.pdf", "page": "1"})
             ],  # Add a source document
         }
         mock_qa_chain.invoke.return_value = mock_qa_result
