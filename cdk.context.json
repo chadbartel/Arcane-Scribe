@@ -1,14 +1,14 @@
 {
   "stack_name_prefix": "arcane-scribe-stack",
   "api_prefix": "/api/v1",
-  "domain_name": "thatsmidnight.com",
+  "domain_name": "chadbartel.com",
   "subdomain_name": "arcane-scribe",
   "authorizer_header_name": "x-arcane-auth-token",
   "bedrock_embedding_model_id": "amazon.titan-embed-text-v2:0",
   "bedrock_text_generation_model_id": "anthropic.claude-3-5-haiku-20241022-v1:0",
   "admin_secret_name": "prod/arcane-scribe/admin",
-  "admin_email": "thatsmidnight@thatsmidnight.com",
-  "admin_username": "thatsmidnight",
+  "admin_email": "me@chadbartel.com",
+  "admin_username": "chadbartel",
   "wildcard_parameter_name": "/api/certificate/arn",
   "wildcard_certificate_region": "us-east-1",
   "dev_cors_origins": "http://localhost:8000,http://127.0.0.1:8000"

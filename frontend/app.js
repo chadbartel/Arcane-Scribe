@@ -75,9 +75,9 @@ document.addEventListener("DOMContentLoaded", () => {
     const isLocal =
         window.location.hostname === "localhost" ||
         window.location.hostname === "127.0.0.1" ||
-        window.location.hostname === "arcane-scribe-dev.thatsmidnight.com";
-    const DEV_API_URL = "https://arcane-scribe-dev.thatsmidnight.com";
-    const PROD_API_URL = "https://arcane-scribe.thatsmidnight.com";
+        window.location.hostname === "arcane-scribe-dev.chadbartel.com";
+    const DEV_API_URL = "https://arcane-scribe-dev.chadbartel.com";
+    const PROD_API_URL = "https://arcane-scribe.chadbartel.com";
     const API_BASE_URL = isLocal
         ? `${DEV_API_URL}${apiSuffix}`
         : `${PROD_API_URL}${apiSuffix}`;
