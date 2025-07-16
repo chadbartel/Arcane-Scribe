@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "arcane-scribe"
-version = "0.2.0"
+version = "0.3.0"
 description = "A TTRPG Rulebook RAG System"
-authors = ["thatsmidnight <10793854+thatsmidnight@users.noreply.github.com>"]
+authors = ["chadbartel <10793854+chadbartel@users.noreply.github.com>"]
 license = "CC0-1.0"
 readme = "README.md"
 package-mode = true
