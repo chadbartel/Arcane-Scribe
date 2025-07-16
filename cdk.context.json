@@ -11,5 +11,8 @@
   "admin_username": "chadbartel",
   "wildcard_parameter_name": "/api/certificate/arn",
   "wildcard_certificate_region": "us-east-1",
-  "dev_cors_origins": "http://localhost:8000,http://127.0.0.1:8000"
+  "dev_cors_origins": "http://localhost:8000,http://127.0.0.1:8000",
+  "acknowledged-issue-numbers": [
+    34892
+  ]
 }
