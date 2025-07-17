@@ -486,6 +486,7 @@ class ArcaneScribeStack(Stack):
             domain_name=self.full_domain_name,
             api_certificate=wildcard_api_certificate,
         ).distribution
+        self.frontend_cdn.node.add_dependency(wildcard_api_certificate)
 
         # Any reqeust to "https://my.domain/api/*" will be forwarded to the API Gateway
         self.frontend_cdn.add_behavior(
