@@ -45,7 +45,7 @@ The application requires the following AWS services:
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/thatsmidnight/Arcane-Scribe.git
+git clone https://github.com/chadbartel/Arcane-Scribe.git
 cd arcane-scribe
 ```
 

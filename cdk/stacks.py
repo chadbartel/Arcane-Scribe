@@ -486,6 +486,7 @@ class ArcaneScribeStack(Stack):
             domain_name=self.full_domain_name,
             api_certificate=wildcard_api_certificate,
         ).distribution
+        self.frontend_cdn.node.add_dependency(wildcard_api_certificate)
 
         # Any reqeust to "https://my.domain/api/*" will be forwarded to the API Gateway
         self.frontend_cdn.add_behavior(
@@ -509,7 +510,7 @@ class ArcaneScribeStack(Stack):
         # endregion
 
         # region Custom Domain Setup for API Gateway
-        # 1. Look up existing hosted zone for "thatsmidnight.com"
+        # 1. Look up existing hosted zone for "chadbartel.com"
         hosted_zone = route53.HostedZone.from_lookup(
             self,
             "ArcaneScribeHostedZone",
