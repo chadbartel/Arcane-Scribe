@@ -44,6 +44,7 @@ class CustomCdn(Construct):
             The default root object for the CloudFront distribution, by default "index.html"
         """
         super().__init__(scope, id)
+        print(f"!CERTIFICATE: {api_certificate.certificate_arn}")
 
         # Append stack suffix to name if provided
         if stack_suffix:
