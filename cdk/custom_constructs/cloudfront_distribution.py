@@ -3,6 +3,7 @@ from typing import Optional
 
 # Third Party
 from aws_cdk import (
+    CfnOutput,
     aws_cloudfront as cloudfront,
     aws_cloudfront_origins as origins,
     aws_certificatemanager as acm,
@@ -44,6 +45,14 @@ class CustomCdn(Construct):
             The default root object for the CloudFront distribution, by default "index.html"
         """
         super().__init__(scope, id)
+
+        # Output the certificate ARN so we can see the resolved value
+        CfnOutput(
+            self,
+            "CertificateArnDebug",
+            value=api_certificate.certificate_arn,
+            description="Certificate ARN being used for CloudFront",
+        )
 
         # Append stack suffix to name if provided
         if stack_suffix:
