@@ -602,6 +602,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 // not from a nested 'metadata' object.
                 const encodedSourceName = doc.source || "Unknown Document";
                 const pageNum = doc.page;
+                const docContent = doc.content || "";
 
                 // Decode the URI component to make it human-readable
                 const sourceName = decodeURIComponent(
@@ -628,6 +629,12 @@ document.addEventListener("DOMContentLoaded", () => {
                     badge.className = "badge text-bg-secondary";
                     badge.textContent = `${sourceInfo.sourceName} (p. ${sourceInfo.pageNum + 1
                         })`; // Add 1 to page for human-readable format
+
+                    // Add a click event to show the document content
+                    badge.addEventListener("click", () => {
+                        // Show the document content in a modal or alert
+                        alert(`Document: ${sourceInfo.sourceName}\nPage: ${sourceInfo.pageNum + 1}\nContent:\n${docContent}`);
+                    });
 
                     sourceList.appendChild(badge);
                 });
